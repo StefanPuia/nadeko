@@ -30,6 +30,8 @@ namespace NadekoBot.Core.Services
         string LocationIqApiKey { get; }
         string TimezoneDbApiKey { get; }
         string CoinmarketcapApiKey { get; }
+        public string RaidCompBuildURL { get; }
+        public string RaidCompImportURL { get; }
     }
 
     public class RestartConfig

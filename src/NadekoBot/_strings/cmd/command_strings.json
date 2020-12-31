@@ -3462,5 +3462,12 @@
     "usage": [
       "{0}economy"
     ]
+  },
+  "raidcomp": {
+    "cmd": "raidcomp",
+    "desc": "Generate a raid composition from a Raid-Helper CSV export. Use `!event print 791001299856523324` to generate the CSV.",
+    "usage": [
+       "{0}raidcomp https://cdn.discordapp.com/attachments/785142922545856582/794237775469609020/692374848378241065-791001299856523324.csv"
+    ]
   }
 }

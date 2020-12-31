@@ -1,4 +1,4 @@
-﻿using Discord;
+using Discord;
 using Microsoft.Extensions.Configuration;
 using NadekoBot.Common;
 using Newtonsoft.Json;
@@ -44,6 +44,8 @@ namespace NadekoBot.Core.Services.Impl
         public string LocationIqApiKey { get; }
         public string TimezoneDbApiKey { get; }
         public string CoinmarketcapApiKey { get; }
+        public string RaidCompBuildURL { get; }
+        public string RaidCompImportURL { get; }
 
         public BotCredentials()
         {
@@ -80,7 +82,9 @@ namespace NadekoBot.Core.Services.Impl
                 LocationIqApiKey = data[nameof(LocationIqApiKey)];
                 TimezoneDbApiKey = data[nameof(TimezoneDbApiKey)];
                 CoinmarketcapApiKey = data[nameof(CoinmarketcapApiKey)];
-                if(string.IsNullOrWhiteSpace(CoinmarketcapApiKey))
+                RaidCompBuildURL = data[nameof(RaidCompBuildURL)];
+                RaidCompImportURL = data[nameof(RaidCompImportURL)];
+                if (string.IsNullOrWhiteSpace(CoinmarketcapApiKey))
                 {
                     CoinmarketcapApiKey = "e79ec505-0913-439d-ae07-069e296a6079";
                 }
@@ -183,6 +187,8 @@ namespace NadekoBot.Core.Services.Impl
             public string LocationIqApiKey { get; set; }
             public string TimezoneDbApiKey { get; set; }
             public string CoinmarketcapApiKey { get; set; }
+            public string RaidCompBuildURL { get; set; }
+            public string RaidCompImportURL { get; set; }
 
             [JsonIgnore]
             ImmutableArray<ulong> IBotCredentials.OwnerIds => throw new NotImplementedException();

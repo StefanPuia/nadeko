@@ -17,6 +17,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using NadekoBot.Core.Common;
+using NadekoBot.Core.Services.Database.Models;
 
 namespace NadekoBot.Modules.Utility
 {
@@ -211,7 +212,7 @@ namespace NadekoBot.Modules.Utility
 
         [NadekoCommand, Usage, Description, Aliases]
         [RequireContext(ContextType.Guild)]
-        public async Task ChannelTopic([Leftover]ITextChannel channel = null)
+        public async Task ChannelTopic([Leftover] ITextChannel channel = null)
         {
             if (channel == null)
                 channel = (ITextChannel)ctx.Channel;
@@ -348,6 +349,44 @@ namespace NadekoBot.Modules.Utility
             finally
             {
                 sem.Release();
+            }
+        }
+
+        [NadekoCommand, Usage, Description]
+        [RequireContext(ContextType.Guild)]
+        public async Task RaidComp(string csvLink)
+        {
+            if (string.IsNullOrEmpty(csvLink))
+                return;
+
+            try
+            {
+                using var http = _httpFactory.CreateClient();
+                string csvContent = await http.GetStringAsync(csvLink).ConfigureAwait(false);
+
+                var payload = JsonConvert.SerializeObject(new Dictionary<string, string> {
+                        { "raw", csvContent }
+                    });
+
+                var response = await http.PostAsync(_creds.RaidCompImportURL, new StringContent(payload, Encoding.UTF8, "application/json"));
+                if (response.IsSuccessStatusCode)
+                {
+                    List<string> buildLinks = new List<string>();
+                    var builds = JsonConvert.DeserializeObject<RaidCompResult>(await response.Content.ReadAsStringAsync());
+                    foreach (RaidCompResultBuild build in builds.builds)
+                    {
+                        buildLinks.Add($"{_creds.RaidCompBuildURL}/{build.buildId}/{build.buildName}");
+                    }
+                    await ctx.Channel.SendConfirmAsync(string.Join("\n", buildLinks));
+                }
+                else
+                {
+                    await ctx.Channel.SendErrorAsync("There was an error generating the build.");
+                }
+            }
+            catch
+            {
+                await ctx.Channel.SendErrorAsync("There was an error fetching the CSV.\n**Usage**: `raidcomp https://cdn.discordapp.com/attachments/785142922515856582/794137775469609020/someurl-to.csv`");
             }
         }
     }
