@@ -3467,9 +3467,9 @@
     "cmd": "raidcomp",
     "desc": "Generate a raid composition from a Raid-Helper CSV export. Use `!event print 791001299856523324` to generate the CSV. Use the --all flag to get ignore teams",
     "usage": [
-       "{0}raidcomp https://cdn.discordapp.com/attachments/785142922545856582/794237775469609020/692374848378241065-791001299856523324.csv",
-       "{0}raidcomp --all https://cdn.discordapp.com/attachments/785142922545856582/794237775469609020/692374848378241065-791001299856523324.csv",
-       "{0}raidcomp -a https://cdn.discordapp.com/attachments/785142922545856582/794237775469609020/692374848378241065-791001299856523324.csv"
+       "{0}raidcomp csvLink",
+       "{0}raidcomp --all csvLink",
+       "{0}raidcomp -a csvLink"
     ]
   }
 }
