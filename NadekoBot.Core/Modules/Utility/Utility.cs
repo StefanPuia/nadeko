@@ -356,8 +356,17 @@ namespace NadekoBot.Modules.Utility
         [RequireContext(ContextType.Guild)]
         public async Task RaidComp(string csvLink)
         {
+            await RaidComp(null, csvLink);
+        }
+
+        [NadekoCommand, Usage, Description]
+        [RequireContext(ContextType.Guild)]
+        public async Task RaidComp(string all, string csvLink)
+        {
             if (string.IsNullOrEmpty(csvLink))
                 return;
+
+            bool useTeams = string.IsNullOrEmpty(all);
 
             try
             {
@@ -368,7 +377,12 @@ namespace NadekoBot.Modules.Utility
                         { "raw", csvContent }
                     });
 
-                var response = await http.PostAsync(_creds.RaidCompImportURL, new StringContent(payload, Encoding.UTF8, "application/json"));
+                string importURL = $"{_creds.RaidCompImportURL}";
+                if (useTeams)
+                {
+                    importURL = $"{importURL}/teams";
+                }
+                var response = await http.PostAsync(importURL, new StringContent(payload, Encoding.UTF8, "application/json"));
                 if (response.IsSuccessStatusCode)
                 {
                     List<string> buildLinks = new List<string>();
@@ -384,9 +398,10 @@ namespace NadekoBot.Modules.Utility
                     await ctx.Channel.SendErrorAsync("There was an error generating the build.");
                 }
             }
-            catch
+            catch(Exception e)
             {
-                await ctx.Channel.SendErrorAsync("There was an error fetching the CSV.\n**Usage**: `raidcomp https://cdn.discordapp.com/attachments/785142922515856582/794137775469609020/someurl-to.csv`");
+                _log.Error(e);
+                await ctx.Channel.SendErrorAsync("There was an error processing the CSV.");
             }
         }
     }
