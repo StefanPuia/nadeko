@@ -375,5 +375,21 @@ namespace NadekoBot.Modules.Utility
                 await ctx.Channel.SendErrorAsync(e.Message);
             }
         }
+
+        [NadekoCommand, Usage, Description]
+        [RequireContext(ContextType.Guild)]
+        [UserPerm(GuildPerm.Administrator)]
+        public async Task WowAuditRefresh()
+        {
+            try
+            {
+                await RaidCompService.WowAuditRefresh(_creds, _httpFactory, _log);
+                await ctx.Channel.SendConfirmAsync("Update successful.");
+            }
+            catch (Exception e)
+            {
+                await ctx.Channel.SendErrorAsync(e.Message);
+            }
+        }
     }
 }

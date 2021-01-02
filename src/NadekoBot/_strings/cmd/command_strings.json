@@ -3471,5 +3471,12 @@
        "{0}raidcomp --all csvLink",
        "{0}raidcomp -a csvLink"
     ]
+  },
+  "wowauditrefresh": {
+    "cmd": "wowauditrefresh warefresh",
+    "desc": "Refresh the wowaudit data when the teams changed.",
+    "usage": [
+        "{0}wowauditrefresh"
+    ]
   }
 }

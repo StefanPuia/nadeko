@@ -44,9 +44,7 @@ namespace NadekoBot.Core.Services.Impl
         public string LocationIqApiKey { get; }
         public string TimezoneDbApiKey { get; }
         public string CoinmarketcapApiKey { get; }
-        public string RaidCompBuildURL { get; }
-        public string RaidCompImportURL { get; }
-        public ulong RaidCompAutoChannel { get; }
+        public RaidCompConfig RaidComp { get; }
 
         public BotCredentials()
         {
@@ -83,9 +81,15 @@ namespace NadekoBot.Core.Services.Impl
                 LocationIqApiKey = data[nameof(LocationIqApiKey)];
                 TimezoneDbApiKey = data[nameof(TimezoneDbApiKey)];
                 CoinmarketcapApiKey = data[nameof(CoinmarketcapApiKey)];
-                RaidCompBuildURL = data[nameof(RaidCompBuildURL)];
-                RaidCompImportURL = data[nameof(RaidCompImportURL)];
-                RaidCompAutoChannel = ulong.Parse(data[nameof(RaidCompAutoChannel)]);
+
+                string RaidCompSection = "RaidComp";
+                RaidComp = new RaidCompConfig(
+                    data.GetSection(RaidCompSection)["API"],
+                    data.GetSection(RaidCompSection)["WEB"],
+                    ulong.Parse(data.GetSection(RaidCompSection)["AutoChannel"]),
+                    data.GetSection(RaidCompSection)["WowAuditKey"]
+                );
+
                 if (string.IsNullOrWhiteSpace(CoinmarketcapApiKey))
                 {
                     CoinmarketcapApiKey = "e79ec505-0913-439d-ae07-069e296a6079";
@@ -193,9 +197,7 @@ namespace NadekoBot.Core.Services.Impl
             public string LocationIqApiKey { get; set; }
             public string TimezoneDbApiKey { get; set; }
             public string CoinmarketcapApiKey { get; set; }
-            public string RaidCompBuildURL { get; set; }
-            public string RaidCompImportURL { get; set; }
-            public ulong RaidCompAutoChannel { get; set; }
+            public RaidCompConfig RaidComp { get; set; }
 
             [JsonIgnore]
             ImmutableArray<ulong> IBotCredentials.OwnerIds => throw new NotImplementedException();

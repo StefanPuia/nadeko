@@ -30,9 +30,7 @@ namespace NadekoBot.Core.Services
         string LocationIqApiKey { get; }
         string TimezoneDbApiKey { get; }
         string CoinmarketcapApiKey { get; }
-        public string RaidCompBuildURL { get; }
-        public string RaidCompImportURL { get; }
-        public ulong RaidCompAutoChannel { get; }
+        public RaidCompConfig RaidComp { get; }
     }
 
     public class RestartConfig
@@ -56,5 +54,20 @@ namespace NadekoBot.Core.Services
         }
         public string Type { get; }
         public string ConnectionString { get; }
+    }
+
+    public class RaidCompConfig
+    {
+        public RaidCompConfig(string api, string web, ulong autoChannel, string wowAuditKey)
+        {
+            this.API = api;
+            this.WEB = web;
+            this.AutoChannel = autoChannel;
+            this.WowAuditKey = wowAuditKey;
+        }
+        public string API { get; }
+        public string WEB { get; }
+        public ulong AutoChannel { get; }
+        public string WowAuditKey { get; }
     }
 }

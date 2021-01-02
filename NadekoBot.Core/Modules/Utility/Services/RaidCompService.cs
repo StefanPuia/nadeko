@@ -40,7 +40,7 @@ namespace NadekoBot.Core.Modules.Utility.Services
             {
                 try
                 {
-                    var channel = _client.GetChannel(_creds.RaidCompAutoChannel);
+                    var channel = _client.GetChannel(_creds.RaidComp.AutoChannel);
                     string attachmentURL = msg.Attachments.First().Url;
                     if (attachmentURL.ToLowerInvariant().EndsWith(".csv"))
                     {
@@ -73,7 +73,7 @@ namespace NadekoBot.Core.Modules.Utility.Services
                         { "raw", csvContent }
                     });
 
-                string importURL = $"{_creds.RaidCompImportURL}";
+                string importURL = $"{_creds.RaidComp.API}/build/import";
                 if (useTeams)
                 {
                     importURL = $"{importURL}/teams";
@@ -85,7 +85,7 @@ namespace NadekoBot.Core.Modules.Utility.Services
                     var builds = JsonConvert.DeserializeObject<RaidCompResult>(await response.Content.ReadAsStringAsync());
                     foreach (RaidCompResultBuild build in builds.builds)
                     {
-                        buildLinks.Add($"{_creds.RaidCompBuildURL}/{build.buildId}/{build.buildName}");
+                        buildLinks.Add($"{_creds.RaidComp.WEB}/build/{build.buildId}/{build.buildName}");
                     }
                     return string.Join("\n", buildLinks);
                 }
@@ -98,6 +98,30 @@ namespace NadekoBot.Core.Modules.Utility.Services
             {
                 _log.Error(e);
                 throw new Exception("There was an error processing the CSV.");
+            }
+        }
+
+        public static async Task WowAuditRefresh(IBotCredentials _creds, IHttpClientFactory _httpFactory, Logger _log)
+        {
+            try
+            {
+                using var http = _httpFactory.CreateClient();
+                var payload = JsonConvert.SerializeObject(new Dictionary<string, string> {
+                        { "key",  _creds.RaidComp.WowAuditKey }
+                    });
+
+                string updateURL = $"{_creds.RaidComp.API}/wowaudit/update";
+                var response = await http.PostAsync(updateURL, new StringContent(payload, Encoding.UTF8, "application/json"));
+                if (!response.IsSuccessStatusCode)
+                {
+                    _log.Error(response.ToString());
+                    throw new Exception("There was an error running the update.");
+                }
+            }
+            catch (Exception e)
+            {
+                _log.Error(e);
+                throw new Exception("There was an error running the update. Try again later.");
             }
         }
     }
