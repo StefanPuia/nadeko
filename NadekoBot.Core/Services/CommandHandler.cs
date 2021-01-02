@@ -165,7 +165,10 @@ namespace NadekoBot.Core.Services
 
         public Task StartHandling()
         {
-            _client.MessageReceived += (msg) => { var _ = Task.Run(() => MessageReceivedHandler(msg)); return Task.CompletedTask; };
+            _client.MessageReceived += (msg) => {
+                var _ = Task.Run(() => MessageReceivedHandler(msg));
+                return Task.CompletedTask;
+            };
             return Task.CompletedTask;
         }
 
@@ -232,7 +235,7 @@ namespace NadekoBot.Core.Services
         {
             try
             {
-                if (msg.Author.IsBot || !_bot.Ready.Task.IsCompleted) //no bots, wait until bot connected and initialized
+                if (!_bot.Ready.Task.IsCompleted) //no bots, wait until bot connected and initialized
                     return;
 
                 if (!(msg is SocketUserMessage usrMsg))
@@ -268,6 +271,10 @@ namespace NadekoBot.Core.Services
             //highest priority. :thinking:
             foreach (var beh in _earlyBehaviors)
             {
+                if (usrMsg.Author.IsBot && !beh.AllowBots)
+                {
+                    continue;
+                }
                 if (await beh.RunBehavior(_client, guild, usrMsg).ConfigureAwait(false))
                 {
                     if (beh.BehaviorType == ModuleBehaviorType.Blocker)
@@ -281,6 +288,11 @@ namespace NadekoBot.Core.Services
                     }
                     return;
                 }
+            }
+
+            if (usrMsg.Author.IsBot)
+            {
+                return;
             }
 
             var exec2 = Environment.TickCount - execTime;

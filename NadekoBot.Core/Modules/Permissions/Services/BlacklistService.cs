@@ -14,7 +14,7 @@ namespace NadekoBot.Modules.Permissions.Services
         public int Priority => -100;
 
         public ModuleBehaviorType BehaviorType => ModuleBehaviorType.Blocker;
-
+        public bool AllowBots => false;
         public BlacklistService(IBotConfigProvider bc)
         {
             _bc = bc;

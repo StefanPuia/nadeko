@@ -22,6 +22,7 @@ namespace NadekoBot.Modules.Games.Services
 
         public int Priority => -5;
         public ModuleBehaviorType BehaviorType => ModuleBehaviorType.Executor;
+        public bool AllowBots => false;
 
         private readonly Logger _log;
         private readonly DiscordSocketClient _client;

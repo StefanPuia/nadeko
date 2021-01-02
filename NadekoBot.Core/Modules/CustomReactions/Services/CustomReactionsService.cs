@@ -35,6 +35,7 @@ namespace NadekoBot.Modules.CustomReactions.Services
 
         public int Priority => -1;
         public ModuleBehaviorType BehaviorType => ModuleBehaviorType.Executor;
+        public bool AllowBots => false;
 
         private readonly Logger _log;
         private readonly DbService _db;

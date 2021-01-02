@@ -18,6 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NadekoBot.Core.Common;
 using NadekoBot.Core.Services.Database.Models;
+using NadekoBot.Core.Modules.Utility.Services;
 
 namespace NadekoBot.Modules.Utility
 {
@@ -363,45 +364,15 @@ namespace NadekoBot.Modules.Utility
         [RequireContext(ContextType.Guild)]
         public async Task RaidComp(string all, string csvLink)
         {
-            if (string.IsNullOrEmpty(csvLink))
-                return;
-
             bool useTeams = string.IsNullOrEmpty(all);
-
             try
             {
-                using var http = _httpFactory.CreateClient();
-                string csvContent = await http.GetStringAsync(csvLink).ConfigureAwait(false);
-
-                var payload = JsonConvert.SerializeObject(new Dictionary<string, string> {
-                        { "raw", csvContent }
-                    });
-
-                string importURL = $"{_creds.RaidCompImportURL}";
-                if (useTeams)
-                {
-                    importURL = $"{importURL}/teams";
-                }
-                var response = await http.PostAsync(importURL, new StringContent(payload, Encoding.UTF8, "application/json"));
-                if (response.IsSuccessStatusCode)
-                {
-                    List<string> buildLinks = new List<string>();
-                    var builds = JsonConvert.DeserializeObject<RaidCompResult>(await response.Content.ReadAsStringAsync());
-                    foreach (RaidCompResultBuild build in builds.builds)
-                    {
-                        buildLinks.Add($"{_creds.RaidCompBuildURL}/{build.buildId}/{build.buildName}");
-                    }
-                    await ctx.Channel.SendConfirmAsync(string.Join("\n", buildLinks));
-                }
-                else
-                {
-                    await ctx.Channel.SendErrorAsync("There was an error generating the build.");
-                }
+                string buildMessage = await RaidCompService.ConvertCSV(csvLink, useTeams, _creds, _httpFactory, _log);
+                await ctx.Channel.SendConfirmAsync(buildMessage);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
-                _log.Error(e);
-                await ctx.Channel.SendErrorAsync("There was an error processing the CSV.");
+                await ctx.Channel.SendErrorAsync(e.Message);
             }
         }
     }

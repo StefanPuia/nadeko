@@ -12,6 +12,8 @@ namespace NadekoBot.Common.ModuleBehaviors
         int Priority { get; }
         ModuleBehaviorType BehaviorType { get; }
 
+        bool AllowBots { get; }
+
         Task<bool> RunBehavior(DiscordSocketClient client, IGuild guild, IUserMessage msg);
     }
 

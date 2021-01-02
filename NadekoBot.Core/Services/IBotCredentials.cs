@@ -32,6 +32,7 @@ namespace NadekoBot.Core.Services
         string CoinmarketcapApiKey { get; }
         public string RaidCompBuildURL { get; }
         public string RaidCompImportURL { get; }
+        public ulong RaidCompAutoChannel { get; }
     }
 
     public class RestartConfig

@@ -1,4 +1,4 @@
-using Discord;
+﻿using Discord;
 using Microsoft.Extensions.Configuration;
 using NadekoBot.Common;
 using Newtonsoft.Json;
@@ -46,6 +46,7 @@ namespace NadekoBot.Core.Services.Impl
         public string CoinmarketcapApiKey { get; }
         public string RaidCompBuildURL { get; }
         public string RaidCompImportURL { get; }
+        public ulong RaidCompAutoChannel { get; }
 
         public BotCredentials()
         {
@@ -84,6 +85,7 @@ namespace NadekoBot.Core.Services.Impl
                 CoinmarketcapApiKey = data[nameof(CoinmarketcapApiKey)];
                 RaidCompBuildURL = data[nameof(RaidCompBuildURL)];
                 RaidCompImportURL = data[nameof(RaidCompImportURL)];
+                RaidCompAutoChannel = ulong.Parse(data[nameof(RaidCompAutoChannel)]);
                 if (string.IsNullOrWhiteSpace(CoinmarketcapApiKey))
                 {
                     CoinmarketcapApiKey = "e79ec505-0913-439d-ae07-069e296a6079";
@@ -112,10 +114,14 @@ namespace NadekoBot.Core.Services.Impl
                 }
                 else //windows
                 {
+                    //if (string.IsNullOrWhiteSpace(ShardRunCommand))
+                    //    ShardRunCommand = "NadekoBot.exe";
+                    //if (string.IsNullOrWhiteSpace(ShardRunArguments))
+                    //    ShardRunArguments = "{0} {1}";
                     if (string.IsNullOrWhiteSpace(ShardRunCommand))
-                        ShardRunCommand = "NadekoBot.exe";
+                        ShardRunCommand = "dotnet.exe";
                     if (string.IsNullOrWhiteSpace(ShardRunArguments))
-                        ShardRunArguments = "{0} {1}";
+                        ShardRunArguments = "run -c Release --no-build -- {0} {1}";
                 }
 
                 var portStr = data[nameof(ShardRunPort)];
@@ -189,6 +195,7 @@ namespace NadekoBot.Core.Services.Impl
             public string CoinmarketcapApiKey { get; set; }
             public string RaidCompBuildURL { get; set; }
             public string RaidCompImportURL { get; set; }
+            public ulong RaidCompAutoChannel { get; set; }
 
             [JsonIgnore]
             ImmutableArray<ulong> IBotCredentials.OwnerIds => throw new NotImplementedException();

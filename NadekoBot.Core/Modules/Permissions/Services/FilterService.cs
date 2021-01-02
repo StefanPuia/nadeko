@@ -33,7 +33,7 @@ namespace NadekoBot.Modules.Permissions.Services
 
         public int Priority => -50;
         public ModuleBehaviorType BehaviorType => ModuleBehaviorType.Blocker;
-
+        public bool AllowBots => false;
         public ConcurrentHashSet<string> FilteredWordsForChannel(ulong channelId, ulong guildId)
         {
             ConcurrentHashSet<string> words = new ConcurrentHashSet<string>();
