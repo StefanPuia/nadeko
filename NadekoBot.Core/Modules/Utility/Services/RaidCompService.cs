@@ -73,7 +73,7 @@ namespace NadekoBot.Core.Modules.Utility.Services
                         { "raw", csvContent }
                     });
 
-                string importURL = $"{_creds.RaidComp.API}/build/import";
+                string importURL = $"{_creds.RaidComp.API}/build/import/raid-helper";
                 if (useTeams)
                 {
                     importURL = $"{importURL}/teams";
