@@ -92,7 +92,7 @@ namespace NadekoBot.Modules.Utility
                         var diff = when - DateTime.UtcNow;
                         embed.AddField($"#{++i + (page * 10)} {rem.When:HH:mm yyyy-MM-dd} UTC (in {(int)diff.TotalHours}h {(int)diff.Minutes}m)", $@"`Target:` {(rem.IsPrivate ? "DM" : "Channel")}
 `TargetId:` {rem.ChannelId}
-`Message:` {rem.Message}", false);
+`Message:` {rem.Message?.TrimTo(50)}", false);
                     }
                 }
                 else
@@ -105,7 +105,6 @@ namespace NadekoBot.Modules.Utility
             }
 
             [NadekoCommand, Usage, Description, Aliases]
-            [RequireContext(ContextType.Guild)]
             public async Task RemindDelete(int index)
             {
                 if (--index < 0)
