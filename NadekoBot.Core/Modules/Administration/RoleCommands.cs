@@ -89,8 +89,7 @@ namespace NadekoBot.Modules.Administration
                     }).ToList(),
                 }))
                 {
-                    await ctx.Channel.SendConfirmAsync(":ok:")
-                        .ConfigureAwait(false);
+                    await ctx.OkAsync();
                 }
                 else
                 {
@@ -243,7 +242,10 @@ namespace NadekoBot.Modules.Administration
             {
                 var guser = (IGuildUser)ctx.User;
 
-                var userRoles = user.GetRoles().Except(new[] { guser.Guild.EveryoneRole });
+                var userRoles = user.GetRoles()
+                    .Where(x => !x.IsManaged && x != x.Guild.EveryoneRole)
+                    .ToList();
+                
                 if (user.Id == ctx.Guild.OwnerId || (ctx.User.Id != ctx.Guild.OwnerId && guser.GetRoles().Max(x => x.Position) <= userRoles.Max(x => x.Position)))
                     return;
                 try
@@ -327,24 +329,6 @@ namespace NadekoBot.Modules.Administration
                 catch (Exception)
                 {
                     await ReplyErrorLocalizedAsync("rc_perms").ConfigureAwait(false);
-                }
-            }
-
-            [NadekoCommand, Usage, Description, Aliases]
-            [RequireContext(ContextType.Guild)]
-            [UserPerm(GuildPerm.MentionEveryone)]
-            [BotPerm(GuildPerm.ManageRoles)]
-            public async Task MentionRole([Leftover] IRole role)
-            {
-                if (!role.IsMentionable)
-                {
-                    await role.ModifyAsync(x => x.Mentionable = true).ConfigureAwait(false);
-                    await ctx.Channel.SendMessageAsync(role.Mention).ConfigureAwait(false);
-                    await role.ModifyAsync(x => x.Mentionable = false).ConfigureAwait(false);
-                }
-                else
-                {
-                    await ctx.Channel.SendMessageAsync(role.Mention).ConfigureAwait(false);
                 }
             }
         }

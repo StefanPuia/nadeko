@@ -54,6 +54,8 @@ namespace NadekoBot.Core.Services.Database
         public DbSet<RewardedUser> RewardedUsers { get; set; }
         public DbSet<Stake> Stakes { get; set; }
         public DbSet<PlantedCurrency> PlantedCurrency { get; set; }
+        public DbSet<BanTemplate> BanTemplates { get; set; }
+        public DbSet<DiscordPermOverride> DiscordPermOverrides { get; set; }
 
         public NadekoContext(DbContextOptions<NadekoContext> options) : base(options)
         {
@@ -353,6 +355,22 @@ namespace NadekoBot.Core.Services.Database
                 .HasOne(x => x.GuildConfig)
                 .WithMany(x => x.SelfAssignableRoleGroupNames)
                 .IsRequired();
+            #endregion
+            
+            #region BanTemplate
+
+            modelBuilder.Entity<BanTemplate>()
+                .HasIndex(x => x.GuildId)
+                .IsUnique();
+
+            #endregion
+            
+            #region Perm Override
+
+            modelBuilder.Entity<DiscordPermOverride>()
+                .HasIndex(x => new {x.GuildId, x.Command})
+                .IsUnique();
+
             #endregion
         }
     }

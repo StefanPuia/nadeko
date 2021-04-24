@@ -20,7 +20,7 @@ namespace NadekoBot.Core.Services.Impl
         private readonly IBotCredentials _creds;
         private readonly DateTime _started;
 
-        public const string BotVersion = "2.36.1";
+        public const string BotVersion = "2.38.0";
         public string Author => "Kwoth#2452";
         public string Library => "Discord.Net";
 
@@ -37,7 +37,6 @@ namespace NadekoBot.Core.Services.Impl
         private long _commandsRan;
         public long CommandsRan => Interlocked.Read(ref _commandsRan);
 
-        private readonly Timer _carbonitexTimer;
         private readonly Timer _botlistTimer;
         private readonly ConnectionMultiplexer _redis;
         private readonly IHttpClientFactory _httpFactory;
@@ -130,35 +129,6 @@ namespace NadekoBot.Core.Services.Impl
 
                 return Task.CompletedTask;
             };
-
-            if (_client.ShardId == 0)
-            {
-                _carbonitexTimer = new Timer(async (state) =>
-                {
-                    if (string.IsNullOrWhiteSpace(_creds.CarbonKey))
-                        return;
-                    try
-                    {
-                        using (var http = _httpFactory.CreateClient())
-                        {
-                            using (var content = new FormUrlEncodedContent(
-                                new Dictionary<string, string> {
-                                { "servercount", nadeko.GuildCount.ToString() },
-                                { "key", _creds.CarbonKey }}))
-                            {
-                                content.Headers.Clear();
-                                content.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
-
-                                using (await http.PostAsync(new Uri("https://www.carbonitex.net/discord/data/botdata.php"), content).ConfigureAwait(false)) { }
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        // ignored
-                    }
-                }, null, TimeSpan.FromHours(1), TimeSpan.FromHours(1));
-            }
 
             _botlistTimer = new Timer(async (state) =>
             {

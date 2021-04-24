@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
 using Discord;
+using Discord.Commands;
 using Discord.WebSocket;
 using Microsoft.EntityFrameworkCore;
 using NadekoBot.Common.ModuleBehaviors;
@@ -16,6 +17,8 @@ namespace NadekoBot.Modules.Permissions.Services
 {
     public class PermissionService : ILateBlocker, INService
     {
+        public int Priority { get; } = 0;
+        
         private readonly DbService _db;
         private readonly CommandHandler _cmd;
         private readonly NadekoStrings _strings;
@@ -94,8 +97,15 @@ namespace NadekoBot.Modules.Permissions.Services
             });
         }
 
-        public async Task<bool> TryBlockLate(DiscordSocketClient client, IUserMessage msg, IGuild guild, IMessageChannel channel, IUser user, string moduleName, string commandName)
+        public async Task<bool> TryBlockLate(DiscordSocketClient client, ICommandContext ctx, string moduleName,
+            CommandInfo command)
         {
+            var guild = ctx.Guild;
+            var msg = ctx.Message;
+            var user = ctx.User;
+            var channel = ctx.Channel;
+            var commandName = command.Name.ToLowerInvariant();
+            
             await Task.Yield();
             if (guild == null)
             {

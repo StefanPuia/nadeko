@@ -14,6 +14,13 @@
       "{0}hgit"
     ]
   },
+  "gencmdlist": {
+    "Cmd": "gencmdlist",
+    "Desc": "Generates the command list and sends it to the chat. Optionally also uploads it to DO spaces (not supported).",
+    "Usage": [
+      "{0}gencmdlist"
+    ]
+  },
   "donate": {
     "Cmd": "donate",
     "Desc": "Instructions for helping the project financially.",
@@ -87,6 +94,30 @@
       "{0}greetdm"
     ]
   },
+  "greettest": {
+    "Cmd": "greettest",
+    "Desc": "Sends the greet message in the current channel as if you just joined the server. You can optionally specify a different user.",
+    "Usage": [
+      "{0}greettest",
+      "{0}greettest @SomeoneElse"
+    ]
+  },
+  "greetdmtest": {
+    "Cmd": "greetdmtest",
+    "Desc": "Sends the greet direct message to you as if you just joined the server. You can optionally specify a different user.",
+    "Usage": [
+      "{0}greetdmtest",
+      "{0}greetdmtest @SomeoneElse"
+    ]
+  },
+  "byetest": {
+    "Cmd": "byetest",
+    "Desc": "Sends the bye message in the current channel as if you just left the server. You can optionally specify a different user.",
+    "Usage": [
+      "{0}byetest",
+      "{0}byetest @SomeoneElse"
+    ]
+  },
   "logserver": {
     "Cmd": "logserver",
     "Desc": "Enables or Disables ALL log events. If enabled, all log events will log to this channel.",
@@ -116,6 +147,20 @@
       "{0}voicepresence"
     ]
   },
+  "repeatlist": {
+    "Cmd": "repeatlist replst replist repli",
+    "Desc": "Shows currently repeating messages and their indexes.",
+    "Usage": [
+      "{0}repeatlist"
+    ]
+  },
+  "repeatremove": {
+    "Cmd": "repeatremove reprm",
+    "Desc": "Removes a repeating message on a specified index. Use `{0}repeatlist` to see indexes.",
+    "Usage": [
+      "{0}reprm 2"
+    ]
+  },
   "repeatinvoke": {
     "Cmd": "repeatinvoke repinv",
     "Desc": "Immediately shows the repeat message on a certain index and restarts its timer.",
@@ -125,10 +170,19 @@
   },
   "repeat": {
     "Cmd": "repeat",
-    "Desc": "Repeat a message once every `-i` number of minutes in the current channel. You can instead specify time of day for the message to be repeated daily (make sure you've set your server's timezone). If you've specified time of day, you can still override the default daily interval with your own -i. For example `17:30 -i 180 -m \"hi there\"` will post at 17:30 and then every 3 hours after. You can have up to 5 repeating messages on the server in total.",
+    "Desc": "Repeat a message once every specified amount of time in the current channel. You can instead specify time of day for the message to be repeated daily (make sure you've set your server's timezone). If you've specified time of day, you can still override the default daily interval with your own interval. You can have up to 5 repeating messages on the server in total.",
     "Usage": [
-      "{0}repeat -i 5 -m \"Hello there\" -n",
-      "{0}repeat 17:30 -m \"tea time\""
+      "{0}repeat Hello there",
+      "{0}repeat 1h5m Hello @erryone",
+      "{0}repeat 10:00 Daily have a nice day! This will execute once every 24h.",
+      "{0}repeat 21:00 30m Starting at 21 and every 30 minutes after that i will send this message!"
+    ]
+  },
+  "repeatredundant": {
+    "Cmd": "repeatredun repred",
+    "Desc": "Specify repeater's index (use `{0}repli` to find it) to toggle whether that repeater's message should be reposted if the last message in the channel is the same repeater's message. This is useful if you want to remind everyone to be nice in the channel every so often, but don't want to have the bot spam the channel. This is NOT useful if you want to periodically ping someone.",
+    "Usage": [
+      "{0}repred 1"
     ]
   },
   "rotateplaying": {
@@ -154,7 +208,7 @@
     ]
   },
   "removeplaying": {
-    "Cmd": "removeplaying rmpl repl",
+    "Cmd": "removeplaying rmpl",
     "Desc": "Removes a playing string on a given number.",
     "Usage": [
       "{0}rmpl"
@@ -322,7 +376,7 @@
   },
   "autoassignrole": {
     "Cmd": "autoassignrole aar",
-    "Desc": "Automaticaly assigns a specified role to every user who joins the server. Provide no parameters to disable.",
+    "Desc": "Automaticaly assigns a specified role to every user who joins the server. Only one role per server. Provide no parameters to disable.",
     "Usage": [
       "{0}aar",
       "{0}aar RoleName"
@@ -565,13 +619,6 @@
     "Usage": [
       "{0}send serverid|c:channelid message",
       "{0}send serverid|u:userid message"
-    ]
-  },
-  "mentionrole": {
-    "Cmd": "mentionrole menro",
-    "Desc": "Mentions a role. If the role is not mentionable, bot will make it mentionable for a moment.",
-    "Usage": [
-      "{0}menro RoleName"
     ]
   },
   "unstuck": {
@@ -911,11 +958,18 @@
       "{0}. sayhi Hi"
     ]
   },
-  "showquote": {
+  "quoteprint": {
     "Cmd": "..",
-    "Desc": "Shows a random quote with a specified name.",
+    "Desc": "Prints a random quote with a specified name.",
     "Usage": [
       "{0}.. abc"
+    ]
+  },
+  "quoteshow": {
+    "Cmd": "qshow",
+    "Desc": "Shows information about a quote with the specified ID.",
+    "Usage": [
+      "{0}qshow 123"
     ]
   },
   "quotesearch": {
@@ -1406,7 +1460,7 @@
   },
   "streamrole": {
     "Cmd": "streamrole",
-    "Desc": "Sets a role which is monitored for streamers (FromRole), and a role to add if a user from 'FromRole' is streaming (AddRole). When a user from 'FromRole' starts streaming, they will receive an 'AddRole'. Provide no parameters to disable",
+    "Desc": "Sets a role which is monitored for streamers (FromRole), and a role to add if a user from 'FromRole' is streaming (AddRole). When a user from 'FromRole' starts streaming, they will receive an 'AddRole'. You can only have 1 Stream Role per server. Provide no parameters to disable",
     "Usage": [
       "{0}streamrole \"Eligible Streamers\" \"Featured Streams\""
     ]
@@ -1711,14 +1765,14 @@
   },
   "randjoke": {
     "Cmd": "randjoke rj",
-    "Desc": "Shows a random joke from <http://tambal.azurewebsites.net/joke/random>",
+    "Desc": "Shows a random joke.",
     "Usage": [
       "{0}rj"
     ]
   },
   "chucknorris": {
     "Cmd": "chucknorris cn",
-    "Desc": "Shows a random Chuck Norris joke from <http://api.icndb.com/jokes/random/>",
+    "Desc": "Shows a random Chuck Norris joke.",
     "Usage": [
       "{0}cn"
     ]
@@ -1969,18 +2023,21 @@
   },
   "antiraid": {
     "Cmd": "antiraid",
-    "Desc": "Sets an anti-raid protection on the server. Provide no parameters to disable. First parameter is number of people which will trigger the protection. Second parameter is a time interval in which that number of people needs to join in order to trigger the protection, and third parameter is punishment for those people (Kick, Ban, Mute)",
+    "Desc": "Sets an anti-raid protection on the server. Provide no parameters to disable. First parameter is number of people which will trigger the protection. Second parameter is a time interval in which that number of people needs to join in order to trigger the protection, and third parameter is punishment for those people. You can specify an additional time argument to do a timed punishment for actions which support it (Ban, Mute, etc) up to 24h. Available punishments: Ban, Kick, Softban, Mute, VoiceMute, ChatMute, RemoveRoles",
     "Usage": [
       "{0}antiraid 5 20 Kick",
+      "{0}antiraid 7 9 Ban",
+      "{0}antiraid 10 10 Ban 6h30m",
       "{0}antiraid"
     ]
   },
   "antispam": {
     "Cmd": "antispam",
-    "Desc": "Stops people from repeating same message X times in a row. Provide no parameters to disable. You can specify to either mute, kick or ban the offenders. If you're using mute, you can add a number of seconds at the end to use a timed mute. Max message count is 10.",
+    "Desc": "Stops people from repeating same message X times in a row. Provide no parameters to disable. You can specify to either mute, kick or ban the offenders. You can specify an additional time argument to do a timed punishment for actions which support it (Ban, Mute, etc) up to 24h. Max message count is 10. Available punishments: Ban, Kick, Softban, Mute, VoiceMute, ChatMute, AddRole, RemoveRoles",
     "Usage": [
       "{0}antispam 3 Mute",
-      "{0}antispam 4 Kick",
+      "{0}antispam 5 Ban",
+      "{0}antispam 5 Ban 3h30m",
       "{0}antispam"
     ]
   },
@@ -2353,20 +2410,6 @@
       "{0}pollstats"
     ]
   },
-  "repeatlist": {
-    "Cmd": "repeatlist replst replist repli",
-    "Desc": "Shows currently repeating messages and their indexes.",
-    "Usage": [
-      "{0}repeatlist"
-    ]
-  },
-  "repeatremove": {
-    "Cmd": "repeatremove reprm",
-    "Desc": "Removes a repeating message on a specified index. Use `{0}repeatlist` to see indexes.",
-    "Usage": [
-      "{0}reprm 2"
-    ]
-  },
   "antilist": {
     "Cmd": "antilist antilst",
     "Desc": "Shows currently enabled protection features.",
@@ -2736,6 +2779,29 @@
       "{0}unban 123123123"
     ]
   },
+  "banmessage": {
+    "Cmd": "banmessage banmsg bantemplate bantemp",
+    "Desc": "Sets a ban message template which will be used when a user is banned from this server. You can use embed strings and ban-specific placeholders: %ban.mod%, %ban.user%, %ban.duration% and %ban.reason%. You can disable ban message with `{0}banmsg -`",
+    "Usage": [
+      "{0}banmsg %ban.user%, you've been banned from %server.name%. Reason: %ban.reason%",
+      "{0}banmsg {{ \"description\": \"%ban.user% you have been banned from %server.name% by %ban.mod%\" }}"
+    ]
+  },
+  "banmessagetest": {
+    "Cmd": "banmsgtest",
+    "Desc": "If ban message is not disabled, bot will send you the message as if you were banned by yourself. Used for testing the ban message.",
+    "Usage": [
+      "{0}banmsgtest No reason",
+      "{0}banmsgtest 1h Test 1 hour ban message"
+    ]
+  },
+  "banmsgreset": {
+    "Cmd": "banmsgreset",
+    "Desc": "Resets ban message to default. If you want to completely disable ban messages, use `{0}banmsg -`",
+    "Usage": [
+      "{0}banmsgreset"
+    ]
+  },
   "wait": {
     "Cmd": "wait",
     "Desc": "Used only as a startup command. Waits a certain number of miliseconds before continuing the execution of the following startup commands.",
@@ -2968,7 +3034,7 @@
   },
   "xpnotify": {
     "Cmd": "xpnotify xpn",
-    "Desc": "Sets how the bot should notify you when you get a `server` or `global` level. You can set `dm` (for the bot to send a direct message), `channel` (to get notified in the channel you sent the last message in) or `none` to disable.",
+    "Desc": "Sets how the bot should notify you when you get a `server` or `global` level. This is a personal setting and affects only how you receive Global or Server level-up notifications. You can set `dm` (for the bot to send you a direct message), `channel` (to get notified in the channel you sent the last message in) or `none` to disable.",
     "Usage": [
       "{0}xpn global dm",
       "{0}xpn server channel"
@@ -3248,6 +3314,28 @@
     "desc": "Deletes everything from UserXpStats, Clubs and sets users' TotalXP to 0.",
     "usage": [
       "{0}deletexp"
+    ]
+  },
+  "discordpermoverride": {
+    "cmd": "dpo",
+    "desc": "Overrides required user permissions that the command has with the specified ones. You can only use server-level permissions. This action will make the bot ignore user permission requirements which command has by default. Provide no permissions to reset to default.",
+    "usage": [
+      "{0}dpo {0}prune ManageMessages BanMembers",
+      "{0}dpo {0}prune"
+    ]
+  },
+  "discordpermoverridelist": {
+    "cmd": "dpol dpoli",
+    "desc": "Lists all discord permission overrides on this server.",
+    "usage": [
+      "{0}dpol"
+    ]
+  },
+  "discordpermoverridereset": {
+    "cmd": "dpor",
+    "desc": "Resets ALL currently set discord permission overrides on this server. This will make all commands have default discord permission requirements.",
+    "usage": [
+      "{0}dpor"
     ]
   },
   "rafflecur": {

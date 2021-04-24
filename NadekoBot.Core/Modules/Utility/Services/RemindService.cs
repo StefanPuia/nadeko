@@ -17,7 +17,7 @@ namespace NadekoBot.Modules.Utility.Services
 {
     public class RemindService : INService
     {
-        private readonly Regex _regex = new Regex(@"^(?:in\s?)?\s*(?:(?<mo>\d+)(?:\s?(?:months?|mos?),?))?(?:(?:\sand\s|\s*)?(?<w>\d+)(?:\s?(?:weeks?|w),?))?(?:(?:\sand\s|\s*)?(?<d>\d+)(?:\s?(?:days?|d),?))?(?:(?:\sand\s|\s*)?(?<h>\d+)(?:\s?(?:hours?|h),?))?(?:(?:\sand\s|\s*)?(?<m>\d+)(?:\s?(?:minutes?|mins?|m),?))?\s+(?:to:?\s+)?(?<what>.*)$",
+        private readonly Regex _regex = new Regex(@"^(?:in\s?)?\s*(?:(?<mo>\d+)(?:\s?(?:months?|mos?),?))?(?:(?:\sand\s|\s*)?(?<w>\d+)(?:\s?(?:weeks?|w),?))?(?:(?:\sand\s|\s*)?(?<d>\d+)(?:\s?(?:days?|d),?))?(?:(?:\sand\s|\s*)?(?<h>\d+)(?:\s?(?:hours?|h),?))?(?:(?:\sand\s|\s*)?(?<m>\d+)(?:\s?(?:minutes?|mins?|m),?))?\s+(?:to:?\s+)?(?<what>(?:\r\n|[\r\n]|.)+)",
                                 RegexOptions.Compiled | RegexOptions.Multiline);
 
         public string RemindMessageFormat { get; }
@@ -187,7 +187,7 @@ namespace NadekoBot.Modules.Utility.Services
                     .WithTitle("Reminder")
                     .AddField("Created At", r.DateAdded.HasValue ? r.DateAdded.Value.ToLongDateString() : "?")
                     .AddField("By", (await ch.GetUserAsync(r.UserId).ConfigureAwait(false))?.ToString() ?? r.UserId.ToString()),
-                    msg: r.Message.SanitizeMentions(true)).ConfigureAwait(false);
+                    msg: r.Message).ConfigureAwait(false);
             }
             catch (Exception ex) { _log.Info(ex.Message + $"({r.Id})"); }
         }
