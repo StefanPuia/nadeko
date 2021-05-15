@@ -8,12 +8,10 @@ using System.Linq;
 using NadekoBot.Common.Attributes;
 using NadekoBot.Common.ModuleBehaviors;
 using NadekoBot.Core.Services;
-using NadekoBot.Core.Services.Impl;
 using NadekoBot.Common;
 using NLog;
 using CommandLine;
 using System.Collections.Generic;
-using System.Net.Http.Headers;
 using NadekoBot.Modules.Administration.Services;
 
 namespace NadekoBot.Modules.Help.Services
@@ -22,17 +20,19 @@ namespace NadekoBot.Modules.Help.Services
     {
         private readonly IBotConfigProvider _bc;
         private readonly CommandHandler _ch;
-        private readonly NadekoStrings _strings;
+        private readonly IBotStrings _strings;
         private readonly Logger _log;
         private readonly DiscordPermOverrideService _dpos;
+        private readonly BotSettingsService _bss;
 
-        public HelpService(IBotConfigProvider bc, CommandHandler ch, NadekoStrings strings,
-            DiscordPermOverrideService dpos)
+        public HelpService(IBotConfigProvider bc, CommandHandler ch, IBotStrings strings,
+            DiscordPermOverrideService dpos, BotSettingsService bss)
         {
             _bc = bc;
             _ch = ch;
             _strings = strings;
             _dpos = dpos;
+            _bss = bss;
             _log = LogManager.GetCurrentClassLogger();
         }
 
@@ -40,15 +40,16 @@ namespace NadekoBot.Modules.Help.Services
         {
             try
             {
+                var settings = _bss.Data;
                 if (guild == null)
                 {
-                    if (string.IsNullOrWhiteSpace(_bc.BotConfig.DMHelpString) || _bc.BotConfig.DMHelpString == "-")
+                    if (string.IsNullOrWhiteSpace(settings.DmHelpText) || settings.DmHelpText == "-")
                         return Task.CompletedTask;
                     
-                    if (CREmbed.TryParse(_bc.BotConfig.DMHelpString, out var embed))
+                    if (CREmbed.TryParse(settings.DmHelpText, out var embed))
                         return msg.Channel.EmbedAsync(embed);
                     
-                    return msg.Channel.SendMessageAsync(_bc.BotConfig.DMHelpString);
+                    return msg.Channel.SendMessageAsync(settings.DmHelpText);
                 }
             }
             catch (Exception ex)
@@ -68,7 +69,7 @@ namespace NadekoBot.Modules.Help.Services
                 str += string.Format(" **/ `{0}`**", prefix + alias);
             var em = new EmbedBuilder()
                 .AddField(fb => fb.WithName(str)
-                    .WithValue($"{com.RealSummary(prefix)}")
+                    .WithValue($"{com.RealSummary(_strings, prefix)}")
                     .WithIsInline(true));
 
             _dpos.TryGetOverrides(guild?.Id ?? 0, com.Name, out var overrides);
@@ -81,7 +82,8 @@ namespace NadekoBot.Modules.Help.Services
 
             em
                 .AddField(fb => fb.WithName(GetText("usage", guild))
-                    .WithValue(com.RealRemarks(prefix))
+                    .WithValue(string.Join("\n", Array.ConvertAll(com.RealRemarksArr(_strings, prefix),
+                        arg => Format.Code(arg))))
                     .WithIsInline(false))
                 .WithFooter(efb => efb.WithText(GetText("module", guild, com.Module.GetTopLevelModule().Name)))
                 .WithColor(NadekoBot.OkColor);
@@ -174,6 +176,6 @@ namespace NadekoBot.Modules.Help.Services
         }
 
         private string GetText(string text, IGuild guild, params object[] replacements) =>
-            _strings.GetText(text, guild?.Id, "Help".ToLowerInvariant(), replacements);
+            _strings.GetText(text, guild?.Id, replacements);
     }
 }

@@ -25,12 +25,13 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Numerics;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using AngleSharp.Attributes;
+using NadekoBot.Common.Attributes;
 
 namespace NadekoBot.Extensions
 {
@@ -40,6 +41,8 @@ namespace NadekoBot.Extensions
 
         public static Regex UrlRegex = new Regex(@"^(https?|ftp)://(?<path>[^\s/$.?#].[^\s]*)$", RegexOptions.Compiled);
 
+        public static TOut[] Map<TIn, TOut>(this TIn[] arr, Func<TIn, TOut> f)
+            => Array.ConvertAll(arr, x => f(x));
 
         public static Task<IUserMessage> EmbedAsync(this IMessageChannel channel, CREmbed crEmbed, bool sanitizeAll = false)
         {
@@ -161,11 +164,21 @@ namespace NadekoBot.Extensions
         public static bool IsAuthor(this IMessage msg, IDiscordClient client)
             => msg.Author?.Id == client.CurrentUser.Id;
 
-        public static string RealSummary(this CommandInfo cmd, string prefix)
-            => string.Format(cmd.Summary, prefix);
-        public static string RealRemarks(this CommandInfo cmd, string prefix)
-            => string.Join("\n", JsonConvert.DeserializeObject<string[]>(cmd.Remarks)
-                .Select(x => Format.Code(string.Format(x, prefix))));
+        public static string RealSummary(this CommandInfo cmd, IBotStrings strings, string prefix)
+            => string.Format(strings.GetCommandStrings(cmd.Name).Desc, prefix);
+
+        public static string[] RealRemarksArr(this CommandInfo cmd, IBotStrings strings, string prefix)
+            => Array.ConvertAll(strings.GetCommandStrings(cmd.MethodName()).Args,
+                arg => GetFullUsage(cmd.Name, arg, prefix));
+
+        public static string MethodName(this CommandInfo cmd)
+            => ((NadekoCommandAttribute) cmd.Attributes.FirstOrDefault(x => x is NadekoCommandAttribute))?.MethodName
+               ?? cmd.Name;
+        // public static string RealRemarks(this CommandInfo cmd, IBotStrings strings, string prefix)
+        //     => string.Join('\n', cmd.RealRemarksArr(strings, prefix));
+
+        public static string GetFullUsage(string commandName, string args, string prefix)
+            => $"{prefix}{commandName} {string.Format(args, prefix)}";
 
         public static EmbedBuilder AddPaginatedFooter(this EmbedBuilder embed, int curPage, int? lastPage)
         {

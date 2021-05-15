@@ -23,6 +23,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Discord.Net;
 using NadekoBot.Core.Common;
+using NadekoBot.Core.Common.Configs;
+using NadekoBot.Core.Modules.Gambling.Services;
 
 namespace NadekoBot
 {
@@ -37,20 +39,13 @@ namespace NadekoBot
         private readonly DbService _db;
         public ImmutableArray<GuildConfig> AllGuildConfigs { get; private set; }
 
-        /* I don't know how to make this not be static
-         * and keep the convenience of .WithOkColor
-         * and .WithErrorColor extensions methods.
-         * I don't want to pass botconfig every time I
-         * want to send a confirm or error message, so
-         * I'll keep this for now */
+        /* Will have to be removed soon, it's been way too long */
         public static Color OkColor { get; set; }
         public static Color ErrorColor { get; set; }
 
         public TaskCompletionSource<bool> Ready { get; private set; } = new TaskCompletionSource<bool>();
 
         public IServiceProvider Services { get; private set; }
-
-        private readonly BotConfig _botConfig;
         public IDataCache Cache { get; private set; }
 
         public int GuildCount =>
@@ -91,6 +86,7 @@ namespace NadekoBot
                 TotalShards = Credentials.TotalShards,
                 ShardId = shardId,
                 AlwaysDownloadUsers = false,
+                ExclusiveBulkDelete = true,
             });
 
             CommandService = new CommandService(new CommandServiceConfig()
@@ -98,14 +94,6 @@ namespace NadekoBot
                 CaseSensitiveCommands = false,
                 DefaultRunMode = RunMode.Sync,
             });
-
-            using (var uow = _db.GetDbContext())
-            {
-                _botConfig = uow.BotConfig.GetOrCreate();
-                OkColor = new Color(Convert.ToUInt32(_botConfig.OkColor, 16));
-                ErrorColor = new Color(Convert.ToUInt32(_botConfig.ErrorColor, 16));
-                uow.SaveChanges();
-            }
 
             SetupShard(parentProcessId);
 
@@ -162,16 +150,27 @@ namespace NadekoBot
                 AllGuildConfigs = uow.GuildConfigs.GetAllGuildConfigs(startingGuildIdList).ToImmutableArray();
             }
 
-            IBotConfigProvider botConfigProvider = new BotConfigProvider(_db, _botConfig, Cache);
-
             var s = new ServiceCollection()
                 .AddSingleton<IBotCredentials>(Credentials)
                 .AddSingleton(_db)
                 .AddSingleton(Client)
                 .AddSingleton(CommandService)
-                .AddSingleton(botConfigProvider)
                 .AddSingleton(this)
                 .AddSingleton(Cache)
+                .AddSingleton(Cache.Redis)
+                .AddSingleton<IStringsSource, LocalFileStringsSource>()
+                .AddSingleton<IBotStringsProvider, LocalBotStringsProvider>()
+                .AddSingleton<IBotStrings, BotStrings>()
+                .AddSingleton<IBotConfigProvider, BotConfigProvider>()
+                .AddSingleton<ISeria, JsonSeria>()
+                .AddSingleton<ISettingsSeria, YamlSeria>()
+                .AddSingleton<BotSettingsService>()
+                .AddSingleton<ISettingsService>(x => x.GetService<BotSettingsService>())
+                .AddSingleton<BotSettingsMigrator>()
+                .AddSingleton<GamblingConfigService>()
+                .AddSingleton<ISettingsService>(x => x.GetService<GamblingConfigService>())
+                .AddSingleton<GamblingSettingsMigrator>()
+                .AddSingleton<IPubSub, RedisPubSub>()
                 .AddMemoryCache();
 
             s.AddHttpClient();
@@ -185,6 +184,15 @@ namespace NadekoBot
             //initialize Services
             Services = s.BuildServiceProvider();
             var commandHandler = Services.GetService<CommandHandler>();
+
+            if (Client.ShardId == 0)
+            {
+                var bsMigrator = Services.GetService<BotSettingsMigrator>();
+                var gambMigrator = Services.GetService<GamblingSettingsMigrator>();
+                bsMigrator.EnsureMigrated();
+                gambMigrator.EnsureMigrated();
+            }
+
             //what the fluff
             commandHandler.AddServices(s);
             _ = LoadTypeReaders(typeof(NadekoBot).Assembly);
@@ -285,7 +293,7 @@ namespace NadekoBot
 
         private Task Client_JoinedGuild(SocketGuild arg)
         {
-            _log.Info("Joined server: {0} [{1}]", arg?.Name, arg?.Id);
+            _log.Info($"Joined server: {0} [{1}]", arg?.Name, arg?.Id);
             var _ = Task.Run(async () =>
             {
                 GuildConfig gc;

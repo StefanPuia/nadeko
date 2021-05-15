@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
 using NadekoBot.Common.Attributes;
-using NadekoBot.Core.Common.TypeReaders.Models;
 using NadekoBot.Core.Services;
 using NadekoBot.Core.Services.Database.Models;
 using NadekoBot.Extensions;
@@ -40,7 +39,7 @@ namespace NadekoBot.Modules.Utility
             {
                 if (!_service.TryParseRemindMessage(remindString, out var remindData))
                 {
-                    // todo invalid remind string
+                    await ReplyErrorLocalizedAsync("remind_invalid");
                     return;
                 }
                 
@@ -68,7 +67,7 @@ namespace NadekoBot.Modules.Utility
 
                 if (!_service.TryParseRemindMessage(remindString, out var remindData))
                 {
-                    // todo invalid remind string
+                    await ReplyErrorLocalizedAsync("remind_invalid");
                     return;
                 }
 

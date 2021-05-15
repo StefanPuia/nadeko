@@ -7,28 +7,42 @@ namespace NadekoBot.Core.Services.Database.Models
 {
     public class BotConfig : DbEntity
     {
+        public bool HasMigratedBotSettings { get; set; } = true;
+        public bool HasMigratedGamblingSettings { get; set; } = true;
+        
         public HashSet<BlacklistItem> Blacklist { get; set; }
-        public ulong BufferSize { get; set; } = 4000000;
-        public bool ForwardMessages { get; set; } = true;
-        public bool ForwardToAllOwners { get; set; } = true;
 
+        public List<PlayingStatus> RotatingStatusMessages { get; set; } = new List<PlayingStatus>();
+        public string RemindMessageFormat { get; set; } = "❗⏰**I've been told to remind you to '%message%' now by %user%.**⏰❗";
+        public HashSet<EightBallResponse> EightBallResponses { get; set; } = new HashSet<EightBallResponse>();
+        public HashSet<RaceAnimal> RaceAnimals { get; set; } = new HashSet<RaceAnimal>();
+        public IndexedCollection<StartupCommand> StartupCommands { get; set; }
+        public bool CustomReactionsStartWith { get; set; } = false;
+        public int XpPerMessage { get; set; } = 3;
+        public int XpMinutesTimeout { get; set; } = 5;
+        public double VoiceXpPerMinute { get; set; } = 0;
+        public int MaxXpMinutes { get; set; } = 720;
+        public int MinimumTriviaWinReq { get; set; }
+
+        #region  Obsolete, Moved to gambling.yml
+        
+        // //currency
+        public DateTime LastCurrencyDecay { get; set; } = DateTime.MinValue;
+        public int TriviaCurrencyReward { get; set; } = 0;
+        public float PatreonCurrencyPerCent { get; set; } = 1.0f;
         public float CurrencyGenerationChance { get; set; } = 0.02f;
         public int CurrencyGenerationCooldown { get; set; } = 10;
 
-        public List<PlayingStatus> RotatingStatusMessages { get; set; } = new List<PlayingStatus>();
-
-        public bool RotatingStatuses { get; set; } = false;
-        public string RemindMessageFormat { get; set; } = "❗⏰**I've been told to remind you to '%message%' now by %user%.**⏰❗";
-
-        //currency
+        
+        public int DivorcePriceMultiplier { get; set; } = 150;
+        public int WaifuGiftMultiplier { get; set; } = 1;
+        public int MinBet { get; set; } = 0;
+        public int MaxBet { get; set; } = 0;
+        public bool CurrencyGenerationPassword { get; set; }
+        
         public string CurrencySign { get; set; } = "🌸";
         public string CurrencyName { get; set; } = "Nadeko Flower";
-        public string CurrencyPluralName { get; set; } = "Nadeko Flowers";
 
-        public int TriviaCurrencyReward { get; set; } = 0;
-        /// <summary> UNUSED </summary>
-        [Obsolete("Use MinBet instead.")]
-        public int MinimumBetAmount { get; set; } = 2;
         public float BetflipMultiplier { get; set; } = 1.95f;
         public int CurrencyDropAmount { get; set; } = 1;
         public int? CurrencyDropAmountMax { get; set; } = null;
@@ -38,12 +52,36 @@ namespace NadekoBot.Core.Services.Database.Models
         public int TimelyCurrency { get; set; } = 0;
         public int TimelyCurrencyPeriod { get; set; } = 0;
         public float DailyCurrencyDecay { get; set; } = 0;
-        public DateTime LastCurrencyDecay { get; set; } = DateTime.MinValue;
         public int MinWaifuPrice { get; set; } = 50;
 
-        public HashSet<EightBallResponse> EightBallResponses { get; set; } = new HashSet<EightBallResponse>();
-        public HashSet<RaceAnimal> RaceAnimals { get; set; } = new HashSet<RaceAnimal>();
+        #endregion
+        
+        /// <summary> UNUSED </summary>
+        [Obsolete("Use MinBet instead.")]
+        public int MinimumBetAmount { get; set; } = 2;
 
+        #region  Obsolete/UNUSED
+        public UpdateCheckType CheckForUpdates { get; set; } = UpdateCheckType.Release;
+        public string CurrencyPluralName { get; set; } = "Nadeko Flowers";
+        public int MigrationVersion { get; set; }
+        public int PermissionVersion { get; set; } = 2;
+
+        public string UpdateString { get; set; } = "New update has been released.";
+        public DateTime LastUpdate { get; set; } = new DateTime(2018, 5, 5, 0, 0, 0, DateTimeKind.Utc);
+        public ulong BufferSize { get; set; } = 4000000;
+        #endregion
+
+        #region  Obsolete, Moved to bot.yml
+        public string OkColor { get; set; } = "00e584";
+        public string ErrorColor { get; set; } = "ee281f";
+        public string Locale { get; set; } = null;
+        public OBSOLETE_ConsoleOutputType ConsoleOutputType { get; set; } = OBSOLETE_ConsoleOutputType.Normal;
+        public bool ForwardMessages { get; set; } = true;
+        public bool ForwardToAllOwners { get; set; } = true;
+        public HashSet<BlockedCmdOrMdl> BlockedCommands { get; set; }
+        public HashSet<BlockedCmdOrMdl> BlockedModules { get; set; }
+        public string DefaultPrefix { get; set; } = ".";
+        public bool GroupGreets { get; set; }
         public string DMHelpString { get; set; } = "Type `.h` for help.";
         public string HelpString { get; set; } = @"To add me to your server, use this link -> <https://discordapp.com/oauth2/authorize?client_id={0}&scope=bot&permissions=66186303>
 You can use `{1}modules` command to see a list of all modules.
@@ -58,34 +96,8 @@ For a specific command help, use `{1}h CommandName` (for example {1}h {1}q)
 
 Nadeko Support Server: https://discord.gg/nadekobot";
 
-        public int MigrationVersion { get; set; }
-
-        public string OkColor { get; set; } = "00e584";
-        public string ErrorColor { get; set; } = "ee281f";
-        public string Locale { get; set; } = null;
-        public IndexedCollection<StartupCommand> StartupCommands { get; set; }
-        public HashSet<BlockedCmdOrMdl> BlockedCommands { get; set; }
-        public HashSet<BlockedCmdOrMdl> BlockedModules { get; set; }
-        public int PermissionVersion { get; set; } = 2;
-        public string DefaultPrefix { get; set; } = ".";
-        public bool CustomReactionsStartWith { get; set; } = false;
-        public int XpPerMessage { get; set; } = 3;
-        public int XpMinutesTimeout { get; set; } = 5;
-        public double VoiceXpPerMinute { get; set; } = 0;
-        public int MaxXpMinutes { get; set; } = 720;
-        public int DivorcePriceMultiplier { get; set; } = 150;
-        public float PatreonCurrencyPerCent { get; set; } = 1.0f;
-        public int WaifuGiftMultiplier { get; set; } = 1;
-        public int MinimumTriviaWinReq { get; set; }
-        public int MinBet { get; set; } = 0;
-        public int MaxBet { get; set; } = 0;
-        public ConsoleOutputType ConsoleOutputType { get; set; } = ConsoleOutputType.Normal;
-
-        public string UpdateString { get; set; } = "New update has been released.";
-        public UpdateCheckType CheckForUpdates { get; set; } = UpdateCheckType.Release;
-        public DateTime LastUpdate { get; set; } = new DateTime(2018, 5, 5, 0, 0, 0, DateTimeKind.Utc);
-        public bool CurrencyGenerationPassword { get; set; }
-        public bool GroupGreets { get; set; }
+        public bool RotatingStatuses { get; set; } = false;
+        #endregion
     }
 
     public enum UpdateCheckType
@@ -104,7 +116,7 @@ Nadeko Support Server: https://discord.gg/nadekobot";
             Name.GetHashCode(StringComparison.InvariantCulture);
     }
 
-    public enum ConsoleOutputType
+    public enum OBSOLETE_ConsoleOutputType
     {
         Normal,
         Simple

@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 namespace NadekoBot.Modules.Music
 {
     [NoPublicBot]
-    public class Music : NadekoTopLevelModule<MusicService>
+    public class Music : NadekoModule<MusicService>
     {
         private readonly DiscordSocketClient _client;
         private readonly IBotCredentials _creds;
@@ -706,7 +706,7 @@ namespace NadekoBot.Modules.Music
 
         [NadekoCommand, Usage, Description, Aliases]
         [RequireContext(ContextType.Guild)]
-        public async Task ShufflePlaylist()
+        public async Task PlaylistShuffle()
         {
             var mp = await _service.GetOrCreatePlayer(Context).ConfigureAwait(false);
             var val = mp.ToggleShuffle();
@@ -788,7 +788,7 @@ namespace NadekoBot.Modules.Music
         [NadekoCommand, Usage, Description, Aliases]
         [RequireContext(ContextType.Guild)]
         [OwnerOnly]
-        public async Task LocalPl([Leftover] string dirPath)
+        public async Task LocalPlaylist([Leftover] string dirPath)
         {
             if (string.IsNullOrWhiteSpace(dirPath))
                 return;
@@ -925,7 +925,7 @@ namespace NadekoBot.Modules.Music
 
         [NadekoCommand, Usage, Description, Aliases]
         [RequireContext(ContextType.Guild)]
-        public async Task RepeatPl()
+        public async Task PlaylistRepeat()
         {
             var mp = await _service.GetOrCreatePlayer(Context).ConfigureAwait(false);
             var currentValue = mp.ToggleRepeatPlaylist();

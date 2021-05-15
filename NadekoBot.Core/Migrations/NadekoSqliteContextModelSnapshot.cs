@@ -260,6 +260,16 @@ namespace NadekoBot.Migrations
                     b.Property<bool>("GroupGreets")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("HasMigratedBotSettings")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("HasMigratedGamblingSettings")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("HelpString")
                         .HasColumnType("TEXT");
 
@@ -495,7 +505,7 @@ namespace NadekoBot.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DateAdded");
+                    b.HasIndex("UserId");
 
                     b.ToTable("CurrencyTransactions");
                 });
@@ -2215,6 +2225,9 @@ namespace NadekoBot.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("ItemEmoji")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Price")

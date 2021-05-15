@@ -11,6 +11,7 @@ using NadekoBot.Modules.Administration.Services;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using NadekoBot.Core.Services;
 
 namespace NadekoBot.Modules.Administration
 {
@@ -21,20 +22,13 @@ namespace NadekoBot.Modules.Administration
         {
             private readonly DiscordSocketClient _client;
             private readonly NadekoBot _bot;
+            private readonly IBotStrings _strings;
 
-            public SelfCommands(DiscordSocketClient client, NadekoBot bot)
+            public SelfCommands(DiscordSocketClient client, NadekoBot bot, IBotStrings strings)
             {
                 _client = client;
                 _bot = bot;
-            }
-
-            [NadekoCommand, Usage, Description, Aliases]
-            [RequireContext(ContextType.DM)]
-            [OwnerOnly]
-            public async Task UpdatesCheck(UpdateCheckType type)
-            {
-                _service.SetUpdateCheck(type);
-                await ReplyConfirmLocalizedAsync("updates_check_set", type.ToString()).ConfigureAwait(false);
+                _strings = strings;
             }
 
             [NadekoCommand, Usage, Description, Aliases]
@@ -46,7 +40,7 @@ namespace NadekoBot.Modules.Administration
                 if (cmdText.StartsWith(Prefix + "die", StringComparison.InvariantCulture))
                     return;
 
-                var guser = ((IGuildUser)ctx.User);
+                var guser = (IGuildUser)ctx.User;
                 var cmd = new StartupCommand()
                 {
                     CommandText = cmdText,
@@ -82,7 +76,7 @@ namespace NadekoBot.Modules.Administration
                 if (interval < 5)
                     return;
 
-                var guser = ((IGuildUser)ctx.User);
+                var guser = (IGuildUser)ctx.User;
                 var cmd = new StartupCommand()
                 {
                     CommandText = cmdText,
@@ -102,7 +96,7 @@ namespace NadekoBot.Modules.Administration
             [NadekoCommand, Usage, Description, Aliases]
             [RequireContext(ContextType.Guild)]
             [OwnerOnly]
-            public async Task StartupCommands(int page = 1)
+            public async Task StartupCommandsList(int page = 1)
             {
                 if (page-- < 1)
                     return;
@@ -212,9 +206,9 @@ namespace NadekoBot.Modules.Administration
             [OwnerOnly]
             public async Task ForwardMessages()
             {
-                _service.ForwardMessages();
+                var enabled = _service.ForwardMessages();
 
-                if (_service.ForwardDMs)
+                if (enabled)
                     await ReplyConfirmLocalizedAsync("fwdm_start").ConfigureAwait(false);
                 else
                     await ReplyConfirmLocalizedAsync("fwdm_stop").ConfigureAwait(false);
@@ -224,9 +218,9 @@ namespace NadekoBot.Modules.Administration
             [OwnerOnly]
             public async Task ForwardToAll()
             {
-                _service.ForwardToAll();
+                var enabled = _service.ForwardToAll();
 
-                if (_service.ForwardDMsToAllOwners)
+                if (enabled)
                     await ReplyConfirmLocalizedAsync("fwall_start").ConfigureAwait(false);
                 else
                     await ReplyConfirmLocalizedAsync("fwall_stop").ConfigureAwait(false);
@@ -496,13 +490,14 @@ namespace NadekoBot.Modules.Administration
                 _service.ReloadImages();
                 await ReplyConfirmLocalizedAsync("images_loading", 0).ConfigureAwait(false);
             }
-
+            
             [NadekoCommand, Usage, Description, Aliases]
             [OwnerOnly]
-            public async Task BotConfigReload()
+            public async Task StringsReload()
             {
-                _service.ReloadBotConfig();
-                await ReplyConfirmLocalizedAsync("bot_config_reloaded").ConfigureAwait(false);
+                // todo add publisher to this. something like v3 eventpusher
+                _strings.Reload();
+                await ReplyConfirmLocalizedAsync("bot_strings_reloaded").ConfigureAwait(false);
             }
 
             private static UserStatus SettableUserStatusToUserStatus(SettableUserStatus sus)

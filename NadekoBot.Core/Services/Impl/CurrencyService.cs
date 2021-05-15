@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using NadekoBot.Core.Modules.Gambling.Services;
 
 namespace NadekoBot.Core.Services
 {
@@ -14,12 +15,15 @@ namespace NadekoBot.Core.Services
     {
         private readonly IBotConfigProvider _config;
         private readonly DbService _db;
+        private readonly GamblingConfigService _gss;
         private readonly IUser _bot;
 
-        public CurrencyService(IBotConfigProvider config, DbService db, DiscordSocketClient c)
+        public CurrencyService(IBotConfigProvider config, DbService db, DiscordSocketClient c,
+            GamblingConfigService gss)
         {
             _config = config;
             _db = db;
+            _gss = gss;
             _bot = c.CurrentUser;
         }
 
@@ -31,18 +35,19 @@ namespace NadekoBot.Core.Services
                 Reason = reason ?? "-",
             };
 
-        private bool InternalChange(ulong userId, string userName, string discrim, string avatar, string reason, long amount, bool gamble, IUnitOfWork uow)
+        private bool InternalChange(ulong userId, string userName, string discrim, string avatar,
+            string reason, long amount, bool gamble, IUnitOfWork uow)
         {
             var result = uow.DiscordUsers.TryUpdateCurrencyState(userId, userName, discrim, avatar, amount);
             if (result)
             {
                 var t = GetCurrencyTransaction(userId, reason, amount);
-                uow.CurrencyTransactions.Add(t);
+                uow._context.CurrencyTransactions.Add(t);
 
                 if (gamble)
                 {
                     var t2 = GetCurrencyTransaction(_bot.Id, reason, -amount);
-                    uow.CurrencyTransactions.Add(t2);
+                    uow._context.CurrencyTransactions.Add(t2);
                     uow.DiscordUsers.TryUpdateCurrencyState(_bot.Id, _bot.Username, _bot.Discriminator, _bot.AvatarId, -amount, true);
                 }
             }
@@ -75,11 +80,12 @@ namespace NadekoBot.Core.Services
             {
                 try
                 {
+                    var sign = _gss.Data.Currency.Sign;
                     await (await user.GetOrCreateDMChannelAsync())
                         .EmbedAsync(new EmbedBuilder()
                             .WithOkColor()
-                            .WithTitle($"Received {_config.BotConfig.CurrencySign}")
-                            .AddField("Amount", amount)
+                            .WithTitle($"Received Currency")
+                            .AddField("Amount", amount + _gss.Data.Currency.Sign)
                             .AddField("Reason", reason));
                 }
                 catch

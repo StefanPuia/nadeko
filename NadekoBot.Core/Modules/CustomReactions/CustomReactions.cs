@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace NadekoBot.Modules.CustomReactions
 {
-    public class CustomReactions : NadekoTopLevelModule<CustomReactionsService>
+    public class CustomReactions : NadekoModule<CustomReactionsService>
     {
         private readonly IBotCredentials _creds;
         private readonly DbService _db;
@@ -97,7 +97,7 @@ namespace NadekoBot.Modules.CustomReactions
 
             await ctx.SendPaginatedConfirmAsync(page, curPage =>
                 new EmbedBuilder().WithOkColor()
-                    .WithTitle(GetText("name"))
+                    .WithTitle(GetText("custom_reactions"))
                     .WithDescription(string.Join("\n", customReactions.OrderBy(cr => cr.Trigger)
                                                     .Skip(curPage * 20)
                                                     .Take(20)

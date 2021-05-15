@@ -1,4 +1,4 @@
-﻿using Discord;
+using Discord;
 using Discord.Commands;
 using NadekoBot.Common;
 using NadekoBot.Common.Attributes;
@@ -19,36 +19,40 @@ using System.Threading.Tasks;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Discord.WebSocket;
+using NadekoBot.Core.Common.Attributes;
 
 namespace NadekoBot.Modules.Help
 {
-    public class Help : NadekoTopLevelModule<HelpService>
+    public class Help : NadekoModule<HelpService>
     {
         public const string PatreonUrl = "https://patreon.com/nadekobot";
         public const string PaypalUrl = "https://paypal.me/Kwoth";
-        private readonly IBotCredentials _creds;
         private readonly CommandService _cmds;
+        private readonly BotSettingsService _bss;
         private readonly GlobalPermissionService _perms;
         private readonly IServiceProvider _services;
         private readonly DiscordSocketClient _client;
+        private readonly IBotStrings _strings;
 
         private readonly AsyncLazy<ulong> _lazyClientId;
 
-        public Help(IBotCredentials creds, GlobalPermissionService perms, CommandService cmds,
-            IServiceProvider services, DiscordSocketClient client)
+        public Help(GlobalPermissionService perms, CommandService cmds, BotSettingsService bss,
+            IServiceProvider services, DiscordSocketClient client, IBotStrings strings)
         {
-            _creds = creds;
             _cmds = cmds;
+            _bss = bss;
             _perms = perms;
             _services = services;
             _client = client;
-            
+            _strings = strings;
+
             _lazyClientId = new AsyncLazy<ulong>(async () => (await _client.GetApplicationInfoAsync()).Id);
         }
 
         public async Task<(string plainText, EmbedBuilder embed)> GetHelpStringEmbed()
         {
-            if (string.IsNullOrWhiteSpace(Bc.BotConfig.HelpString) || Bc.BotConfig.HelpString == "-")
+            var botSettings = _bss.Data;
+            if (string.IsNullOrWhiteSpace(botSettings.HelpText) || botSettings.HelpText == "-")
                 return default;
             
             var clientId = await _lazyClientId.Value;
@@ -60,10 +64,10 @@ namespace NadekoBot.Modules.Help
 
             var app = await _client.GetApplicationInfoAsync();
 
-            if (!CREmbed.TryParse(Bc.BotConfig.HelpString, out var embed))
+            if (!CREmbed.TryParse(botSettings.HelpText, out var embed))
             {
                 var eb = new EmbedBuilder().WithOkColor()
-                    .WithDescription(String.Format(Bc.BotConfig.HelpString, clientId, Prefix));
+                    .WithDescription(String.Format(botSettings.HelpText, clientId, Prefix));
                 return ("", eb);
             }
 
@@ -73,17 +77,74 @@ namespace NadekoBot.Modules.Help
         }
 
         [NadekoCommand, Usage, Description, Aliases]
-        public async Task Modules()
+        public async Task Modules(int page = 1)
         {
-            var embed = new EmbedBuilder().WithOkColor()
-                .WithFooter(efb => efb.WithText("ℹ️" + GetText("modules_footer", Prefix)))
-                .WithTitle(GetText("list_of_modules"))
-                .WithDescription(string.Join("\n",
-                                     _cmds.Modules.GroupBy(m => m.GetTopLevelModule())
-                                         .Where(m => !_perms.BlockedModules.Contains(m.Key.Name.ToLowerInvariant()))
-                                         .Select(m => "• " + m.Key.Name)
-                                         .OrderBy(s => s)));
-            await ctx.Channel.EmbedAsync(embed).ConfigureAwait(false);
+            if (--page < 0)
+                return;
+
+            var topLevelModules = _cmds.Modules.GroupBy(m => m.GetTopLevelModule())
+                .Where(m => !_perms.BlockedModules.Contains(m.Key.Name.ToLowerInvariant()))
+                .Select(x => x.Key)
+                .ToList();
+            
+            await ctx.SendPaginatedConfirmAsync(page, cur =>
+            {
+                var embed = new EmbedBuilder().WithOkColor()
+                    .WithTitle(GetText("list_of_modules"));
+
+                var localModules = topLevelModules.Skip(12 * cur)
+                    .Take(12)
+                    .ToList();
+
+                if (!localModules.Any())
+                {
+                    embed = embed.WithOkColor()
+                        .WithDescription(GetText("module_page_empty"));
+                    return embed;
+                }
+                
+                localModules
+                    .OrderBy(module => module.Name)
+                    .ForEach(module => embed.AddField($"{GetModuleEmoji(module.Name)} {module.Name}",
+                        GetText($"module_description_{module.Name.ToLowerInvariant()}") + "\n" +
+                        Format.Code(GetText("module_footer", Prefix, module.Name.ToLowerInvariant())),
+                        true));
+
+                return embed;
+            }, topLevelModules.Count(), 12, false);
+        }
+
+        private string GetModuleEmoji(string moduleName)
+        {
+            moduleName = moduleName.ToLowerInvariant();
+            switch (moduleName)
+            {
+                case "help":
+                    return "❓";
+                case "administration":
+                    return "🛠️";
+                case "customreactions":
+                    return "🗣️";
+                case "searches":
+                    return "🔍";
+                case "utility":
+                    return "🔧";
+                case "games":
+                    return "🎲";
+                case "gambling":
+                    return "💰";
+                case "music":
+                    return "🎶";
+                case "nsfw":
+                    return "😳";
+                case "permissions":
+                    return "🚓";
+                case "xp":
+                    return "📝";
+                default:
+                    return "📖";
+                
+            }
         }
 
         [NadekoCommand, Usage, Description, Aliases]
@@ -209,6 +270,7 @@ namespace NadekoBot.Modules.Help
                         return;
                     var (plainText, helpEmbed) = data;
                     await ch.EmbedAsync(helpEmbed, msg: plainText ?? "").ConfigureAwait(false);
+                    await ctx.OkAsync();
                 }
                 catch (Exception)
                 {
@@ -219,46 +281,6 @@ namespace NadekoBot.Modules.Help
 
             var embed = _service.GetCommandHelp(com, ctx.Guild);
             await channel.EmbedAsync(embed).ConfigureAwait(false);
-        }
-
-        [NadekoCommand, Usage, Description, Aliases]
-        [RequireContext(ContextType.Guild)]
-        [OwnerOnly]
-        public async Task Hgit()
-        {
-            Dictionary<string, List<object>> cmdData = new Dictionary<string, List<object>>();
-            foreach (var com in _cmds.Commands
-                .OrderBy(com => com.Module.GetTopLevelModule().Name)
-                .GroupBy(c => c.Aliases.First())
-                .Select(g => g.First()))
-            {
-                var module = com.Module.GetTopLevelModule();
-                List<string> optHelpStr = null;
-                var opt = ((NadekoOptionsAttribute)com.Attributes.FirstOrDefault(x => x is NadekoOptionsAttribute))?.OptionType;
-                if (opt != null)
-                {
-                    optHelpStr = HelpService.GetCommandOptionHelpList(opt);
-                }
-                var obj = new
-                {
-                    Aliases = com.Aliases.Select(x => Prefix + x).ToArray(),
-                    Description = string.Format(com.Summary, Prefix),
-                    Usage = JsonConvert.DeserializeObject<string[]>(com.Remarks).Select(x => string.Format(x, Prefix)).ToArray(),
-                    Submodule = com.Module.Name,
-                    Module = com.Module.GetTopLevelModule().Name,
-                    Options = optHelpStr,
-                    Requirements = HelpService.GetCommandRequirements(com),
-                };
-                if (cmdData.TryGetValue(module.Name, out var cmds))
-                    cmds.Add(obj);
-                else
-                    cmdData.Add(module.Name, new List<object>
-                    {
-                        obj
-                    });
-            }
-            File.WriteAllText("../../docs/cmds_new.json", JsonConvert.SerializeObject(cmdData, Formatting.Indented));
-            await ReplyConfirmLocalizedAsync("commandlist_regen").ConfigureAwait(false);
         }
         
         [NadekoCommand, Usage, Description, Aliases]
@@ -288,10 +310,9 @@ namespace NadekoBot.Modules.Help
                             
                             return new CommandJsonObject
                             {
-                                Aliases = com.Aliases.Select(x => Prefix + x).ToArray(),
-                                Description = string.Format(com.Summary, Prefix),
-                                Usage = JsonConvert.DeserializeObject<string[]>(com.Remarks)
-                                    .Select(x => string.Format(x, Prefix)).ToArray(),
+                                Aliases = com.Aliases.Select(alias => Prefix + alias).ToArray(),
+                                Description = com.RealSummary(_strings, Prefix),
+                                Usage = com.RealRemarksArr(_strings, Prefix),
                                 Submodule = com.Module.Name,
                                 Module = com.Module.GetTopLevelModule().Name,
                                 Options = optHelpStr,

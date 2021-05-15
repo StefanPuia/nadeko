@@ -1,34 +1,28 @@
-﻿using CommandLine;
-using Discord;
+﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
-using Microsoft.Extensions.Caching.Memory;
 using NadekoBot.Common.Attributes;
 using NadekoBot.Core.Common;
-using NadekoBot.Core.Services;
 using NadekoBot.Core.Services.Database.Models;
 using NadekoBot.Extensions;
 using NadekoBot.Modules.Xp.Common;
 using NadekoBot.Modules.Xp.Services;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Sockets;
 using System.Threading.Tasks;
+using NadekoBot.Core.Modules.Gambling.Services;
 
 namespace NadekoBot.Modules.Xp
 {
-    public partial class Xp : NadekoTopLevelModule<XpService>
+    public partial class Xp : NadekoModule<XpService>
     {
-        private readonly DiscordSocketClient _client;
-        private readonly DbService _db;
         private readonly DownloadTracker _tracker;
+        private readonly GamblingConfigService _gss;
 
-        public Xp(DiscordSocketClient client, DbService db, DownloadTracker tracker)
+        public Xp(DownloadTracker tracker, GamblingConfigService gss)
         {
-            _client = client;
-            _db = db;
             _tracker = tracker;
+            _gss = gss;
         }
 
         [NadekoCommand, Usage, Description, Aliases]
@@ -54,11 +48,7 @@ namespace NadekoBot.Modules.Xp
             if (page < 0 || page > 100)
                 return Task.CompletedTask;
 
-            var embed = new EmbedBuilder()
-                .WithTitle(GetText("level_up_rewards"))
-                .WithOkColor();
-
-            var rewards = _service.GetRoleRewards(ctx.Guild.Id)
+            var allRewards = _service.GetRoleRewards(ctx.Guild.Id)
                 .OrderBy(x => x.Level)
                 .Select(x =>
                 {
@@ -70,17 +60,33 @@ namespace NadekoBot.Modules.Xp
                 .Where(x => x.RoleStr != null)
                 .Concat(_service.GetCurrencyRewards(ctx.Guild.Id)
                     .OrderBy(x => x.Level)
-                    .Select(x => (x.Level, Format.Bold(x.Amount + Bc.BotConfig.CurrencySign))))
-                    .GroupBy(x => x.Level)
-                    .OrderBy(x => x.Key)
-                    .Skip(page * 9)
+                    .Select(x => (x.Level, Format.Bold(x.Amount + _gss.Data.Currency.Sign))))
+                .GroupBy(x => x.Level)
+                .OrderBy(x => x.Key)
+                .ToList();
+
+            return Context.SendPaginatedConfirmAsync(page, cur =>
+            {
+                var embed = new EmbedBuilder()
+                    .WithTitle(GetText("level_up_rewards"))
+                    .WithOkColor();
+                
+                var localRewards = allRewards
+                    .Skip(cur * 9)
                     .Take(9)
-                    .ForEach(x => embed.AddField(GetText("level_x", x.Key), string.Join("\n", x.Select(y => y.Item2))));
+                    .ToList();
 
-            if (!rewards.Any())
-                return ctx.Channel.EmbedAsync(embed.WithDescription(GetText("no_level_up_rewards")));
+                if (!localRewards.Any())
+                    return embed.WithDescription(GetText("no_level_up_rewards"));
 
-            return ctx.Channel.EmbedAsync(embed);
+                foreach (var reward in localRewards)
+                {
+                    embed.AddField(GetText("level_x", reward.Key),
+                        string.Join("\n", reward.Select(y => y.Item2)));
+                }
+                
+                return embed;
+            }, allRewards.Count, 9);
         }
 
         [NadekoCommand, Usage, Description, Aliases]
@@ -108,11 +114,15 @@ namespace NadekoBot.Modules.Xp
                 return;
 
             _service.SetCurrencyReward(ctx.Guild.Id, level, amount);
+            var config = _gss.Data;
 
             if (amount == 0)
-                await ReplyConfirmLocalizedAsync("cur_reward_cleared", level, Bc.BotConfig.CurrencySign).ConfigureAwait(false);
+                await ReplyConfirmLocalizedAsync("cur_reward_cleared", level, config.Currency.Sign)
+                    .ConfigureAwait(false);
             else
-                await ReplyConfirmLocalizedAsync("cur_reward_added", level, Format.Bold(amount + Bc.BotConfig.CurrencySign)).ConfigureAwait(false);
+                await ReplyConfirmLocalizedAsync("cur_reward_added", 
+                    level, Format.Bold(amount + config.Currency.Sign))
+                    .ConfigureAwait(false);
         }
 
         public enum NotifyPlace
@@ -335,7 +345,7 @@ namespace NadekoBot.Modules.Xp
                 {
                     var user = users[i];
                     embed.AddField(
-                        $"#{(i + 1 + page * 9)} {(user.ToString())}",
+                        $"#{i + 1 + page * 9} {(user.ToString())}",
                         $"{GetText("level_x", new LevelStats(users[i].TotalXp).Level)} - {users[i].TotalXp}xp");
                 }
             }

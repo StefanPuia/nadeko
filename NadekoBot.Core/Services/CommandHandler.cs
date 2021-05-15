@@ -11,11 +11,12 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using NadekoBot.Core.Common.Configs;
+using NadekoBot.Core.Services.Impl;
 
 namespace NadekoBot.Core.Services
 {
@@ -32,16 +33,15 @@ namespace NadekoBot.Core.Services
 
         private readonly DiscordSocketClient _client;
         private readonly CommandService _commandService;
+        private readonly BotSettingsService _bss;
         private readonly Logger _log;
-        private readonly IBotCredentials _creds;
         private readonly NadekoBot _bot;
         private IServiceProvider _services;
         private IEnumerable<IEarlyBehavior> _earlyBehaviors;
         private IEnumerable<IInputTransformer> _inputTransformers;
         private IEnumerable<ILateBlocker> _lateBlockers;
         private IEnumerable<ILateExecutor> _lateExecutors;
-
-        public string DefaultPrefix { get; private set; }
+        
         private ConcurrentDictionary<ulong, string> _prefixes { get; } = new ConcurrentDictionary<ulong, string>();
 
         public event Func<IUserMessage, CommandInfo, Task> CommandExecuted = delegate { return Task.CompletedTask; };
@@ -55,12 +55,12 @@ namespace NadekoBot.Core.Services
         private readonly Timer _clearUsersOnShortCooldown;
 
         public CommandHandler(DiscordSocketClient client, DbService db,
-            IBotConfigProvider bcp, CommandService commandService,
+            IBotConfigProvider bcp, CommandService commandService, BotSettingsService bss,
             IBotCredentials credentials, NadekoBot bot, IServiceProvider services)
         {
             _client = client;
             _commandService = commandService;
-            _creds = credentials;
+            _bss = bss;
             _bot = bot;
             _db = db;
             _bcp = bcp;
@@ -72,8 +72,7 @@ namespace NadekoBot.Core.Services
             {
                 UsersOnShortCooldown.Clear();
             }, null, GlobalCommandsCooldown, GlobalCommandsCooldown);
-
-            DefaultPrefix = bcp.BotConfig.DefaultPrefix;
+            
             _prefixes = bot.AllGuildConfigs
                 .Where(x => x.Prefix != null)
                 .ToDictionary(x => x.GuildId, x => x.Prefix)
@@ -82,10 +81,10 @@ namespace NadekoBot.Core.Services
 
         public string GetPrefix(IGuild guild) => GetPrefix(guild?.Id);
 
-        public string GetPrefix(ulong? id)
+        public string GetPrefix(ulong? id = null)
         {
-            if (id == null || !_prefixes.TryGetValue(id.Value, out var prefix))
-                return DefaultPrefix;
+            if (id is null || !_prefixes.TryGetValue(id.Value, out var prefix))
+                return _bss.Data.Prefix;
 
             return prefix;
         }
@@ -95,13 +94,12 @@ namespace NadekoBot.Core.Services
             if (string.IsNullOrWhiteSpace(prefix))
                 throw new ArgumentNullException(nameof(prefix));
 
-            using (var uow = _db.GetDbContext())
+            _bss.ModifyConfig(bs =>
             {
-                uow.BotConfig.GetOrCreate(set => set).DefaultPrefix = prefix;
-                uow.SaveChanges();
-            }
+                bs.Prefix = prefix;
+            });
 
-            return DefaultPrefix = prefix;
+            return prefix;
         }
         public string SetPrefix(IGuild guild, string prefix)
         {
@@ -179,7 +177,8 @@ namespace NadekoBot.Core.Services
 
         private Task LogSuccessfulExecution(IUserMessage usrMsg, ITextChannel channel, params int[] execPoints)
         {
-            if (_bcp.BotConfig.ConsoleOutputType == Database.Models.ConsoleOutputType.Normal)
+            var bss = _services.GetService<BotSettingsService>();
+            if (bss.Data.ConsoleOutputType == ConsoleOutputType.Normal)
             {
                 _log.Info($"Command Executed after " + string.Join("/", execPoints.Select(x => (x * _oneThousandth).ToString("F3"))) + "s\n\t" +
                         "User: {0}\n\t" +
@@ -205,7 +204,8 @@ namespace NadekoBot.Core.Services
 
         private void LogErroredExecution(string errorMessage, IUserMessage usrMsg, ITextChannel channel, params int[] execPoints)
         {
-            if (_bcp.BotConfig.ConsoleOutputType == Database.Models.ConsoleOutputType.Normal)
+            var bss = _services.GetService<BotSettingsService>();
+            if (bss.Data.ConsoleOutputType == ConsoleOutputType.Normal)
             {
                 _log.Warn($"Command Errored after " + string.Join("/", execPoints.Select(x => (x * _oneThousandth).ToString("F3"))) + "s\n\t" +
                             "User: {0}\n\t" +

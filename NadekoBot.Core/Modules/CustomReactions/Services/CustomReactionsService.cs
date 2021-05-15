@@ -5,7 +5,6 @@ using NadekoBot.Common.ModuleBehaviors;
 using NadekoBot.Core.Services;
 using NadekoBot.Core.Services.Database;
 using NadekoBot.Core.Services.Database.Models;
-using NadekoBot.Core.Services.Impl;
 using NadekoBot.Extensions;
 using NadekoBot.Modules.CustomReactions.Extensions;
 using NadekoBot.Modules.Permissions.Common;
@@ -44,11 +43,11 @@ namespace NadekoBot.Modules.CustomReactions.Services
         private readonly PermissionService _perms;
         private readonly CommandHandler _cmd;
         private readonly IBotConfigProvider _bc;
-        private readonly NadekoStrings _strings;
+        private readonly IBotStrings _strings;
         private readonly IDataCache _cache;
         private readonly GlobalPermissionService _gperm;
 
-        public CustomReactionsService(PermissionService perms, DbService db, NadekoStrings strings,
+        public CustomReactionsService(PermissionService perms, DbService db, IBotStrings strings,
             DiscordSocketClient client, CommandHandler cmd, IBotConfigProvider bc,
             IDataCache cache, GlobalPermissionService gperm, NadekoBot bot)
         {
@@ -240,11 +239,9 @@ namespace NadekoBot.Modules.CustomReactions.Services
                         {
                             if (pc.Verbose)
                             {
-                                var returnMsg = _strings.GetText("trigger", guild.Id,
-                                    "Permissions".ToLowerInvariant(),
+                                var returnMsg = _strings.GetText("trigger", sg.Id,
                                     index + 1,
-                                    Format.Bold(pc.Permissions[index].GetCommand(_cmd.GetPrefix(guild),
-                                        (SocketGuild) guild)));
+                                    Format.Bold(pc.Permissions[index].GetCommand(_cmd.GetPrefix(guild), sg)));
                                 try
                                 {
                                     await msg.Channel.SendErrorAsync(returnMsg).ConfigureAwait(false);
@@ -259,14 +256,8 @@ namespace NadekoBot.Modules.CustomReactions.Services
                             return true;
                         }
                     }
-
-                    var user = msg.Author as IGuildUser;
-                    var sanitize = true;
-                    if (user == null || user.GuildPermissions.MentionEveryone)
-                        sanitize = false;
                     
-                    var sentMsg = await cr.Send(msg, _client, sanitize).ConfigureAwait(false);
-
+                    var sentMsg = await cr.Send(msg, _client, false).ConfigureAwait(false);
 
                     var reactions = cr.GetReactions();
                     foreach(var reaction in reactions)
@@ -278,11 +269,9 @@ namespace NadekoBot.Modules.CustomReactions.Services
                         catch
                         {
                             _log.Warn($"Unable to add reactions to message {0} in server {1}");
+                            break;
                         }
-                        finally
-                        {
-                            await Task.Delay(100);
-                        }
+                        await Task.Delay(1000);
                     }
 
                     if (cr.AutoDeleteTrigger)

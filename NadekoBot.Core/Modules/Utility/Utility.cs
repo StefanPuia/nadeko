@@ -3,7 +3,6 @@ using Discord.Commands;
 using Discord.WebSocket;
 using NadekoBot.Common;
 using NadekoBot.Common.Attributes;
-using NadekoBot.Core.Common.Attributes;
 using NadekoBot.Core.Services;
 using NadekoBot.Core.Services.Impl;
 using NadekoBot.Extensions;
@@ -22,7 +21,7 @@ using NadekoBot.Core.Modules.Utility.Services;
 
 namespace NadekoBot.Modules.Utility
 {
-    public partial class Utility : NadekoTopLevelModule
+    public partial class Utility : NadekoModule
     {
         private readonly DiscordSocketClient _client;
         private readonly IStatsService _stats;

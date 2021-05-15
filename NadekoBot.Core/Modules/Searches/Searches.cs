@@ -26,13 +26,12 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using NadekoBot.Common.Collections;
 using NadekoBot.Modules.Administration.Services;
 using Configuration = AngleSharp.Configuration;
 
 namespace NadekoBot.Modules.Searches
 {
-    public partial class Searches : NadekoTopLevelModule<SearchesService>
+    public partial class Searches : NadekoModule<SearchesService>
     {
         private readonly IBotCredentials _creds;
         private readonly IGoogleApiService _google;
