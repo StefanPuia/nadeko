@@ -375,10 +375,9 @@ namespace NadekoBot.Modules.Utility
             }
         }
 
-        [NadekoCommand, Usage, Description]
+        [NadekoCommand, Usage, Description, Aliases]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
-        [Ratelimit(60*15)]
         public async Task WowAuditRefresh()
         {
             try
