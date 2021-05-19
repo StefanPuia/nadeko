@@ -95,18 +95,16 @@ namespace NadekoBot.Modules.Administration
                 if (count > 1000)
                     count = 1000;
 
-                Func<IMessage, bool> isPinned = (x) => !x.IsPinned;
-                Func<IMessage, bool> isOld = (x) => x.Timestamp.AddMinutes(ageMinutes) < DateTimeOffset.Now;
-
                 await _service.PruneWhere((ITextChannel)ctx.Channel, count, message =>
                 {
                     bool pinned = false;
                     if (parameter == "-s" || parameter == "--safe")
                     {
-                        pinned = isPinned(message);
+                        pinned = message.IsPinned;
                     }
+                    bool isOld = message.Timestamp.AddMinutes(ageMinutes) < DateTimeOffset.Now;
 
-                    return !pinned && isOld(message);
+                    return !pinned && isOld;
                 }).ConfigureAwait(false);
             }
         }
