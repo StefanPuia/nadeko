@@ -80,6 +80,35 @@ namespace NadekoBot.Modules.Administration
                 else
                     await _service.PruneWhere((ITextChannel)ctx.Channel, count, m => m.Author.Id == userId && DateTime.UtcNow - m.CreatedAt < twoWeeks).ConfigureAwait(false);
             }
+
+
+            [NadekoCommand, Usage, Description, Aliases]
+            [RequireContext(ContextType.Guild)]
+            [UserPerm(ChannelPerm.ManageMessages)]
+            [BotPerm(ChannelPerm.ManageMessages)]
+            [Priority(0)]
+            public async Task PruneOld(int count = -1, int ageMinutes = 0, string parameter = null)
+            {
+                count++;
+                if (count < 1)
+                    return;
+                if (count > 1000)
+                    count = 1000;
+
+                Func<IMessage, bool> isPinned = (x) => !x.IsPinned;
+                Func<IMessage, bool> isOld = (x) => x.Timestamp.AddMinutes(ageMinutes) < DateTimeOffset.Now;
+
+                await _service.PruneWhere((ITextChannel)ctx.Channel, count, message =>
+                {
+                    bool pinned = false;
+                    if (parameter == "-s" || parameter == "--safe")
+                    {
+                        pinned = isPinned(message);
+                    }
+
+                    return !pinned && isOld(message);
+                }).ConfigureAwait(false);
+            }
         }
     }
 }

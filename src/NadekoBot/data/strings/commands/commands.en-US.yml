@@ -1978,3 +1978,20 @@ economy:
   desc: "Breakdown of the current state of the bot's economy. Updates every 3 minutes."
   args:
     - ""
+raidcomp:
+  desc: "Generate a raid composition from a Raid-Helper CSV export. Use `!event print 791001299856523324` to generate the CSV. Use the --all flag to get ignore teams"
+  args:
+    - "https://some-csv-link"
+    - "--all https://some-csv-link"
+    - "-a https://some-csv-link"
+wowauditrefresh:
+  desc: "Refresh the wowaudit data when the teams changed"
+  args:
+    - ""
+pruneold:
+  desc: "Prune `x` messages if they are older than `y` minutes. You can use the `-s` / `--safe` parameter at the end to only prune messages that are not pinned."
+  args:
+    - "x y [-s/--safe]"
+    - "50 10"
+    - "50 10 -s"
+    - "50 10 --safe"
