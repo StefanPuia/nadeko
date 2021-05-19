@@ -42,21 +42,18 @@ namespace NadekoBot.Modules.CustomReactions.Services
         private readonly DiscordSocketClient _client;
         private readonly PermissionService _perms;
         private readonly CommandHandler _cmd;
-        private readonly IBotConfigProvider _bc;
         private readonly IBotStrings _strings;
         private readonly IDataCache _cache;
         private readonly GlobalPermissionService _gperm;
 
-        public CustomReactionsService(PermissionService perms, DbService db, IBotStrings strings,
-            DiscordSocketClient client, CommandHandler cmd, IBotConfigProvider bc,
-            IDataCache cache, GlobalPermissionService gperm, NadekoBot bot)
+        public CustomReactionsService(PermissionService perms, DbService db, IBotStrings strings, NadekoBot bot,
+            DiscordSocketClient client, CommandHandler cmd, IDataCache cache, GlobalPermissionService gperm)
         {
             _log = LogManager.GetCurrentClassLogger();
             _db = db;
             _client = client;
             _perms = perms;
             _cmd = cmd;
-            _bc = bc;
             _strings = strings;
             _cache = cache;
             _gperm = gperm;
@@ -173,7 +170,6 @@ namespace NadekoBot.Modules.CustomReactions.Services
                         return ((cr.ContainsAnywhere &&
                             (content.GetWordPosition(trigger) != WordPosition.None))
                             || (hasTarget && content.StartsWith(trigger + " ", StringComparison.InvariantCulture))
-                            || (_bc.BotConfig.CustomReactionsStartWith && content.StartsWith(trigger + " ", StringComparison.InvariantCulture))
                             || content == trigger);
                     }).ToArray();
 
@@ -208,7 +204,6 @@ namespace NadekoBot.Modules.CustomReactions.Services
                 return ((cr.ContainsAnywhere &&
                             (content.GetWordPosition(trigger) != WordPosition.None))
                         || (hasTarget && content.StartsWith(trigger + " ", StringComparison.InvariantCulture))
-                        || (_bc.BotConfig.CustomReactionsStartWith && content.StartsWith(trigger + " ", StringComparison.InvariantCulture))
                         || content == trigger);
             }).ToArray();
             if (grs.Length == 0)

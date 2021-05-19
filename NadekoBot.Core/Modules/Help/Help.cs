@@ -28,7 +28,7 @@ namespace NadekoBot.Modules.Help
         public const string PatreonUrl = "https://patreon.com/nadekobot";
         public const string PaypalUrl = "https://paypal.me/Kwoth";
         private readonly CommandService _cmds;
-        private readonly BotSettingsService _bss;
+        private readonly BotConfigService _bss;
         private readonly GlobalPermissionService _perms;
         private readonly IServiceProvider _services;
         private readonly DiscordSocketClient _client;
@@ -36,7 +36,7 @@ namespace NadekoBot.Modules.Help
 
         private readonly AsyncLazy<ulong> _lazyClientId;
 
-        public Help(GlobalPermissionService perms, CommandService cmds, BotSettingsService bss,
+        public Help(GlobalPermissionService perms, CommandService cmds, BotConfigService bss,
             IServiceProvider services, DiscordSocketClient client, IBotStrings strings)
         {
             _cmds = cmds;
@@ -60,6 +60,8 @@ namespace NadekoBot.Modules.Help
                 .WithDefault(Context)
                 .WithOverride("{0}", () => clientId.ToString())
                 .WithOverride("{1}", () => Prefix)
+                .WithOverride("%prefix%", () => Prefix)
+                .WithOverride("%bot.prefix%", () => Prefix)
                 .Build();
 
             var app = await _client.GetApplicationInfoAsync();

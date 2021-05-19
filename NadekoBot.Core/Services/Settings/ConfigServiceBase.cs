@@ -15,11 +15,11 @@ namespace NadekoBot.Core.Services
     /// Base service for all settings services
     /// </summary>
     /// <typeparam name="TSettings">Type of the settings</typeparam>
-    public abstract class SettingsServiceBase<TSettings> : ISettingsService 
+    public abstract class ConfigServiceBase<TSettings> : IConfigService 
         where TSettings : new()
     {
         protected readonly string _filePath;
-        protected readonly ISettingsSeria _serializer;
+        protected readonly IConfigSeria _serializer;
         protected readonly IPubSub _pubSub;
         private readonly TypedKey<TSettings> _changeKey;
 
@@ -29,13 +29,13 @@ namespace NadekoBot.Core.Services
         public abstract string Name { get; }
 
         /// <summary>
-        /// Initialized an instance of <see cref="SettingsServiceBase{TSettings}"/>
+        /// Initialized an instance of <see cref="ConfigServiceBase{TSettings}"/>
         /// </summary>
         /// <param name="filePath">Path to the file where the settings are serialized/deserialized to and from</param>
         /// <param name="serializer">Serializer which will be used</param>
         /// <param name="pubSub">Pubsub implementation for signaling when settings are updated</param>
         /// <param name="changeKey">Key used to signal changed event</param>
-        protected SettingsServiceBase(string filePath, ISettingsSeria serializer, IPubSub pubSub,
+        protected ConfigServiceBase(string filePath, IConfigSeria serializer, IPubSub pubSub,
             TypedKey<TSettings> changeKey)
         {
             _filePath = filePath;
@@ -43,9 +43,8 @@ namespace NadekoBot.Core.Services
             _pubSub = pubSub;
             _changeKey = changeKey;
 
-            _pubSub.Sub(_changeKey, OnChangePublished);
-
             Load();
+            _pubSub.Sub(_changeKey, OnChangePublished);
         }
 
         private void PublishChange()

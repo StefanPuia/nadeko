@@ -33,7 +33,7 @@ namespace NadekoBot.Core.Services
 
         private readonly DiscordSocketClient _client;
         private readonly CommandService _commandService;
-        private readonly BotSettingsService _bss;
+        private readonly BotConfigService _bss;
         private readonly Logger _log;
         private readonly NadekoBot _bot;
         private IServiceProvider _services;
@@ -54,16 +54,14 @@ namespace NadekoBot.Core.Services
         public ConcurrentHashSet<ulong> UsersOnShortCooldown { get; } = new ConcurrentHashSet<ulong>();
         private readonly Timer _clearUsersOnShortCooldown;
 
-        public CommandHandler(DiscordSocketClient client, DbService db,
-            IBotConfigProvider bcp, CommandService commandService, BotSettingsService bss,
-            IBotCredentials credentials, NadekoBot bot, IServiceProvider services)
+        public CommandHandler(DiscordSocketClient client, DbService db, CommandService commandService,
+            BotConfigService bss, NadekoBot bot, IServiceProvider services)
         {
             _client = client;
             _commandService = commandService;
             _bss = bss;
             _bot = bot;
             _db = db;
-            _bcp = bcp;
             _services = services;
 
             _log = LogManager.GetCurrentClassLogger();
@@ -173,11 +171,10 @@ namespace NadekoBot.Core.Services
 
         private const float _oneThousandth = 1.0f / 1000;
         private readonly DbService _db;
-        private readonly IBotConfigProvider _bcp;
 
         private Task LogSuccessfulExecution(IUserMessage usrMsg, ITextChannel channel, params int[] execPoints)
         {
-            var bss = _services.GetService<BotSettingsService>();
+            var bss = _services.GetService<BotConfigService>();
             if (bss.Data.ConsoleOutputType == ConsoleOutputType.Normal)
             {
                 _log.Info($"Command Executed after " + string.Join("/", execPoints.Select(x => (x * _oneThousandth).ToString("F3"))) + "s\n\t" +
@@ -204,7 +201,7 @@ namespace NadekoBot.Core.Services
 
         private void LogErroredExecution(string errorMessage, IUserMessage usrMsg, ITextChannel channel, params int[] execPoints)
         {
-            var bss = _services.GetService<BotSettingsService>();
+            var bss = _services.GetService<BotConfigService>();
             if (bss.Data.ConsoleOutputType == ConsoleOutputType.Normal)
             {
                 _log.Warn($"Command Errored after " + string.Join("/", execPoints.Select(x => (x * _oneThousandth).ToString("F3"))) + "s\n\t" +

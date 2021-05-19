@@ -18,26 +18,17 @@ namespace NadekoBot.Modules.Utility.Services
         private readonly Regex _regex = new Regex(@"^(?:in\s?)?\s*(?:(?<mo>\d+)(?:\s?(?:months?|mos?),?))?(?:(?:\sand\s|\s*)?(?<w>\d+)(?:\s?(?:weeks?|w),?))?(?:(?:\sand\s|\s*)?(?<d>\d+)(?:\s?(?:days?|d),?))?(?:(?:\sand\s|\s*)?(?<h>\d+)(?:\s?(?:hours?|h),?))?(?:(?:\sand\s|\s*)?(?<m>\d+)(?:\s?(?:minutes?|mins?|m),?))?\s+(?:to:?\s+)?(?<what>(?:\r\n|[\r\n]|.)+)",
                                 RegexOptions.Compiled | RegexOptions.Multiline);
 
-        public string RemindMessageFormat { get; }
-
         private readonly Logger _log;
-        private readonly IBotConfigProvider _config;
         private readonly DiscordSocketClient _client;
         private readonly DbService _db;
         private readonly IBotCredentials _creds;
 
-        public RemindService(DiscordSocketClient client,
-            IBotConfigProvider config,
-            DbService db,
-            IBotCredentials creds)
+        public RemindService(DiscordSocketClient client, DbService db, IBotCredentials creds)
         {
-            _config = config;
             _client = client;
             _log = LogManager.GetCurrentClassLogger();
             _db = db;
             _creds = creds;
-
-            RemindMessageFormat = _config.BotConfig.RemindMessageFormat;
             _ = StartReminderLoop();
         }
 

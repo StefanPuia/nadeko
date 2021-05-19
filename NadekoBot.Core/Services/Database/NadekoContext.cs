@@ -30,7 +30,6 @@ namespace NadekoBot.Core.Services.Database
 
     public class NadekoContext : DbContext
     {
-        public DbSet<BotConfig> BotConfig { get; set; }
         public DbSet<GuildConfig> GuildConfigs { get; set; }
 
         public DbSet<Quote> Quotes { get; set; }
@@ -49,9 +48,10 @@ namespace NadekoBot.Core.Services.Database
         public DbSet<IgnoredLogChannel> IgnoredLogChannels { get; set; }
         public DbSet<IgnoredVoicePresenceChannel> IgnoredVoicePresenceCHannels { get; set; }
 
-        //orphans xD
-        public DbSet<EightBallResponse> EightBallResponses { get; set; }
-        public DbSet<RaceAnimal> RaceAnimals { get; set; }
+        public DbSet<RotatingPlayingStatus> RotatingStatus { get; set; }
+        public DbSet<BlacklistEntry> Blacklist { get; set; }
+        public DbSet<AutoCommand> AutoCommands { get; set; }
+        
         public DbSet<RewardedUser> RewardedUsers { get; set; }
         public DbSet<Stake> Stakes { get; set; }
         public DbSet<PlantedCurrency> PlantedCurrency { get; set; }
@@ -61,56 +61,6 @@ namespace NadekoBot.Core.Services.Database
 
         public NadekoContext(DbContextOptions<NadekoContext> options) : base(options)
         {
-        }
-
-        public void EnsureSeedData()
-        {
-            if (!BotConfig.Any())
-            {
-                var bc = new BotConfig();
-
-                bc.RaceAnimals.AddRange(new HashSet<RaceAnimal>
-                {
-                    new RaceAnimal { Icon = "🐼", Name = "Panda" },
-                    new RaceAnimal { Icon = "🐻", Name = "Bear" },
-                    new RaceAnimal { Icon = "🐧", Name = "Pengu" },
-                    new RaceAnimal { Icon = "🐨", Name = "Koala" },
-                    new RaceAnimal { Icon = "🐬", Name = "Dolphin" },
-                    new RaceAnimal { Icon = "🐞", Name = "Ladybird" },
-                    new RaceAnimal { Icon = "🦀", Name = "Crab" },
-                    new RaceAnimal { Icon = "🦄", Name = "Unicorn" }
-                });
-                bc.EightBallResponses.AddRange(new HashSet<EightBallResponse>
-                {
-                    new EightBallResponse() { Text = "Most definitely yes" },
-                    new EightBallResponse() { Text = "For sure" },
-                    new EightBallResponse() { Text = "Totally!" },
-                    new EightBallResponse() { Text = "Of course!" },
-                    new EightBallResponse() { Text = "As I see it, yes" },
-                    new EightBallResponse() { Text = "My sources say yes" },
-                    new EightBallResponse() { Text = "Yes" },
-                    new EightBallResponse() { Text = "Most likely" },
-                    new EightBallResponse() { Text = "Perhaps" },
-                    new EightBallResponse() { Text = "Maybe" },
-                    new EightBallResponse() { Text = "Not sure" },
-                    new EightBallResponse() { Text = "It is uncertain" },
-                    new EightBallResponse() { Text = "Ask me again later" },
-                    new EightBallResponse() { Text = "Don't count on it" },
-                    new EightBallResponse() { Text = "Probably not" },
-                    new EightBallResponse() { Text = "Very doubtful" },
-                    new EightBallResponse() { Text = "Most likely no" },
-                    new EightBallResponse() { Text = "Nope" },
-                    new EightBallResponse() { Text = "No" },
-                    new EightBallResponse() { Text = "My sources say no" },
-                    new EightBallResponse() { Text = "Dont even think about it" },
-                    new EightBallResponse() { Text = "Definitely no" },
-                    new EightBallResponse() { Text = "NO - It may cause disease contraction" }
-                });
-
-                BotConfig.Add(bc);
-
-                this.SaveChanges();
-            }
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -158,39 +108,7 @@ namespace NadekoBot.Core.Services.Database
                 .HasOne(x => x.GuildConfig)
                 .WithOne(x => x.StreamRole);
             #endregion
-
-            #region BotConfig
-            var botConfigEntity = modelBuilder.Entity<BotConfig>();
-
-            botConfigEntity.Property(x => x.XpMinutesTimeout)
-                .HasDefaultValue(5);
-
-            botConfigEntity.Property(x => x.XpPerMessage)
-                .HasDefaultValue(3);
-
-            botConfigEntity.Property(x => x.VoiceXpPerMinute)
-                .HasDefaultValue(0);
-
-            botConfigEntity.Property(x => x.MaxXpMinutes)
-                .HasDefaultValue(720);
-
-            botConfigEntity.Property(x => x.PatreonCurrencyPerCent)
-                .HasDefaultValue(1.0f);
-
-            botConfigEntity.Property(x => x.WaifuGiftMultiplier)
-                .HasDefaultValue(1);
-
-            botConfigEntity.Property(x => x.OkColor)
-                .HasDefaultValue("00e584");
-
-            botConfigEntity.Property(x => x.ErrorColor)
-                .HasDefaultValue("ee281f");
-
-            botConfigEntity.Property(x => x.LastUpdate)
-                .HasDefaultValue(new DateTime(2018, 5, 5, 0, 0, 0, 0, DateTimeKind.Utc));
-
-            #endregion
-
+            
             #region Self Assignable Roles
 
             var selfassignableRolesEntity = modelBuilder.Entity<SelfAssignedRole>();
@@ -376,16 +294,6 @@ namespace NadekoBot.Core.Services.Database
             modelBuilder.Entity<DiscordPermOverride>()
                 .HasIndex(x => new {x.GuildId, x.Command})
                 .IsUnique();
-
-            #endregion
-            
-            #region BotConfigMigrations
-
-            var bcEntity = modelBuilder.Entity<BotConfig>();
-            bcEntity.Property(bc => bc.HasMigratedBotSettings)
-                .HasDefaultValue(1);
-            bcEntity.Property(bc => bc.HasMigratedGamblingSettings)
-                .HasDefaultValue(1);
 
             #endregion
         }
