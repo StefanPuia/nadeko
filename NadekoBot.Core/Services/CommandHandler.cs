@@ -154,7 +154,7 @@ namespace NadekoBot.Core.Services
                     IUserMessage msg = await channel.SendMessageAsync(commandText).ConfigureAwait(false);
                     msg = (IUserMessage)await channel.GetMessageAsync(msg.Id).ConfigureAwait(false);
                     await TryRunCommand(guild, channel, msg).ConfigureAwait(false);
-                    //msg.DeleteAfter(5);
+                    msg.DeleteAfter(5);
                 }
                 catch { }
             }
@@ -288,7 +288,7 @@ namespace NadekoBot.Core.Services
                 }
             }
 
-            if (usrMsg.Author.IsBot)
+            if (usrMsg.Author.IsBot && usrMsg.Author.Id != _client.CurrentUser.Id)
             {
                 return;
             }
