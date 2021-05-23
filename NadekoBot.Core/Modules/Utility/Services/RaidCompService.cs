@@ -44,8 +44,11 @@ namespace NadekoBot.Core.Modules.Utility.Services
                     string attachmentURL = msg.Attachments.First().Url;
                     if (attachmentURL.ToLowerInvariant().EndsWith(".csv"))
                     {
-                        string buildString = await ConvertCSV(attachmentURL, true, _creds, _httpFactory, _log);
-                        buildString += "\n\n" + await ConvertCSV(attachmentURL, false, _creds, _httpFactory, _log);
+                        //// teams
+                        //string buildString = await ConvertCSV(attachmentURL, true, _creds, _httpFactory, _log);
+                        //// all
+                        //buildString += "\n\n" + await ConvertCSV(attachmentURL, false, _creds, _httpFactory, _log);
+                        string buildString = await ConvertCSV(attachmentURL, false, _creds, _httpFactory, _log);
                         await IMessageChannelExtensions.SendConfirmAsync((IMessageChannel)channel, buildString);
                     }
                 }
