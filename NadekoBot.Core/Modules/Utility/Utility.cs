@@ -15,9 +15,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using NadekoBot.Core.Common;
-using NadekoBot.Core.Services.Database.Models;
 using NadekoBot.Core.Modules.Utility.Services;
 using Serilog;
+using System.Net.Http;
 
 namespace NadekoBot.Modules.Utility
 {
@@ -28,8 +28,9 @@ namespace NadekoBot.Modules.Utility
         private readonly IBotCredentials _creds;
         private readonly NadekoBot _bot;
         private readonly DownloadTracker _tracker;
+        private readonly IHttpClientFactory _httpFactory;
 
-        public Utility(NadekoBot nadeko, DiscordSocketClient client,
+        public Utility(NadekoBot nadeko, DiscordSocketClient client, IHttpClientFactory factory,
             IStatsService stats, IBotCredentials creds, DownloadTracker tracker)
         {
             _client = client;
@@ -37,6 +38,7 @@ namespace NadekoBot.Modules.Utility
             _creds = creds;
             _bot = nadeko;
             _tracker = tracker;
+            _httpFactory = factory;
         }
 
         [NadekoCommand, Usage, Description, Aliases]
@@ -361,7 +363,7 @@ namespace NadekoBot.Modules.Utility
             bool useTeams = string.IsNullOrEmpty(all);
             try
             {
-                string buildMessage = await RaidCompService.ConvertCSV(csvLink, useTeams, _creds, _httpFactory, _log);
+                string buildMessage = await RaidCompService.ConvertCSV(csvLink, useTeams, _creds, _httpFactory);
                 await ctx.Channel.SendConfirmAsync(buildMessage);
             }
             catch (Exception e)
@@ -377,7 +379,7 @@ namespace NadekoBot.Modules.Utility
         {
             try
             {
-                await RaidCompService.WowAuditRefresh(_creds, _httpFactory, _log);
+                await RaidCompService.WowAuditRefresh(_creds, _httpFactory);
                 await ctx.Channel.SendConfirmAsync("Update successful.");
             }
             catch (Exception e)

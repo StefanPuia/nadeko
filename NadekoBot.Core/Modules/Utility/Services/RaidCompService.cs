@@ -5,7 +5,7 @@ using NadekoBot.Core.Services;
 using NadekoBot.Core.Services.Database.Models;
 using NadekoBot.Extensions;
 using Newtonsoft.Json;
-using NLog;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,7 +17,6 @@ namespace NadekoBot.Core.Modules.Utility.Services
 {
     class RaidCompService : IEarlyBehavior, INService
     {
-        private readonly Logger _log;
         private readonly IBotCredentials _creds;
         private readonly IHttpClientFactory _httpFactory;
         private readonly DiscordSocketClient _client;
@@ -28,7 +27,6 @@ namespace NadekoBot.Core.Modules.Utility.Services
 
         public RaidCompService(DiscordSocketClient client, IBotCredentials creds, IHttpClientFactory factory)
         {
-            this._log = LogManager.GetCurrentClassLogger();
             this._creds = creds;
             this._httpFactory = factory;
             this._client = client;
@@ -48,7 +46,7 @@ namespace NadekoBot.Core.Modules.Utility.Services
                         //string buildString = await ConvertCSV(attachmentURL, true, _creds, _httpFactory, _log);
                         //// all
                         //buildString += "\n\n" + await ConvertCSV(attachmentURL, false, _creds, _httpFactory, _log);
-                        string buildString = await ConvertCSV(attachmentURL, false, _creds, _httpFactory, _log);
+                        string buildString = await ConvertCSV(attachmentURL, false, _creds, _httpFactory);
                         await IMessageChannelExtensions.SendConfirmAsync((IMessageChannel)channel, buildString);
                     }
                 }
@@ -60,7 +58,7 @@ namespace NadekoBot.Core.Modules.Utility.Services
             return false;
         }
 
-        public static async Task<string> ConvertCSV(string csvLink, bool useTeams, IBotCredentials _creds, IHttpClientFactory _httpFactory, Logger _log)
+        public static async Task<string> ConvertCSV(string csvLink, bool useTeams, IBotCredentials _creds, IHttpClientFactory _httpFactory)
         {
             if (string.IsNullOrEmpty(csvLink))
             {
@@ -99,12 +97,12 @@ namespace NadekoBot.Core.Modules.Utility.Services
             }
             catch (Exception e)
             {
-                _log.Error(e);
+                Log.Error(e, "There was an error processing the CSV.");
                 throw new Exception("There was an error processing the CSV.");
             }
         }
 
-        public static async Task WowAuditRefresh(IBotCredentials _creds, IHttpClientFactory _httpFactory, Logger _log)
+        public static async Task WowAuditRefresh(IBotCredentials _creds, IHttpClientFactory _httpFactory)
         {
             try
             {
@@ -117,13 +115,13 @@ namespace NadekoBot.Core.Modules.Utility.Services
                 var response = await http.PostAsync(updateURL, new StringContent(payload, Encoding.UTF8, "application/json"));
                 if (!response.IsSuccessStatusCode)
                 {
-                    _log.Error(response.ToString());
+                    Log.Error(response.ToString(), "There was an error running the update.");
                     throw new Exception("There was an error running the update.");
                 }
             }
             catch (Exception e)
             {
-                _log.Error(e);
+                Log.Error(e, "There was an error running the update. Try again later.");
                 throw new Exception("There was an error running the update. Try again later.");
             }
         }

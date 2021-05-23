@@ -106,6 +106,7 @@ namespace NadekoBot.Modules.Administration
 
                     return !pinned && isOld;
                 }).ConfigureAwait(false);
+                await ctx.Message.DeleteAsync().ConfigureAwait(false);
             }
         }
     }
