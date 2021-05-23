@@ -12,7 +12,6 @@ using NadekoBot.Common;
 using CommandLine;
 using System.Collections.Generic;
 using NadekoBot.Modules.Administration.Services;
-using Serilog;
 
 namespace NadekoBot.Modules.Help.Services
 {

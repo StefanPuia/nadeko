@@ -288,7 +288,7 @@ namespace NadekoBot.Core.Services
                 }
             }
 
-            if (usrMsg.Author.IsBot && usrMsg.Author.Id != _client.CurrentUser.Id)
+            if (usrMsg.Author.IsBot && usrMsg.Author.Id != _client.CurrentUser.Id || string.IsNullOrWhiteSpace(usrMsg.Content))
             {
                 return;
             }
