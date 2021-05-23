@@ -1,6 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
+using Serilog;
 using YamlDotNet.Serialization;
 
 namespace NadekoBot.Core.Services
@@ -25,9 +27,16 @@ namespace NadekoBot.Core.Services
             var outputDict = new Dictionary<string, Dictionary<string, string>>();
             foreach (var file in Directory.GetFiles(_responsesPath))
             {
-                var langDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(file));
-                var localeName = GetLocaleName(file);
-                outputDict[localeName] = langDict;
+                try
+                {
+                    var langDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(file));
+                    var localeName = GetLocaleName(file);
+                    outputDict[localeName] = langDict;
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error loading {FileName} response strings: {ErrorMessage}", file, ex.Message);
+                }
             }
 
             return outputDict;
@@ -41,10 +50,17 @@ namespace NadekoBot.Core.Services
             var outputDict = new Dictionary<string, Dictionary<string, CommandStrings>>();
             foreach (var file in Directory.GetFiles(_commandsPath))
             {
-                var text = File.ReadAllText(file);
-                var langDict = deserializer.Deserialize<Dictionary<string, CommandStrings>>(text);
-                var localeName = GetLocaleName(file);
-                outputDict[localeName] = langDict;
+                try
+                {
+                    var text = File.ReadAllText(file);
+                    var langDict = deserializer.Deserialize<Dictionary<string, CommandStrings>>(text);
+                    var localeName = GetLocaleName(file);
+                    outputDict[localeName] = langDict;
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error loading {FileName} command strings: {ErrorMessage}", file, ex.Message);
+                }
             }
 
             return outputDict;

@@ -29,28 +29,5 @@ namespace NadekoBot.Core.Services.Database.Repositories.Impl
         {
             return _set.FirstOrDefault(x => x.GuildId == guildId && x.Trigger.ToUpper() == input);
         }
-
-        /// <summary>
-        /// Gets all global custom reactions and custom reactions only for the specified guild ids
-        /// </summary>
-        /// <param name="ids"></param>
-        /// <returns></returns>
-        public IEnumerable<CustomReaction> GetFor(IEnumerable<ulong> ids)
-        {
-            return _set
-                .AsNoTracking()
-                .AsQueryable()
-                .Where(x => ids.Contains(x.GuildId.Value))
-                .ToArray();
-        }
-
-        public IEnumerable<CustomReaction> GetGlobal()
-        {
-            return _set
-                .AsNoTracking()
-                .AsQueryable()
-                .Where(x => x.GuildId == null)
-                .ToArray();
-        }
     }
 }

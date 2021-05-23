@@ -7,7 +7,6 @@ using NadekoBot.Common.Collections;
 using NadekoBot.Core.Services;
 using NadekoBot.Modules.Administration.Services;
 using Newtonsoft.Json;
-using NLog;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing;
@@ -32,13 +31,12 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AngleSharp.Attributes;
 using NadekoBot.Common.Attributes;
+using Serilog;
 
 namespace NadekoBot.Extensions
 {
     public static class Extensions
     {
-        private static Logger _log = LogManager.GetCurrentClassLogger();
-
         public static Regex UrlRegex = new Regex(@"^(https?|ftp)://(?<path>[^\s/$.?#].[^\s]*)$", RegexOptions.Compiled);
 
         public static TOut[] Map<TIn, TOut>(this TIn[] arr, Func<TIn, TOut> f)
@@ -161,11 +159,11 @@ namespace NadekoBot.Extensions
         public static bool IsAuthor(this IMessage msg, IDiscordClient client)
             => msg.Author?.Id == client.CurrentUser.Id;
 
-        public static string RealSummary(this CommandInfo cmd, IBotStrings strings, string prefix)
-            => string.Format(strings.GetCommandStrings(cmd.Name).Desc, prefix);
+        public static string RealSummary(this CommandInfo cmd, IBotStrings strings, ulong? guildId, string prefix)
+            => string.Format(strings.GetCommandStrings(cmd.Name, guildId).Desc, prefix);
 
-        public static string[] RealRemarksArr(this CommandInfo cmd, IBotStrings strings, string prefix)
-            => Array.ConvertAll(strings.GetCommandStrings(cmd.MethodName()).Args,
+        public static string[] RealRemarksArr(this CommandInfo cmd, IBotStrings strings, ulong? guildId, string prefix)
+            => Array.ConvertAll(strings.GetCommandStrings(cmd.MethodName(), guildId).Args,
                 arg => GetFullUsage(cmd.Name, arg, prefix));
 
         public static string MethodName(this CommandInfo cmd)
@@ -327,12 +325,6 @@ namespace NadekoBot.Extensions
             return await ownerPrivate.SendMessageAsync(message).ConfigureAwait(false);
         }
 
-        public static void LogAndReset(this Stopwatch sw, string name = "")
-        {
-            _log.Info(name + " | " + sw.Elapsed.TotalSeconds.ToString("F2"));
-            sw.Reset();
-        }
-
         public static bool IsImage(this HttpResponseMessage msg) => IsImage(msg, out _);
 
         public static bool IsImage(this HttpResponseMessage msg, out string mimeType)
@@ -372,7 +364,7 @@ namespace NadekoBot.Extensions
             }
             catch (ReflectionTypeLoadException ex)
             {
-                _log.Warn(ex);
+                Log.Error(ex, "Error loading assembly types");
                 return Enumerable.Empty<Type>();
             }
             // all types which have INService implementation are services

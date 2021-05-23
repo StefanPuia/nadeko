@@ -336,6 +336,9 @@ namespace NadekoBot.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("AllowTarget")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("AutoDeleteTrigger")
                         .HasColumnType("INTEGER");
 

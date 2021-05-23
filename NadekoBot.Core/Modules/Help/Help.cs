@@ -272,7 +272,7 @@ namespace NadekoBot.Modules.Help
                         return;
                     var (plainText, helpEmbed) = data;
                     await ch.EmbedAsync(helpEmbed, msg: plainText ?? "").ConfigureAwait(false);
-                    await ctx.OkAsync();
+                    try{ await ctx.OkAsync(); } catch { } // ignore if bot can't react
                 }
                 catch (Exception)
                 {
@@ -313,8 +313,8 @@ namespace NadekoBot.Modules.Help
                             return new CommandJsonObject
                             {
                                 Aliases = com.Aliases.Select(alias => Prefix + alias).ToArray(),
-                                Description = com.RealSummary(_strings, Prefix),
-                                Usage = com.RealRemarksArr(_strings, Prefix),
+                                Description = com.RealSummary(_strings, ctx.Guild?.Id, Prefix),
+                                Usage = com.RealRemarksArr(_strings, ctx.Guild?.Id, Prefix),
                                 Submodule = com.Module.Name,
                                 Module = com.Module.GetTopLevelModule().Name,
                                 Options = optHelpStr,

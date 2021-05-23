@@ -30,28 +30,27 @@ namespace NadekoBot.Modules.Permissions.Services
             _pubSub.Sub(blPubKey, OnReload);
         }
 
-        private Task OnReload(BlacklistEntry[] blacklist)
+        private ValueTask OnReload(BlacklistEntry[] blacklist)
         {
             _blacklist = blacklist;
-            return Task.CompletedTask;
+            return default;
         }
 
-        public async Task<bool> RunBehavior(DiscordSocketClient _, IGuild guild, IUserMessage usrMsg)
+        public Task<bool> RunBehavior(DiscordSocketClient _, IGuild guild, IUserMessage usrMsg)
         {
-            await Task.Yield();
             foreach (var bl in _blacklist)
             {
                 if (guild != null && bl.Type == BlacklistType.Server && bl.ItemId == guild.Id)
-                    return true;
+                    return Task.FromResult(true);
 
                 if (bl.Type == BlacklistType.Channel && bl.ItemId == usrMsg.Channel.Id)
-                    return true;
+                    return Task.FromResult(true);
 
                 if (bl.Type == BlacklistType.User && bl.ItemId == usrMsg.Author.Id)
-                    return true;
+                    return Task.FromResult(true);
             }
 
-            return false;
+            return Task.FromResult(false);
         }
 
         public void Reload(bool publish = true)

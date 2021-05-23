@@ -732,9 +732,6 @@ placelist:
 - placelist
 place:
 - place
-togethertube:
-- togethertube
-- totube
 poll:
 - poll
 - ppoll
@@ -887,6 +884,8 @@ crreact:
 - crr
 crad:
 - crad
+crat:
+  - crat
 crdm:
 - crdm
 crca:
@@ -961,13 +960,23 @@ ping:
 - ping
 time:
 - time
+shop:
+  - shop
 shopadd:
 - shopadd
 shopremove:
 - shopremove
 - shoprm
-shop:
-- shop
+shopchangeprice:
+- shopchangeprice
+- shopprice
+shopchangename:
+- shopchangename
+- shopname
+shopswap:
+- shopswap
+shopmove:
+- shopmove
 buy:
 - buy
 gamevoicechannel:
@@ -1010,7 +1019,6 @@ botconfigedit:
 - bce
 config:
 - config
-- c
 - conf
 configreload:
 - configreload 

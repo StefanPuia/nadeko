@@ -386,9 +386,10 @@ whosplaying:
   args:
     - "Overwatch"
 inrole:
-  desc: "Lists every person from the specified role on this server. You can use role ID, role name."
+  desc: "Lists every person from the specified role on this server. You can specify a page before the role to jump to that page."
   args:
-    - "Some Role"
+    - "RoleName"
+    - "5 RoleName"
 checkperms:
   desc: "Checks yours or bot's user-specific permissions on this channel."
   args:
@@ -1181,10 +1182,6 @@ place:
   args:
     - "Cage"
     - "steven 500 400"
-togethertube:
-  desc: "Creates a new room on <https://togethertube.com> and shows the link in the chat."
-  args:
-    - ""
 poll:
   desc: "Creates a public poll which requires users to type a number of the voting option in the channel command is ran in."
   args:
@@ -1221,7 +1218,7 @@ hentaibomb:
   args:
     - "yuri"
 cleverbot:
-  desc: "Toggles cleverbot session. When enabled, the bot will reply to messages starting with bot mention in the server. Custom reactions starting with %mention% won't work if cleverbot is enabled."
+  desc: "Toggles cleverbot session. When enabled, the bot will reply to messages starting with bot mention in the server. Custom reactions starting with %bot.mention% won't work if cleverbot is enabled."
   args:
     - ""
 shorten:
@@ -1447,6 +1444,10 @@ crad:
   desc: "Toggles whether the message triggering the custom reaction will be automatically deleted."
   args:
     - "59"
+crat:
+  desc: "Toggles whether the custom reaction will allow extra input after the trigger. For example, with this feature enabled, custom reaction with trigger 'hi' will also be invoked when a user types 'hi there'. This feature is automatically enabled on custom reactions which have '%target%' in their response."
+  args:
+    - "59"
 crdm:
   desc: "Toggles whether the response message of the custom reaction will be sent as a direct message."
   args:
@@ -1566,6 +1567,11 @@ time:
   desc: "Shows the current time and timezone in the specified location."
   args:
     - "London, UK"
+shop:
+  desc: "Lists this server's administrators' shop. Paginated."
+  args:
+    - ""
+    - "2"
 shopadd:
   desc: "Adds an item to the shop by specifying type price and name. Available types are role and list. 90% of currency from each purchase will be received by the user who added the item to the shop."
   args:
@@ -1574,11 +1580,22 @@ shopremove:
   desc: "Removes an item from the shop by its ID."
   args:
     - "1"
-shop:
-  desc: "Lists this server's administrators' shop. Paginated."
+shopchangename:
+  desc: "Change the name of a shop entry at the specified index. Only works for non-role items"
   args:
-    - ""
-    - "2"
+    - "3 Cool stuff"
+shopchangeprice:
+  desc: "Change the price of a shop entry at the specified index. Specify the index of the entry, followed by the price"
+  args:
+    - "1 500"
+shopswap:
+  desc: "Swap the index of two shop entries"
+  args:
+    - "1 5"
+shopmove:
+  desc: "Moves the shop entry from the current index to a new one"
+  args:
+    - "2 4"
 buy:
   desc: "Buys an item from the shop on a given index. If buying items, make sure that the bot can DM you."
   args:

@@ -1,7 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using NadekoBot.Extensions;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -9,17 +8,17 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
 
 namespace NadekoBot.Core.Services.Impl
 {
     public class StatsService : IStatsService
     {
-        private readonly Logger _log;
         private readonly DiscordSocketClient _client;
         private readonly IBotCredentials _creds;
         private readonly DateTime _started;
 
-        public const string BotVersion = "2.41.0";
+        public const string BotVersion = "2.43.1";
         public string Author => "Kwoth#2452";
         public string Library => "Discord.Net";
 
@@ -42,7 +41,6 @@ namespace NadekoBot.Core.Services.Impl
         public StatsService(DiscordSocketClient client, CommandHandler cmdHandler,
             IBotCredentials creds, IHttpClientFactory factory)
         {
-            _log = LogManager.GetCurrentClassLogger();
             _client = client;
             _creds = creds;
             _httpFactory = factory;
@@ -152,7 +150,7 @@ namespace NadekoBot.Core.Services.Impl
                 }
                 catch (Exception ex)
                 {
-                    _log.Error(ex);
+                    Log.Error(ex, "Error ");
                     // ignored
                 }
             }, null, TimeSpan.FromMinutes(5), TimeSpan.FromHours(1));

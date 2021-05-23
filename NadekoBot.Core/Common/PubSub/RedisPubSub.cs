@@ -2,16 +2,15 @@
 using System.Threading.Tasks;
 using NadekoBot.Core.Services;
 using NadekoBot.Extensions;
-using NLog;
+using Serilog;
 using StackExchange.Redis;
 
 namespace NadekoBot.Core.Common
 {
-    public class RedisPubSub : IPubSub
+    public sealed class RedisPubSub : IPubSub
     {
         private readonly ConnectionMultiplexer _multi;
         private readonly ISeria _serializer;
-        private readonly Logger _log;
         private readonly IBotCredentials _creds;
 
         public RedisPubSub(ConnectionMultiplexer multi, ISeria serializer, IBotCredentials creds)
@@ -19,7 +18,6 @@ namespace NadekoBot.Core.Common
             _multi = multi;
             _serializer = serializer;
             _creds = creds;
-            _log = LogManager.GetCurrentClassLogger();
         }
 
         public Task Pub<TData>(in TypedKey<TData> key, TData data)
@@ -28,7 +26,7 @@ namespace NadekoBot.Core.Common
             return _multi.GetSubscriber().PublishAsync($"{_creds.RedisKey()}:{key.Key}", serialized, CommandFlags.FireAndForget);
         }
 
-        public Task Sub<TData>(in TypedKey<TData> key, Func<TData, Task> action)
+        public Task Sub<TData>(in TypedKey<TData> key, Func<TData, ValueTask> action)
         {
             var eventName = key.Key;
             return _multi.GetSubscriber().SubscribeAsync($"{_creds.RedisKey()}:{eventName}", async (ch, data) =>
@@ -40,7 +38,7 @@ namespace NadekoBot.Core.Common
                 }
                 catch (Exception ex)
                 {
-                    _log.Error($"Error handling the event {eventName}: {ex.Message}");
+                    Log.Error($"Error handling the event {eventName}: {ex.Message}");
                 }
             });
         }
