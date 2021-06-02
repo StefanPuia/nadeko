@@ -784,18 +784,20 @@ local:
   desc: "Queues a local file by specifying a full path."
   args:
     - "C:/music/mysong.mp3"
-move:
-  desc: "Moves the bot to your voice channel. (works only if music is already playing)"
+join:
+  desc: "Makes the bot join your voice channel."
   args:
     - ""
 songremove:
-  desc: "Remove a song by its # in the queue, or 'all' to remove all songs from the queue and reset the song index."
+  desc: "Remove a song by its # in the queue, or 'all' (or provide no parameter) to remove all songs from the queue."
   args:
     - "5"
+    - "all"
+    - ""
 movesong:
   desc: "Moves a song from one position to another."
   args:
-    - "5>3"
+    - "5 3"
 setmaxqueue:
   desc: "Sets a maximum queue size. Specify no parameters to have no limit."
   args:
@@ -805,7 +807,7 @@ reptcursong:
   desc: "Toggles repeat of current song."
   args:
     - ""
-playlistrepeat:
+queuerepeat:
   desc: "Toggles repeat of all songs in the queue (every song that finishes is added to the end of the queue)."
   args:
     - ""
@@ -853,10 +855,14 @@ streamoffline:
   desc: "Toggles whether the bot will also notify when added streams go offline."
   args:
     - ""
-streammessage:
-  desc: "Sets the message which will show when the stream on the specified index comes online."
+streammsg:
+  desc: "Sets the message which will show when the stream on the specified index comes online. You can use %user% and %platform% placeholders."
   args:
-    - "1 Hey @erryone i'm back online!1!!"
+    - "1 Hey @erryone %user% is back online on %platform%!1!!"
+streammsgall:
+  desc: "Sets the message which will show when any of the currently followed streams comes online. This does not apply to the streams which get added afterwards. You can use %user% and %platform% placeholders."
+  args:
+    - "Hey @erryone %user% is back online!1!!"
 streamcheck:
   desc: "Retrieves information about a stream."
   args:
@@ -1812,9 +1818,10 @@ eightball:
   args:
     - "Is b1nzy a nice guy?"
 feed:
-  desc: "Subscribes to a feed. Bot will post an update up to once every 10 seconds. You can have up to 10 feeds on one server. All feeds must have unique URLs."
+  desc: "Subscribes to a feed. Bot will post an update up to once every 10 seconds. You can have up to 10 feeds on one server. All feeds must have unique URLs. Set a channel as a second optional parameter to specify where to send the updates."
   args:
     - "https://www.rt.com/rss/"
+    - "https://www.rt.com/rss/ #updates"
 feedremove:
   desc: "Stops tracking a feed on the given index. Use `{0}feeds` command to see a list of feeds and their indexes."
   args:

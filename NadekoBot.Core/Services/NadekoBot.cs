@@ -162,6 +162,8 @@ namespace NadekoBot
                 .AddConfigMigrators()
                 .AddMemoryCache()
                 .AddSingleton<IShopService, ShopService>()
+                // music
+                .AddMusic()
                 ;
 
             s.AddHttpClient();
@@ -267,7 +269,7 @@ namespace NadekoBot
             }
 
             //connect
-            Log.Information("Shard {0} logging in ...", Client.ShardId);
+            Log.Information("Shard {ShardId} logging in ...", Client.ShardId);
             try
             {
                 await Client.LoginAsync(TokenType.Bot, token).ConfigureAwait(false);
