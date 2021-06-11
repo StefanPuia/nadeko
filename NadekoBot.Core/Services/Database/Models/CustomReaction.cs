@@ -7,12 +7,19 @@ namespace NadekoBot.Core.Services.Database.Models
 {
     public class CustomReaction : DbEntity
     {
-
+        #region Unused
+        
+        [Obsolete]
         [NotMapped]
         public Regex Regex { get; set; }
+        [Obsolete]
         public ulong UseCount { get; set; }
+        [Obsolete]
         public bool IsRegex { get; set; }
+        [Obsolete]
         public bool OwnerOnly { get; set; }
+        
+        #endregion
         
         public ulong? GuildId { get; set; }
         public string Response { get; set; }
@@ -25,7 +32,9 @@ namespace NadekoBot.Core.Services.Database.Models
         public string Reactions { get; set; }
 
         public string[] GetReactions() =>
-            Array.Empty<string>();
+            string.IsNullOrWhiteSpace(Reactions)
+                ? Array.Empty<string>()
+                : Reactions.Split("@@@");
         
         public bool IsGlobal() => GuildId is null || GuildId == 0;
     }

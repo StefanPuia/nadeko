@@ -3,12 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using NadekoBot.Core.Services.Database.Models;
 using NadekoBot.Core.Services.Impl;
-using NadekoBot.Extensions;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
+using Microsoft.Extensions.Logging;
 
 namespace NadekoBot.Core.Services.Database
 {
@@ -58,10 +55,23 @@ namespace NadekoBot.Core.Services.Database
         public DbSet<BanTemplate> BanTemplates { get; set; }
         public DbSet<DiscordPermOverride> DiscordPermOverrides { get; set; }
         public DbSet<DiscordUser> DiscordUser { get; set; }
+        public DbSet<MusicPlayerSettings> MusicPlayerSettings { get; set; }
+        public DbSet<Repeater> Repeaters { get; set; }
 
         public NadekoContext(DbContextOptions<NadekoContext> options) : base(options)
         {
         }
+        
+#if DEBUG
+        public static readonly LoggerFactory _debugLoggerFactory = 
+            new LoggerFactory(new[] { 
+                new Microsoft.Extensions.Logging.Debug.DebugLoggerProvider() 
+            });
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {      
+            optionsBuilder.UseLoggerFactory(_debugLoggerFactory);
+        }
+#endif
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -87,6 +97,12 @@ namespace NadekoBot.Core.Services.Database
             modelBuilder.Entity<AntiRaidSetting>()
                 .HasOne(x => x.GuildConfig)
                 .WithOne(x => x.AntiRaidSetting);
+
+            modelBuilder.Entity<GuildConfig>()
+                .HasOne(x => x.AntiAltSetting)
+                .WithOne()
+                .HasForeignKey<AntiAltSetting>(x => x.GuildConfigId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<FeedSub>()
                 .HasAlternateKey(x => new { x.GuildConfigId, x.Url });
@@ -294,6 +310,18 @@ namespace NadekoBot.Core.Services.Database
             modelBuilder.Entity<DiscordPermOverride>()
                 .HasIndex(x => new {x.GuildId, x.Command})
                 .IsUnique();
+
+            #endregion
+            
+            #region Music
+
+            modelBuilder.Entity<MusicPlayerSettings>()
+                .HasIndex(x => x.GuildId)
+                .IsUnique();
+
+            modelBuilder.Entity<MusicPlayerSettings>()
+                .Property(x => x.Volume)
+                .HasDefaultValue(100);
 
             #endregion
         }

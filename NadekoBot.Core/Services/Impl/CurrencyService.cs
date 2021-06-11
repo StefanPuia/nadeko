@@ -17,8 +17,7 @@ namespace NadekoBot.Core.Services
         private readonly GamblingConfigService _gss;
         private readonly IUser _bot;
 
-        public CurrencyService(DbService db, DiscordSocketClient c,
-            GamblingConfigService gss)
+        public CurrencyService(DbService db, DiscordSocketClient c, GamblingConfigService gss)
         {
             _db = db;
             _gss = gss;
@@ -110,6 +109,28 @@ namespace NadekoBot.Core.Services
                     // i have to prevent same user changing more than once as it will cause db error
                     if (userIdHashSet.Add(idArray[i]))
                         InternalChange(idArray[i], null, null, null, reasonArray[i], amountArray[i], gamble, uow);
+                }
+                await uow.SaveChangesAsync();
+            }
+        }
+        
+        public async Task RemoveBulkAsync(IEnumerable<ulong> userIds, IEnumerable<string> reasons, IEnumerable<long> amounts, bool gamble = false)
+        {
+            var idArray = userIds as ulong[] ?? userIds.ToArray();
+            var reasonArray = reasons as string[] ?? reasons.ToArray();
+            var amountArray = amounts as long[] ?? amounts.ToArray();
+
+            if (idArray.Length != reasonArray.Length || reasonArray.Length != amountArray.Length)
+                throw new ArgumentException("Cannot perform bulk operation. Arrays are not of equal length.");
+
+            var userIdHashSet = new HashSet<ulong>(idArray.Length);
+            using (var uow = _db.GetDbContext())
+            {
+                for (int i = 0; i < idArray.Length; i++)
+                {
+                    // i have to prevent same user changing more than once as it will cause db error
+                    if (userIdHashSet.Add(idArray[i]))
+                        InternalChange(idArray[i], null, null, null, reasonArray[i], -amountArray[i], gamble, uow);
                 }
                 await uow.SaveChangesAsync();
             }

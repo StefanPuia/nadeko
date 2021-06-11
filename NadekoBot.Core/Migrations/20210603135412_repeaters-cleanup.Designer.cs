@@ -2,48 +2,21 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NadekoBot.Core.Services.Database;
 
 namespace NadekoBot.Migrations
 {
     [DbContext(typeof(NadekoContext))]
-    partial class NadekoSqliteContextModelSnapshot : ModelSnapshot
+    [Migration("20210603135412_repeaters-cleanup")]
+    partial class repeaterscleanup
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "3.1.15");
-
-            modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.AntiAltSetting", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Action")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("ActionDurationMinutes")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("GuildConfigId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<TimeSpan>("MinAge")
-                        .HasColumnType("TEXT");
-
-                    b.Property<ulong?>("RoleId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GuildConfigId")
-                        .IsUnique();
-
-                    b.ToTable("AntiAltSetting");
-                });
 
             modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.AntiRaidSetting", b =>
                 {
@@ -1008,40 +981,6 @@ namespace NadekoBot.Migrations
                     b.ToTable("LogSettings");
                 });
 
-            modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.MusicPlayerSettings", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("AutoDisconnect")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<ulong>("GuildId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<ulong?>("MusicChannelId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("PlayerRepeat")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("QualityPreset")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("Volume")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(100);
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GuildId")
-                        .IsUnique();
-
-                    b.ToTable("MusicPlayerSettings");
-                });
-
             modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.MusicPlaylist", b =>
                 {
                     b.Property<int>("Id")
@@ -1065,6 +1004,32 @@ namespace NadekoBot.Migrations
                     b.ToTable("MusicPlaylists");
                 });
 
+            modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.MusicSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("DateAdded")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("GuildConfigId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong?>("MusicChannelId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("SongAutoDelete")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GuildConfigId")
+                        .IsUnique();
+
+                    b.ToTable("MusicSettings");
+                });
+
             modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.MutedUserId", b =>
                 {
                     b.Property<int>("Id")
@@ -1085,6 +1050,41 @@ namespace NadekoBot.Migrations
                     b.HasIndex("GuildConfigId");
 
                     b.ToTable("MutedUserId");
+                });
+
+            modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.NewRepeater", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("ChannelId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("DateAdded")
+                        .HasColumnType("TEXT");
+
+                    b.Property<ulong>("GuildId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<TimeSpan>("Interval")
+                        .HasColumnType("TEXT");
+
+                    b.Property<ulong?>("LastMessageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Message")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("NoRedundant")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<TimeSpan?>("StartTimeOfDay")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Repeaters");
                 });
 
             modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.NsfwBlacklitedTag", b =>
@@ -1458,41 +1458,6 @@ namespace NadekoBot.Migrations
                     b.HasIndex("When");
 
                     b.ToTable("Reminders");
-                });
-
-            modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.Repeater", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<ulong>("ChannelId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("DateAdded")
-                        .HasColumnType("TEXT");
-
-                    b.Property<ulong>("GuildId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<TimeSpan>("Interval")
-                        .HasColumnType("TEXT");
-
-                    b.Property<ulong?>("LastMessageId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Message")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("NoRedundant")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<TimeSpan?>("StartTimeOfDay")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Repeaters");
                 });
 
             modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.RewardedUser", b =>
@@ -2181,15 +2146,6 @@ namespace NadekoBot.Migrations
                     b.ToTable("XpSettings");
                 });
 
-            modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.AntiAltSetting", b =>
-                {
-                    b.HasOne("NadekoBot.Core.Services.Database.Models.GuildConfig", null)
-                        .WithOne("AntiAltSetting")
-                        .HasForeignKey("NadekoBot.Core.Services.Database.Models.AntiAltSetting", "GuildConfigId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.AntiRaidSetting", b =>
                 {
                     b.HasOne("NadekoBot.Core.Services.Database.Models.GuildConfig", "GuildConfig")
@@ -2369,6 +2325,15 @@ namespace NadekoBot.Migrations
                     b.HasOne("NadekoBot.Core.Services.Database.Models.LogSetting", "LogSetting")
                         .WithMany("IgnoredVoicePresenceChannelIds")
                         .HasForeignKey("LogSettingId");
+                });
+
+            modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.MusicSettings", b =>
+                {
+                    b.HasOne("NadekoBot.Core.Services.Database.Models.GuildConfig", "GuildConfig")
+                        .WithOne("MusicSettings")
+                        .HasForeignKey("NadekoBot.Core.Services.Database.Models.MusicSettings", "GuildConfigId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("NadekoBot.Core.Services.Database.Models.MutedUserId", b =>

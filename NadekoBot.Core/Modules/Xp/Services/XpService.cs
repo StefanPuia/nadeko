@@ -20,6 +20,8 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Internal;
 using NadekoBot.Core.Modules.Xp;
 using Serilog;
 using StackExchange.Redis;
@@ -592,7 +594,18 @@ namespace NadekoBot.Modules.Xp.Services
                 if (!ShouldTrackXp(user, arg.Channel.Id))
                     return;
 
-                if (!arg.Content.Contains(' ') && arg.Content.Length < 5)
+                var xp = 0;
+                if (arg.Attachments.Any(a => a.Height >= 128 && a.Width >= 128))
+                {
+                    xp = _xpConfig.GetRawData().XpFromImage;
+                }
+                
+                if (arg.Content.Contains(' ') || arg.Content.Length >= 5)
+                {
+                    xp = Math.Max(xp, _xpConfig.GetRawData().XpPerMessage);
+                }
+
+                if (xp <= 0)
                     return;
 
                 if (!SetUserRewarded(user.Id))
@@ -603,7 +616,7 @@ namespace NadekoBot.Modules.Xp.Services
                     Guild = user.Guild,
                     Channel = arg.Channel,
                     User = user,
-                    XpAmount = _xpConfig.Data.XpPerMessage
+                    XpAmount = xp 
                 });
             });
             return Task.CompletedTask;
@@ -1181,6 +1194,21 @@ namespace NadekoBot.Modules.Xp.Services
                 uow.Xp.ResetGuildXp(guildId);
                 uow.SaveChanges();
             }
+        }
+
+        public async Task ResetXpRewards(ulong guildId)
+        {
+            using var uow = _db.GetDbContext();
+            var guildConfig = uow.GuildConfigs.ForId(guildId, 
+                set => set
+                    .Include(x => x.XpSettings)
+                    .ThenInclude(x => x.CurrencyRewards)
+                    .Include(x => x.XpSettings)
+                    .ThenInclude(x => x.RoleRewards));
+            
+            uow._context.RemoveRange(guildConfig.XpSettings.RoleRewards);
+            uow._context.RemoveRange(guildConfig.XpSettings.CurrencyRewards);
+            await uow.SaveChangesAsync();
         }
     }
 }

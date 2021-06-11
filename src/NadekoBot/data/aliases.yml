@@ -458,9 +458,7 @@ nowplaying:
 volume:
 - volume
 - vol
-defvol:
 - defvol
-- dv
 playlist:
 - playlist
 - pl
@@ -481,7 +479,7 @@ join:
 - j
 - move
 - mv
-songremove:
+trackremove:
 - songremove
 - srm
 movesong:
@@ -711,6 +709,8 @@ antiraid:
 - antiraid
 antispam:
 - antispam
+antialt:
+- antialt
 chatmute:
 - chatmute
 voicemute:
@@ -780,9 +780,9 @@ logevents:
 - logevents
 log:
 - log
-songautodelete:
-- songautodelete
-- sad
+autodisconnect:
+- autodisconnect
+- autodc
 define:
 - define
 - def
@@ -849,6 +849,9 @@ setmusicchannel:
 unsetmusicchannel:
 - unsetmusicchannel
 - usmch
+musicquality:
+- musicquality
+- mquality
 imagesreload:
 - imagesreload
 stringsreload:
@@ -1046,6 +1049,8 @@ xpleveluprewards:
 - xprrs
 - xprolerewards
 - xpcurrewards
+xprewsreset:
+- xprewsreset
 xprolereward:
 - xprolereward
 - xprr
@@ -1214,3 +1219,9 @@ raidcomp:
 - raidcomp
 pruneold:
 - pruneold
+purgeuser:
+- purgeuser 
+crsimport:
+  - crsimport
+crsexport:
+  - crsexport

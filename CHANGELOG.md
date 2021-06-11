@@ -1,23 +1,78 @@
 # Changelog
 
-Experimental changelog. Mostly based on [keepachangelog](https://keepachangelog.com/en/1.0.0/) except date format. 
+Experimental changelog. Mostly based on [keepachangelog](https://keepachangelog.com/en/1.0.0/) except date format. a-c-f-r-o
 
-## [Unreleased]
+## Unreleased
+
+### Fixed
+
+- Fixed `.config <conf> <prop>` exceeding embed field character limit
+
+## [2.45.0] - 10.06.2021
+
+### Added
+
+- Added `.crsexport` and `.crsimport` 
+  - Allows for quick export/import of server or global custom reactions
+  - Requires admin permissions for server crs, and owner for global crs
+  - Explanation of the fields is in the comment at the top of the `.crsexport` .yml file
+- Added `.mquality` / `.musicquality` - Set encoding quality. Has 4 presets - Low, Medium, High, Highest. Default is Highest
+- Added `.xprewsreset` which resets all currently set xp level up rewards
+- Added `.purgeuser @User` which will remove the specified from the database completely. Removed settings include: Xp, clubs, waifu, currency, etc...
+- Added `.config xp txt.per_image` and xpFromImage to xp.yml - Change this config to allow xp gain from posting images. Images must be 128x128 or greater in size
+- Added `.take <amount> <role>` to complement `.award <amount> role`
+- Added **Fans** list to `.waifuinfo` which shows how many people have their affinity set to you
+- Added `.antialt` which will punish any user whose account is younger than specified threshold
+
+### Changed
+
+- `.warne` with no args will now show current state
+- .inrole` will now lists users with no roles if no role is provided
+- Music suttering fixed on some systems
+- `.say` moved to utility module
+- Re-created GuildRepeaters table and renamed to Repeaters
+- confirmation prompts will now use pending color from bot config, instead of okcolor
+- `.mute` can now have up to 49 days mute to match .warnp
+- `.warnlog` now has proper pagination (with reactions) and checking your own warnings past page 1 works correctly now with `.warnlog 2`
+
+### Fixed
+
+- obsolete_use string fixed
+- Fixed `.crreact`
+
+## [2.44.4] - 06.06.2021
 
 ### Added
 
 - Re-added `%music.playing%` and `%music.queued%` (#290)
 - Added `%music.servers%` which shows how many servers have a song queued up to play  
-
 ℹ️ ^ Only available to `.ropl` / `.adpl` feature atm
+- `.autodc` re-added
+- `.qrp`, `.vol`, `.smch` `.autodc` will now persist
 
 ### Changed
 
 - Using `.commands` / `.cmds` without a module will now list modules
+- `.qrp` / `.queuerepeat` will now accept one of 3 values
+    - `none` - don't repeat queue
+    - `track` - repeat single track
+    - `queue` (or ommit) - repeat entire queue
+- your old `.defvol` and `.smch` settings will be reset
 
 ### Fixed
 
 - Fixed `.google` / `.g` command
+- Removing last song in the queue will no longer reset queue index
+- Having `.rpl` disabled will now correctly stop after the last song, closes #292
+
+### Removed 
+
+- `.sad` removed. It's more or less useless. Use `.qrp` and `.autodc` now for similar effect
+
+### Obsolete
+
+- `.rcs` is obsolete, use `.qrp s` or `.qrp song`
+- `.defvol` is obsolete, use `.vol`
 
 ## [2.44.3] - 04.06.2021
 

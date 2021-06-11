@@ -387,10 +387,11 @@ whosplaying:
   args:
     - "Overwatch"
 inrole:
-  desc: "Lists every person from the specified role on this server. You can specify a page before the role to jump to that page."
+  desc: "Lists every person from the specified role on this server. You can specify a page before the role to jump to that page. Provide no role to list users who have no roles"
   args:
     - "RoleName"
     - "5 RoleName"
+    - ""
 checkperms:
   desc: "Checks yours or bot's user-specific permissions on this channel."
   args:
@@ -634,9 +635,10 @@ award:
     - "100 @person"
     - "5 Role Of Gamblers"
 take:
-  desc: "Takes a certain amount of currency from someone."
+  desc: "Takes the specified amount of currency from someone. You can specify a role instead to take the specified amount of currency from all users in the role."
   args:
     - "1 @Someone"
+    - "50 SomeRole"
 betroll:
   desc: "Bets a certain amount of currency and rolls a dice. Rolling over 66 yields x2 of your currency, over 90 - x4 and 100 x10."
   args:
@@ -758,13 +760,9 @@ nowplaying:
   args:
     - ""
 volume:
-  desc: "Sets the music playback volume (0-100%)"
+  desc: "Sets the music playback volume (0-100%). Persistent server setting. Default 100"
   args:
     - "50"
-defvol:
-  desc: "Sets the default music volume when music playback is started (0-100). Persists through restarts."
-  args:
-    - "80"
 playlist:
   desc: "Queues up to 500 songs from a youtube playlist specified by a link, or keywords."
   args:
@@ -772,7 +770,8 @@ playlist:
 soundcloudpl:
   desc: "Queue a Soundcloud playlist using a link."
   args:
-    - "soundcloudseturl"
+    - "https://soundcloud.com/classical-music-playlist/sets/classical-music-essential-collection"
+    - "<soundcloud_set_link>"
 localplaylist:
   desc: "Queues all songs from a directory."
   args:
@@ -805,13 +804,15 @@ setmaxqueue:
     - "50"
     - ""
 reptcursong:
-  desc: "Toggles repeat of current song."
+  desc: "Obsolete. Use `{0}queuerepeat`"
   args:
     - ""
 queuerepeat:
-  desc: "Toggles repeat of all songs in the queue (every song that finishes is added to the end of the queue)."
+  desc: "Sets music player repeat strategy for this server.\n- `n` / `no` - player will stop once it reaches the end of the queue\n- `s` / `song` - player will repeat current song\n- `q` / `queue` or empty - player will repeat entire music queue"
   args:
     - ""
+    - "n"
+    - "song"
 save:
   desc: "Saves a playlist under a certain name. Playlist name must be no longer than 20 characters and must not contain dashes."
   args:
@@ -1139,16 +1140,27 @@ antispam:
     - "5 Ban"
     - "5 Ban 3h30m"
     - ""
+antialt:
+  desc: "Applies a punishment action to any user whose account is younger than the specified threshold. Specify time after the punishment to have a timed punishment (not all punishments support timers)."
+  args:
+    - "1h Ban"
+    - "3d Mute 1h"
 chatmute:
-  desc: "Prevents a mentioned user from chatting in text channels. You can optionally specify a reason."
+  desc: "Prevents a mentioned user from chatting in text channels. You can also specify time string for how long the user should be muted. You can optionally specify a reason."
   args:
     - "@Someone"
     - "@Someone stop writing"
+    - "15m @Someone"
+    - "1h30m @Someone"
+    - "1h @Someone chill"
 voicemute:
-  desc: "Prevents a mentioned user from speaking in voice channels. User has to be in a voice channel in order for the command to have an effect. You can optionally specify a reason."
+  desc: "Prevents a mentioned user from speaking in voice channels. User has to be in a voice channel in order for the command to have an effect. You can also specify time string for how long the user should be muted. You can optionally specify a reason."
   args:
     - "@Someone"
     - "@Someone stop talking"
+    - "15m @Someone"
+    - "1h30m @Someone"
+    - "1h @Someone silence"
 konachan:
   desc: "Shows a random hentai image from konachan with a given tag. Tag is optional but preferred."
   args:
@@ -1277,10 +1289,6 @@ fairplay:
   desc: "Toggles fairplay. While enabled, the bot will prioritize songs from users who didn't have their song recently played instead of the song's position in the queue."
   args:
     - ""
-songautodelete:
-  desc: "Toggles whether the song should be automatically removed from the music queue when it finishes playing."
-  args:
-    - ""
 define:
   desc: "Finds a definition of a word."
   args:
@@ -1386,13 +1394,19 @@ mal:
   args:
     - "straysocks"
 setmusicchannel:
-  desc: "Sets the current channel as the default music output channel. This will output playing, finished, paused and removed songs to that channel instead of the channel where the first song was queued in."
+  desc: "Sets the current channel as the default music output channel. This will output playing, finished, paused and removed songs to that channel instead of the channel where the first song was queued in. Persistent server setting."
   args:
     - ""
 unsetmusicchannel:
-  desc: "Bot will output playing, finished, paused and removed songs to the channel where the first song was queued in."
+  desc: "Bot will output playing, finished, paused and removed songs to the channel where the first song was queued in. Persistent server setting."
   args:
     - ""
+musicquality:
+  desc: "Gets or sets the default music player quality. Available settings: Highest, High, Medium, Low. Default is **Highest**. Provide no argument to see current setting."
+  args:
+    - ""
+    - "High"
+    - "Low"
 imagesreload:
   desc: "Reloads images bot is using. Safe to use even when bot is being used heavily."
   args:
@@ -1465,6 +1479,14 @@ crca:
     - "44"
 crsreload:
   desc: "Reloads all custom reactions on all shards. Use this if you've made changes to the database while the bot is running, or used `{0}deleteunusedcrnq`"
+  args:
+    - ""
+crsimport:
+  desc: "Upload the file or send the raw .yml data with this command to import all custom reactions from the specified string or file into the current server (or as global custom reactions in dm)"
+  args:
+    - "<upload .yml file>"
+crsexport:
+  desc: "Exports custom reactions from the current server (or global custom reactions in DMs) into a .yml file"
   args:
     - ""
 aliaslist:
@@ -1542,8 +1564,9 @@ wait:
   args:
     - "3000"
 warnexpire:
-  desc: "Sets the number of days after which the warnings will be cleared automatically. This setting works retroactively. If you want to delete the warnings instead of clearing them, you can set the `--delete` optional parameter."
+  desc: "Gets or sets the number of days after which the warnings will be cleared automatically. This setting works retroactively. If you want to delete the warnings instead of clearing them, you can set the `--delete` optional parameter. Provide no parameter to see currently set expiry"
   args:
+    - ""
     - "3"
     - "6 --delete"
 warnclear:
@@ -1710,6 +1733,10 @@ xpnotify:
     - "server channel"
 xplvluprewards:
   desc: "Shows currently set level up rewards."
+  args:
+    - ""
+xprewsreset:
+  desc: "Resets all currently set xp level up rewards."
   args:
     - ""
 xprolereward:
@@ -1891,7 +1918,7 @@ rip:
   args:
     - "@Someone"
 autodisconnect:
-  desc: "Toggles whether the bot should disconnect from the voice channel once it's done playing all of the songs."
+  desc: "Toggles whether the bot should disconnect from the voice channel once it's done playing all of the songs and queue repeat option is set to `none`."
   args:
     - ""
 timelyset:
@@ -2020,3 +2047,7 @@ pruneold:
     - "50 10"
     - "50 10 -s"
     - "50 10 --safe"
+purgeuser:
+  desc: "Purge user from the database completely. This includes currency, xp, clubs that user owns, waifu info"
+  args:
+    - "@Oblivion"
