@@ -1,6 +1,7 @@
 ﻿#nullable enable
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -9,6 +10,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Ayu.Discord.Voice;
 using NadekoBot.Common;
+using NadekoBot.Core.Modules.Music.Common;
+using NadekoBot.Core.Services.Database.Models;
 using NadekoBot.Extensions;
 using NadekoBot.Modules.Music;
 using Serilog;
@@ -17,15 +20,16 @@ namespace NadekoBot.Core.Modules.Music
 {
     public sealed class MusicPlayer : IMusicPlayer
     {
-        private readonly VoiceClient _vc = new VoiceClient(frameDelay: FrameDelay.Delay20);
+        private delegate void AdjustVolumeDelegate(Span<byte> data, float volume);
 
-        public bool IsKilled { get; set; }
-        public bool IsStopped { get; set; }
-        public bool IsPaused { get; set; }
-        public bool IsRepeatingCurrentSong { get; set; }
-        public bool IsAutoDelete { get; set; }
-        public bool IsRepeatingQueue { get; set; } = true;
+        private AdjustVolumeDelegate AdjustVolume;
+        private readonly VoiceClient _vc;
 
+        public bool IsKilled { get; private set; }
+        public bool IsStopped { get; private set; }
+        public bool IsPaused { get; private set; }
+        public PlayerRepeatType Repeat { get; private set; }
+        
         public int CurrentIndex => _queue.Index;
         
         public float Volume => _volume;
@@ -41,13 +45,24 @@ namespace NadekoBot.Core.Modules.Music
         private readonly Thread _thread;
         private readonly Random _rng;
 
-        public MusicPlayer(IMusicQueue queue, ITrackResolveProvider trackResolveProvider, IVoiceProxy proxy)
+        public MusicPlayer(
+            IMusicQueue queue,
+            ITrackResolveProvider trackResolveProvider,
+            IVoiceProxy proxy,
+            QualityPreset qualityPreset)
         {
             _queue = queue;
             _trackResolveProvider = trackResolveProvider;
             _proxy = proxy;
-            _songBuffer = new PoopyBufferImmortalized();
             _rng = new NadekoRandom();
+
+            _vc = GetVoiceClient(qualityPreset);
+            if (_vc.BitDepth == 16)
+                AdjustVolume = AdjustVolumeInt16;
+            else
+                AdjustVolume = AdjustVolumeFloat32;
+            
+            _songBuffer = new PoopyBufferImmortalized(_vc.InputLength);
 
             _thread = new Thread(async () =>
             {
@@ -55,6 +70,40 @@ namespace NadekoBot.Core.Modules.Music
             });
             _thread.Start();
         }
+
+        private static VoiceClient GetVoiceClient(QualityPreset qualityPreset)
+            => qualityPreset switch
+            {
+                QualityPreset.Highest => new VoiceClient(
+                    SampleRate._48k,
+                    Bitrate._192k,
+                    Channels.Two,
+                    FrameDelay.Delay20,
+                    BitDepthEnum.Float32
+                ),
+                QualityPreset.High => new VoiceClient(
+                    SampleRate._48k,
+                    Bitrate._128k,
+                    Channels.Two,
+                    FrameDelay.Delay40,
+                    BitDepthEnum.Float32
+                ),
+                QualityPreset.Medium => new VoiceClient(
+                    SampleRate._48k,
+                    Bitrate._96k,
+                    Channels.Two,
+                    FrameDelay.Delay40,
+                    BitDepthEnum.UInt16
+                ),
+                QualityPreset.Low => new VoiceClient(
+                    SampleRate._48k,
+                    Bitrate._64k,
+                    Channels.Two,
+                    FrameDelay.Delay40,
+                    BitDepthEnum.UInt16
+                ),
+                _ => throw new ArgumentOutOfRangeException(nameof(qualityPreset), qualityPreset, null)
+            };
 
         private async Task PlayLoop()
         {
@@ -79,32 +128,84 @@ namespace NadekoBot.Core.Modules.Music
                     continue;
                 }
 
-                var trackCancellationSource = new CancellationTokenSource();
-                var cancellationToken = trackCancellationSource.Token;
+                using var cancellationTokenSource = new CancellationTokenSource();
+                var token = cancellationTokenSource.Token;
                 try
                 {
                     // light up green in vc
                     _ = _proxy.StartSpeakingAsync();
 
                     _ = OnStarted?.Invoke(this, track, index);
-                    
+
                     // make sure song buffer is ready to be (re)used
                     _songBuffer.Reset();
 
                     var streamUrl = await track.GetStreamUrl();
                     // start up the data source
-                    var source = FfmpegTrackDataSource.CreateAsync(
+                    using var source = FfmpegTrackDataSource.CreateAsync(
+                        _vc.BitDepth,
                         streamUrl,
                         track.Platform == MusicPlatform.Local
                     );
-
+                    
                     // start moving data from the source into the buffer
                     // this method will return once the sufficient prebuffering is done
-                    await _songBuffer.BufferAsync(source, cancellationToken);
+                    await _songBuffer.BufferAsync(source, token);
 
+                    // // Implemenation with multimedia timer. Works but a hassle because no support for switching
+                    // // vcs, as any error in copying will cancel the song. Also no idea how to use this as an option
+                    // // for selfhosters.
+                    // if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                    // {
+                    //     var cancelSource = new CancellationTokenSource();
+                    //     var cancelToken = cancelSource.Token;
+                    //     using var timer = new MultimediaTimer(_ =>
+                    //     {
+                    //         if (IsStopped || IsKilled)
+                    //         {
+                    //             cancelSource.Cancel();
+                    //             return;
+                    //         }
+                    //         
+                    //         if (_skipped)
+                    //         {
+                    //             _skipped = false;
+                    //             cancelSource.Cancel();
+                    //             return;
+                    //         }
+                    //
+                    //         if (IsPaused)
+                    //             return;
+                    //
+                    //         try
+                    //         {
+                    //             // this should tolerate certain number of errors
+                    //             var result = CopyChunkToOutput(_songBuffer, _vc);
+                    //             if (!result)
+                    //                 cancelSource.Cancel();
+                    //               
+                    //         }
+                    //         catch (Exception ex)
+                    //         {
+                    //             Log.Warning(ex, "Something went wrong sending voice data: {ErrorMessage}", ex.Message);
+                    //             cancelSource.Cancel();
+                    //         }
+                    //
+                    //     }, null, 20);
+                    //     
+                    //     while(true)
+                    //         await Task.Delay(1000, cancelToken);
+                    // }
 
                     // start sending data
                     var ticksPerMs = 1000f / Stopwatch.Frequency;
+                    sw.Start();
+                    Thread.Sleep(2);
+
+                    var delay = sw.ElapsedTicks * ticksPerMs > 3f
+                        ? _vc.Delay - 16
+                        : _vc.Delay - 3;
+                    
                     var errorCount = 0;
                     while (!IsStopped && !IsKilled)
                     {
@@ -115,54 +216,54 @@ namespace NadekoBot.Core.Modules.Music
                             _skipped = false;
                             break;
                         }
-
+                        
                         if (IsPaused)
                         {
-                            await Task.Delay(200, cancellationToken);
+                            await Task.Delay(200);
                             continue;
                         }
-
+                        
                         sw.Restart();
                         var ticks = sw.ElapsedTicks;
                         try
                         {
                             var result = CopyChunkToOutput(_songBuffer, _vc);
-
+                        
                             // if song is finished
                             if (result is null)
                                 break;
-                            
+                        
                             if (result is true)
                             {
-                                // wait for slightly less than the latency
-                                Thread.Sleep(_vc.Delay - 2);
-
-                                // and then spin out the rest
-                                // subjectively this seemed to work better
-                                // due to apparent imprecision of sleep
-                                while ((sw.ElapsedTicks - ticks) * ticksPerMs < _vc.Delay)
-                                    Thread.SpinWait(50);
-
                                 if (errorCount > 0)
                                 {
                                     _ = _proxy.StartSpeakingAsync();
                                     errorCount = 0;
                                 }
+                                    
+                                // todo future windows multimedia api
+                                    
+                                // wait for slightly less than the latency
+                                Thread.Sleep(delay);
+                                    
+                                // and then spin out the rest
+                                while ((sw.ElapsedTicks - ticks) * ticksPerMs <= _vc.Delay - 0.1f)
+                                    Thread.SpinWait(100);
                             }
                             else
                             {
                                 // result is false is either when the gateway is being swapped 
                                 // or if the bot is reconnecting, or just disconnected for whatever reason
-
+                        
                                 // tolerate up to 15x200ms of failures (3 seconds)
                                 if (++errorCount <= 15)
                                 {
-                                    await Task.Delay(200, cancellationToken);
+                                    await Task.Delay(200);
                                     continue;
                                 }
-                                
+                        
                                 Log.Warning("Can't send data to voice channel");
-
+                        
                                 IsStopped = true;
                                 // if errors are happening for more than 3 seconds
                                 // Stop the player
@@ -175,6 +276,12 @@ namespace NadekoBot.Core.Modules.Music
                         }
                     }
                 }
+                catch (Win32Exception)
+                {
+                    IsStopped = true;
+                    Log.Error("Please install ffmpeg and make sure it's added to your " +
+                              "PATH environment variable before trying again");
+                }
                 catch (OperationCanceledException)
                 {
                     Log.Information("Song skipped");
@@ -185,22 +292,23 @@ namespace NadekoBot.Core.Modules.Music
                 }
                 finally
                 {
+                    cancellationTokenSource.Cancel();
                     // turn off green in vc
-                    trackCancellationSource.Cancel();
-                    HandleQueuePostTrack();
-                    
-                    _ = _proxy.StopSpeakingAsync();
                     _ = OnCompleted?.Invoke(this, track);
                     
+                    HandleQueuePostTrack();
                     _skipped = false;
+                    
+                    _ = _proxy.StopSpeakingAsync();;
+                    
                     await Task.Delay(100);
                 }
             }
         }
-        
+
         private bool? CopyChunkToOutput(ISongBuffer sb, VoiceClient vc)
         {
-            var data = sb.Read(vc.FrameSize, out var length);
+            var data = sb.Read(vc.InputLength, out var length);
 
             // if nothing is read from the buffer, song is finished
             if (data.Length == 0)
@@ -221,39 +329,34 @@ namespace NadekoBot.Core.Modules.Music
                 return;
             }
 
-            if (IsRepeatingCurrentSong || IsStopped)
-                return;
+            var (repeat, isStopped) = (Repeat, IsStopped);
 
-            // autodelete is basically advance, so if it's enabled
-            // don't advance
-            if(IsAutoDelete)
-                _queue.RemoveCurrent();
+            if (repeat == PlayerRepeatType.Track || isStopped)
+                return;
             
             // if queue is being repeated, advance no matter what
-            if (!IsRepeatingQueue)
+            if (repeat == PlayerRepeatType.None)
             {
                 // if this is the last song,
                 // stop the queue
-                if (_queue.Index < _queue.Count - 1)
+                if (_queue.IsLast())
                 {
                     IsStopped = true;
+                    OnQueueStopped?.Invoke(this);
                     return;
                 }
                 
-                if(!IsAutoDelete)
-                    _queue.Advance();
-                
+                _queue.Advance();
                 return;
             }
             
-            if(!IsAutoDelete)
-                _queue.Advance();
+            _queue.Advance();
         }
 
         
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void AdjustVolume(Span<byte> audioSamples, float volume)
+        private static void AdjustVolumeInt16(Span<byte> audioSamples, float volume)
         {
             if (Math.Abs(volume - 1f) < 0.0001f) return;
         
@@ -263,6 +366,20 @@ namespace NadekoBot.Core.Modules.Music
             {
                 ref var sample = ref samples[i];
                 sample = (short) (sample * volume);
+            }
+        }
+        
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void AdjustVolumeFloat32(Span<byte> audioSamples, float volume)
+        {
+            if (Math.Abs(volume - 1f) < 0.0001f) return;
+        
+            var samples = MemoryMarshal.Cast<byte, float>(audioSamples);
+        
+            for (var i = 0; i < samples.Length; i++)
+            {
+                ref var sample = ref samples[i];
+                sample = (float) (sample * volume);
             }
         }
 
@@ -324,6 +441,11 @@ namespace NadekoBot.Core.Modules.Music
         public void EnqueueTracks(IEnumerable<ITrackInfo> tracks, string queuer)
         {
             _queue.EnqueueMany(tracks, queuer);
+        }
+
+        public void SetRepeat(PlayerRepeatType type)
+        {
+            Repeat = type;
         }
 
         public void ShuffleQueue()
@@ -396,10 +518,7 @@ namespace NadekoBot.Core.Modules.Music
 
             return true;
         }
-
-        public bool ToggleRcs() => IsRepeatingCurrentSong = !IsRepeatingCurrentSong;
-        public bool ToggleRpl() => IsRepeatingQueue = !IsRepeatingQueue;
-        public bool ToggleAd() => IsAutoDelete = !IsAutoDelete;
+        
         public bool TogglePause() => IsPaused = !IsPaused;
         public IQueuedTrackInfo? MoveTrack(int from, int to) => _queue.MoveTrack(from, to);
 
@@ -408,6 +527,7 @@ namespace NadekoBot.Core.Modules.Music
             IsKilled = true;
             OnCompleted = null;
             OnStarted = null;
+            OnQueueStopped = null;
             _queue.Clear();
             _songBuffer.Dispose();
             _vc.Dispose();
@@ -415,5 +535,6 @@ namespace NadekoBot.Core.Modules.Music
 
         public event Func<IMusicPlayer, IQueuedTrackInfo, Task>? OnCompleted;
         public event Func<IMusicPlayer, IQueuedTrackInfo, int, Task>? OnStarted;
+        public event Func<IMusicPlayer, Task>? OnQueueStopped;
     }
 }
