@@ -17,19 +17,20 @@ using SixLabors.ImageSharp.Processing;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using AngleSharp.Dom;
 using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
+using Microsoft.EntityFrameworkCore.Internal;
 using Serilog;
 using HorizontalAlignment = SixLabors.Fonts.HorizontalAlignment;
 using Image = SixLabors.ImageSharp.Image;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace NadekoBot.Modules.Searches.Services
 {
@@ -758,11 +759,9 @@ namespace NadekoBot.Modules.Searches.Services
                 
             using var http = _httpFactory.CreateClient();
             http.DefaultRequestHeaders.Clear();
-            var sw = Stopwatch.StartNew();
+            
             using var response = await http.SendAsync(msg);
             var content = await response.Content.ReadAsStreamAsync();
-            sw.Stop();
-            Log.Information("Took {Miliseconds}ms to parse results", sw.ElapsedMilliseconds);
 
             using var document = await _googleParser.ParseDocumentAsync(content);
             var elems = document.QuerySelectorAll("div.g > div > div");
@@ -801,37 +800,146 @@ namespace NadekoBot.Modules.Searches.Services
                 fullQueryLink,
                 totalResults);
         }
-    }
-
-    public class SteamGameId
-    {
-        [JsonProperty("name")]
-        public string Name { get; set; }
-        [JsonProperty("appid")]
-        public int AppId { get; set; }
-    }
-
-    public class SteamGameData
-    {
-        public string ShortDescription { get; set; }
-
-        public class Container
+        
+        public async Task<GoogleSearchResultData> DuckDuckGoSearchAsync(string query)
         {
-            [JsonProperty("success")]
-            public bool Success { get; set; }
+            query = WebUtility.UrlEncode(query)?.Replace(' ', '+');
 
-            [JsonProperty("data")]
-            public SteamGameData Data { get; set; }
+            var fullQueryLink = $"https://html.duckduckgo.com/html";
+
+            using var http = _httpFactory.CreateClient();
+            http.DefaultRequestHeaders.Clear();
+            http.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36");
+
+            using var formData = new MultipartFormDataContent();
+            formData.Add(new StringContent(query), "q");
+            using var response = await http.PostAsync(fullQueryLink, formData);
+            var content = await response.Content.ReadAsStringAsync();
+
+            using var document = await _googleParser.ParseDocumentAsync(content);
+            var searchResults = document.QuerySelector(".results");
+            var elems = searchResults.QuerySelectorAll(".result");
+            
+            if (!elems.Any())
+                return default;
+
+            var results = elems.Select(elem =>
+                {
+                    var anchor = elem.QuerySelector(".result__a") as IHtmlAnchorElement;
+
+                    if (anchor is null)
+                        return null;
+
+                    var href = anchor.Href;
+                    var name = anchor.TextContent;
+                    
+                    if (string.IsNullOrWhiteSpace(href) || string.IsNullOrWhiteSpace(name))
+                        return null;
+
+                    var txt = elem.QuerySelector(".result__snippet")?.TextContent;
+
+                    if (string.IsNullOrWhiteSpace(txt))
+                        return null;
+
+                    return new GoogleSearchResult(name, href, txt);
+                })
+                .Where(x => x != null)
+                .ToList();
+
+            return new GoogleSearchResultData(
+                results.AsReadOnly(),
+                fullQueryLink,
+                "0");
+        }
+        #region Nhentai
+        private string GetNhentaiExtensionInternal(string s)
+            => s switch
+            {
+                "j" => "jpg",
+                "p" => "png",
+                "g" => "gif",
+                _ => "jpg"
+            };
+        
+        private Gallery ModelToGallery(NhentaiApiModel.Gallery model)
+        {
+            var thumbnail = $"https://t.nhentai.net/galleries/{model.MediaId}/thumb."
+                            + GetNhentaiExtensionInternal(model.Images.Thumbnail.T);
+
+            var url = $"https://nhentai.net/g/{model.Id}";
+            return new Gallery(
+                model.Id.ToString(),
+                url,
+                model.Title.English,
+                model.Title.Pretty,
+                thumbnail,
+                model.NumPages,
+                model.NumFavorites,
+                model.UploadDate.ToUnixTimestamp().UtcDateTime,
+                model.Tags.Map(x => new Tag()
+                {
+                    Name = x.Name,
+                    Url = "https://nhentai.com/" + x.Url
+                }));
+        }
+        
+        public async Task<NhentaiApiModel.Gallery> GetNhentaiByIdInternalAsync(uint id)
+        {
+            using var http = _httpFactory.CreateClient();
+            try
+            {
+                var res = await http.GetStringAsync("https://nhentai.net/api/gallery/" + id);
+                return JsonConvert.DeserializeObject<NhentaiApiModel.Gallery>(res);
+            }
+            catch (HttpRequestException)
+            {
+                Log.Warning("Nhentai with id {NhentaiId} not found", id);
+                return null;
+            }
+        }
+        
+        private async Task<NhentaiApiModel.Gallery[]> SearchNhentaiInternalAsync(string search)
+        {
+            using var http = _httpFactory.CreateClient();
+            try
+            {
+                var res = await http.GetStringAsync("https://nhentai.net/api/galleries/search?query=" + search);
+                return JsonConvert.DeserializeObject<NhentaiApiModel.SearchResult>(res).Result;
+            }
+            catch (HttpRequestException)
+            {
+                Log.Warning("Nhentai with search {NhentaiSearch} not found", search);
+                return null;
+            }
+        }
+        
+        public async Task<Gallery> GetNhentaiByIdAsync(uint id)
+        {
+            var model = await GetNhentaiByIdInternalAsync(id);
+
+            return ModelToGallery(model);
         }
 
-    }
+        private static readonly string[] _bannedTags =
+        {
+            "loli",
+            "lolicon",
+            "shota",
+            "shotacon",
+            "cub"
+        };
+        
+        public async Task<Gallery> GetNhentaiBySearchAsync(string search)
+        {
+            var models = await SearchNhentaiInternalAsync(search);
 
-
-    public enum TimeErrors
-    {
-        InvalidInput,
-        ApiKeyMissing,
-        NotFound,
-        Unknown
+            models = models.Where(x => !x.Tags.Any(t => _bannedTags.Contains(t.Name))).ToArray();
+            
+            if (models.Length == 0)
+                return null;
+            
+            return ModelToGallery(models[_rng.Next(0, models.Length)]);
+        }
+        #endregion
     }
 }

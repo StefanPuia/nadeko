@@ -22,16 +22,11 @@ namespace NadekoBot.Modules.Games.Services
         public ModuleBehaviorType BehaviorType => ModuleBehaviorType.Executor;
         public bool AllowBots => false;
 
-        private readonly DiscordSocketClient _client;
-        private readonly IBotStrings _strings;
         private readonly DbService _db;
         private readonly IBotStrings _strs;
 
-        public PollService(DiscordSocketClient client, IBotStrings strings, DbService db,
-            IBotStrings strs)
+        public PollService(DbService db, IBotStrings strs)
         {
-            _client = client;
-            _strings = strings;
             _db = db;
             _strs = strs;
 
@@ -91,11 +86,11 @@ namespace NadekoBot.Modules.Games.Services
             if (ActivePolls.TryRemove(guildId, out var pr))
             {
                 pr.OnVoted -= Pr_OnVoted;
-                using (var uow = _db.GetDbContext())
-                {
-                    uow.Polls.RemovePoll(pr.Poll.Id);
-                    uow.SaveChanges();
-                }
+                
+                using var uow = _db.GetDbContext();
+                uow.Polls.RemovePoll(pr.Poll.Id);
+                uow.SaveChanges();
+                
                 return pr.Poll;
             }
             return null;

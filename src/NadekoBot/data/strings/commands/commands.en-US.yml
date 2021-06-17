@@ -165,7 +165,14 @@ addcustreact:
   args:
     - "\"hello\" Hi there %user.mention%"
 listcustreact:
-  desc: "Lists global or server custom reactions (20 commands per page). Running the command in DM will list global custom reactions, while running it in server will list that server's custom reactions. Specifying `all` parameter instead of the number will DM you a text file with a list of all custom reactions."
+  desc: |- 
+    Lists global or server custom reactions (20 commands per page).
+    Running the command in DM will list global custom reactions, while running it in a server will list server custom reactions.
+    Shows enabled settings, followed by id, followed by the trigger.
+    **Settings:** 
+    • 🗯️ Triggered if trigger matches any word (`{0}h {0}crca`)
+    • ✉️ Response will be DMed (`{0}h {0}crdm`)
+    • ❌ Trigger will be deleted (`{0}h {0}crad`)
   args:
     - "1"
     - "all"
@@ -194,7 +201,11 @@ aliasesclear:
   args:
     - ""
 autoassignrole:
-  desc: "Automaticaly assigns a specified role to every user who joins the server. Only one role per server. Provide no parameters to disable."
+  desc: |-
+    Toggles the role which will be assigned to every user who joins the server.
+    You can run this command multiple times to add multiple roles (up to 3).
+    Specifying the role that is already added will remove that role from the list.
+    Provide no parameters to list current roles.
   args:
     - ""
     - "RoleName"
@@ -252,7 +263,7 @@ rolecolor:
   desc: "Set a role's color using its hex value. Provide no color in order to see the hex value of the color of the specified role. The role you specify has to be lower in the role hierarchy than your highest role."
   args:
     - "Admin"
-    - "Admin ffba55"
+    - "ffba55 Admin"
 ban:
   desc: "Bans a user by ID or name with an optional message. You can specify a time string before the user name to ban the user temporarily."
   args:
@@ -510,23 +521,37 @@ allrolemdls:
   args:
     - "[enable/disable] MyRole"
 userblacklist:
-  desc: "Either [add]s or [rem]oves a user specified by a Mention or an ID from a blacklist."
+  desc: |-
+    Either [add]s or [rem]oves a user or users specified by a Mention or an ID from a blacklist.
+    Specify no argument or a page number to list blacklisted users.
   args:
-    - "add @SomeUser"
+    - "add @SomeUser @SomeUser2 @SomeUser3"
     - "rem 12312312313"
+    - ""
+    - "4"
 channelblacklist:
-  desc: "Either [add]s or [rem]oves a channel specified by an ID from a blacklist."
+  desc: |-
+    Either [add]s or [rem]oves a channel or channels specified an ID from a blacklist.
+    Specify no argument or a page number to list blacklisted channels.
   args:
+    - "add 12312312312 66666666666"
     - "rem 12312312312"
+    - ""
+    - "3"
 serverblacklist:
-  desc: "Either [add]s or [rem]oves a server specified by a Name or an ID from a blacklist."
+  desc: |-
+    Either [add]s or [rem]oves a server, or servers specified by an ID from a blacklist.
+    Specify no argument or a page number to list blacklisted servers.
   args:
     - "add 12312321312"
-    - "rem SomeTrashServer"
+    - "rem 12312321312"
+    - ""
+    - "2"
 cmdcooldown:
-  desc: "Sets a cooldown per user for a command. Set it to 0 to remove the cooldown."
+  desc: "Sets a cooldown per user for a command or a custom reaction. Set it to 0 to remove the cooldown."
   args:
-    - "\"some cmd\" 5"
+    - ".h 5"
+    - ".pat 30"
 allcmdcooldowns:
   desc: "Shows a list of all commands and their respective cooldowns."
   args:
@@ -968,6 +993,10 @@ google:
   desc: "Get a Google search link for some terms."
   args:
     - "query"
+duckduckgo:
+  desc: "Get duckduckgo search results."
+  args:
+    - "cat pictures"
 hearthstone:
   desc: "Searches for a Hearthstone card and shows its image. Takes a while to complete."
   args:
@@ -1037,6 +1066,10 @@ gelbooru:
   desc: "Shows a random hentai image from gelbooru with a given tag. Tag is optional but preferred. (multiple tags are appended with +)"
   args:
     - "yuri+kissing"
+sankaku:
+  desc: "Shows a random hentai image from chan.sankakucomplex.com with a given tag. Tag is optional but preferred. (multiple tags are appended with +)"
+  args:
+    - "yuri+kiss"
 rule34:
   desc: "Shows a random image from rule34.xx with a given tag. Tag is optional but preferred. (multiple tags are appended with +)"
   args:
@@ -1053,7 +1086,6 @@ butts:
   desc: "Real adult content."
   args:
     - ""
-    - ""
 translate:
   desc: "Translates from>to text. From the given language to the destination language."
   args:
@@ -1065,7 +1097,6 @@ translangs:
 guide:
   desc: "Sends a readme and a guide links to the channel."
   args:
-    - ""
     - ""
 calcops:
   desc: "Shows all available operations in the `{0}calc` command"
@@ -1256,7 +1287,6 @@ yandere:
 magicthegathering:
   desc: "Searches for a Magic The Gathering card."
   args:
-    - "about face"
     - "about face"
 hangmanlist:
   desc: "Shows a list of hangman term types."
@@ -1740,9 +1770,14 @@ xprewsreset:
   args:
     - ""
 xprolereward:
-  desc: "Sets a role reward on a specified level. Provide no role name in order to remove the role reward."
+  desc: |-
+   Add or remove a role from the user who reaches the specified level.
+   Provide no action and role name in order to remove the role reward.
   args:
-    - "3 Social"
+    - "1 rm Newbie"
+    - "3 add Social"
+    - "5 add Member"
+    - "5"
 xpcurreward:
   desc: "Sets a currency reward on a specified level. Provide no amount in order to remove the reward."
   args:
@@ -2051,3 +2086,8 @@ purgeuser:
   desc: "Purge user from the database completely. This includes currency, xp, clubs that user owns, waifu info"
   args:
     - "@Oblivion"
+nhentai:
+  desc: "Shows basic information about a hentai with the specified id, or a valid nhentai search query."    
+  args:
+    - "273426"
+    - "cute girl"

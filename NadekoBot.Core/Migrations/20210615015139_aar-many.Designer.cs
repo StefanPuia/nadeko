@@ -2,15 +2,17 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NadekoBot.Core.Services.Database;
 
 namespace NadekoBot.Migrations
 {
     [DbContext(typeof(NadekoContext))]
-    partial class NadekoSqliteContextModelSnapshot : ModelSnapshot
+    [Migration("20210615015139_aar-many")]
+    partial class aarmany
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2139,9 +2141,6 @@ namespace NadekoBot.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Level")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("Remove")
                         .HasColumnType("INTEGER");
 
                     b.Property<ulong>("RoleId")

@@ -102,11 +102,11 @@ namespace NadekoBot.Modules.Administration.Services
 
         private Task _client_LeftGuild(SocketGuild guild)
         {
-            var _ = Task.Run(() =>
+            var _ = Task.Run(async () =>
             {
                 TryStopAntiRaid(guild.Id);
                 TryStopAntiSpam(guild.Id);
-                TryStopAntiRaid(guild.Id);
+                await TryStopAntiAlt(guild.Id);
             });
             return Task.CompletedTask;
         }
@@ -479,7 +479,7 @@ namespace NadekoBot.Modules.Administration.Services
             
             using var uow = _db.GetDbContext();
             var gc = uow.GuildConfigs.ForId(guildId, set => set.Include(x => x.AntiAltSetting));
-            gc.AntiSpamSetting = null;
+            gc.AntiAltSetting = null;
             await uow.SaveChangesAsync();
             return true;
         }

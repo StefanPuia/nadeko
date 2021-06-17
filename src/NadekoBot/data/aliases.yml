@@ -89,20 +89,32 @@ iamnot:
 addcustreact:
 - addcustreact
 - acr
+- expradd
+- exadd
+- exa
 listcustreact:
 - listcustreact
 - lcr
+- exprli
+- exl
 listcustreactg:
 - listcustreactg
 - lcrg
+- exprlg
+- exlg
 showcustreact:
 - showcustreact
 - scr
+- exs
 delcustreact:
 - delcustreact
 - dcr
+- exprdel
+- exd
+- exd
 crclear:
 - crclear
+- exclear
 fwclear:
 - fwclear
 aliasesclear:
@@ -320,7 +332,7 @@ cmdcooldown:
 - cmdcd
 allcmdcooldowns:
 - allcmdcooldowns
-- acmdcds
+- cmdcds
 quoteadd:
 - quoteadd
 - .
@@ -600,6 +612,9 @@ lmgtfy:
 google:
 - google
 - g
+duckduckgo:
+  - duckduckgo
+  - ddg
 hearthstone:
 - hearthstone
 - hs
@@ -637,6 +652,8 @@ avatar:
 - av
 hentai:
 - hentai
+nhentai:
+  - nhentai
 danbooru:
 - danbooru
 derpibooru:
@@ -717,6 +734,8 @@ voicemute:
 - voicemute
 konachan:
 - konachan
+sankaku:
+  - sankaku
 muterole:
 - muterole
 - setmuterole
@@ -883,14 +902,20 @@ crreact:
 - crr
 crad:
 - crad
+- exad
 crat:
-  - crat
+- crat
+- exat
 crdm:
 - crdm
+- exdm
 crca:
 - crca
+- exca
 crsreload:
 - crsreload
+- expreload
+- exrel
 aliaslist:
 - aliaslist
 - cmdmaplist
@@ -1122,6 +1147,7 @@ feedlist:
 editcustreact:
 - editcustreact
 - ecr
+- exe
 say:
 - say
 sqlexec:
@@ -1223,5 +1249,7 @@ purgeuser:
 - purgeuser 
 crsimport:
   - crsimport
+  - eximport
 crsexport:
   - crsexport
+  - exexport
