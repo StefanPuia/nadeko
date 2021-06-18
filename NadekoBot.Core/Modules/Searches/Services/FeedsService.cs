@@ -159,7 +159,7 @@ namespace NadekoBot.Modules.Searches.Services
                     }
                 }
 
-                await Task.WhenAll(Task.WhenAll(allSendTasks), Task.Delay(1000 * 60)).ConfigureAwait(false);
+                await Task.WhenAll(Task.WhenAll(allSendTasks), Task.Delay(1000 * 60 * 10)).ConfigureAwait(false);
             }
         }
 
