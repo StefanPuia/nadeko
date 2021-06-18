@@ -1,10 +1,11 @@
-﻿using CodeHollow.FeedReader.Feeds;
+using CodeHollow.FeedReader.Feeds;
 using Discord;
 using Discord.WebSocket;
 using Microsoft.EntityFrameworkCore;
 using NadekoBot.Core.Services;
 using NadekoBot.Core.Services.Database.Models;
 using NadekoBot.Extensions;
+using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -36,7 +37,7 @@ namespace NadekoBot.Modules.Searches.Services
                         .ThenInclude(x => x.GuildConfig)
                     .ToList()
                     .SelectMany(x => x.FeedSubs)
-                    .GroupBy(x => x.Url.ToLower())
+                    .GroupBy(x => x.Url)
                     .ToDictionary(x => x.Key, x => x.ToHashSet())
                     .ToConcurrent();
             }
@@ -83,10 +84,9 @@ namespace NadekoBot.Modules.Searches.Services
                             if (itemUpdateDate <= lastFeedUpdate)
                             {
                                 continue;
-                            }                            
+                            }
 
-                            var embed = new EmbedBuilder()
-                                .WithFooter(rssUrl);
+                            var embed = new EmbedBuilder();
 
                             _lastPosts[kvp.Key] = itemUpdateDate;
 
@@ -153,12 +153,13 @@ namespace NadekoBot.Modules.Searches.Services
                             allSendTasks.Add(Task.WhenAll(feedSendTasks));
                         }
                     }
-                    catch
+                    catch (Exception e)
                     {
+                        Log.Error(e.Message);
                     }
                 }
 
-                await Task.WhenAll(Task.WhenAll(allSendTasks), Task.Delay(1000 * 60 * 10)).ConfigureAwait(false);
+                await Task.WhenAll(Task.WhenAll(allSendTasks), Task.Delay(1000 * 60)).ConfigureAwait(false);
             }
         }
 
@@ -205,7 +206,7 @@ namespace NadekoBot.Modules.Searches.Services
                 //adding all, in case bot wasn't on this guild when it started
                 foreach (var feed in gc.FeedSubs)
                 {
-                    _subs.AddOrUpdate(feed.Url.ToLower(), new HashSet<FeedSub>() {feed}, (k, old) =>
+                    _subs.AddOrUpdate(feed.Url, new HashSet<FeedSub>() {feed}, (k, old) =>
                     {
                         old.Add(feed);
                         return old;
