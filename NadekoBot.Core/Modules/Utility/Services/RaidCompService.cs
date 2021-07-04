@@ -42,10 +42,6 @@ namespace NadekoBot.Core.Modules.Utility.Services
                     string attachmentURL = msg.Attachments.First().Url;
                     if (attachmentURL.ToLowerInvariant().EndsWith(".csv"))
                     {
-                        //// teams
-                        //string buildString = await ConvertCSV(attachmentURL, true, _creds, _httpFactory, _log);
-                        //// all
-                        //buildString += "\n\n" + await ConvertCSV(attachmentURL, false, _creds, _httpFactory, _log);
                         string buildString = await ConvertCSV(attachmentURL, false, _creds, _httpFactory);
                         await IMessageChannelExtensions.SendConfirmAsync((IMessageChannel)channel, buildString);
                     }
@@ -75,10 +71,6 @@ namespace NadekoBot.Core.Modules.Utility.Services
                     });
 
                 string importURL = $"{_creds.RaidComp.API}/build/import/raid-helper";
-                if (useTeams)
-                {
-                    importURL = $"{importURL}/teams";
-                }
                 var response = await http.PostAsync(importURL, new StringContent(payload, Encoding.UTF8, "application/json"));
                 if (response.IsSuccessStatusCode)
                 {
@@ -99,30 +91,6 @@ namespace NadekoBot.Core.Modules.Utility.Services
             {
                 Log.Error(e, "There was an error processing the CSV.");
                 throw new Exception("There was an error processing the CSV.");
-            }
-        }
-
-        public static async Task WowAuditRefresh(IBotCredentials _creds, IHttpClientFactory _httpFactory)
-        {
-            try
-            {
-                using var http = _httpFactory.CreateClient();
-                var payload = JsonConvert.SerializeObject(new Dictionary<string, string> {
-                        { "key",  _creds.RaidComp.WowAuditKey }
-                    });
-
-                string updateURL = $"{_creds.RaidComp.API}/wowaudit/update";
-                var response = await http.PostAsync(updateURL, new StringContent(payload, Encoding.UTF8, "application/json"));
-                if (!response.IsSuccessStatusCode)
-                {
-                    Log.Error(response.ToString(), "There was an error running the update.");
-                    throw new Exception("There was an error running the update.");
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "There was an error running the update. Try again later.");
-                throw new Exception("There was an error running the update. Try again later.");
             }
         }
     }

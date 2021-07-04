@@ -409,22 +409,6 @@ namespace NadekoBot.Modules.Utility
             }
         }
 
-        [NadekoCommand, Usage, Description, Aliases]
-        [RequireContext(ContextType.Guild)]
-        [UserPerm(GuildPerm.Administrator)]
-        public async Task WowAuditRefresh()
-        {
-            try
-            {
-                await RaidCompService.WowAuditRefresh(_creds, _httpFactory);
-                await ctx.Channel.SendConfirmAsync("Update successful.");
-            }
-            catch (Exception e)
-            {
-                await ctx.Channel.SendErrorAsync(e.Message);
-            }
-        }
-
         public enum CreateInviteType
         {
             Any,

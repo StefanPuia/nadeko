@@ -1238,9 +1238,6 @@ nsfwtoggle:
 - nsfwtgl
 economy:
 - economy
-wowauditrefresh:
-- wowauditrefresh
-- warefresh
 raidcomp:
 - raidcomp
 pruneold:

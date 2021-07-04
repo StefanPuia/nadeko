@@ -63,11 +63,9 @@ namespace NadekoBot.Core.Services
             this.API = api;
             this.WEB = web;
             this.AutoChannel = autoChannel;
-            this.WowAuditKey = wowAuditKey;
         }
         public string API { get; }
         public string WEB { get; }
         public ulong AutoChannel { get; }
-        public string WowAuditKey { get; }
     }
 }

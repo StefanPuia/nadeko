@@ -2071,10 +2071,6 @@ raidcomp:
     - "https://some-csv-link"
     - "--all https://some-csv-link"
     - "-a https://some-csv-link"
-wowauditrefresh:
-  desc: "Refresh the wowaudit data when the teams changed"
-  args:
-    - ""
 pruneold:
   desc: "Prune `x` messages if they are older than `y` minutes. You can use the `-s` / `--safe` parameter at the end to only prune messages that are not pinned."
   args:
