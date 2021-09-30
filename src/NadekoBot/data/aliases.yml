@@ -1240,6 +1240,9 @@ economy:
 - economy
 raidcomp:
 - raidcomp
+raiderrolecheck:
+- raiderrolecheck
+- rolecheck
 pruneold:
 - pruneold
 purgeuser:

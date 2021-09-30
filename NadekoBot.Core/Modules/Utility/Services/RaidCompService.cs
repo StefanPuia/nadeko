@@ -93,5 +93,24 @@ namespace NadekoBot.Core.Modules.Utility.Services
                 throw new Exception("There was an error processing the CSV.");
             }
         }
+
+        public static async Task CheckRole(IRole role, IMessageChannel channel, IGuild guild, IBotCredentials creds, IHttpClientFactory httpFactory)
+        {
+            try
+            {
+                using var http = httpFactory.CreateClient();
+
+                ulong roleId = role.Id;
+                ulong channelId = channel.Id;
+                ulong guildId = guild.Id;
+
+                string roleCheckUrl = $"{creds.RaidComp.API}/discord/role-check?requiredRole={roleId}&channelId={channelId}&guildId={guildId}";
+                await http.GetAsync(roleCheckUrl);
+            } catch (Exception e)
+            {
+                Log.Error(e, "There was an error when doing the role check.");
+                throw new Exception("There was an error when doing the role check.");
+            }
+        }
     }
 }

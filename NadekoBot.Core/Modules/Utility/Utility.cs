@@ -407,6 +407,21 @@ namespace NadekoBot.Modules.Utility
             }
         }
 
+        [NadekoCommand, Usage, Description, Aliases]
+        [RequireContext(ContextType.Guild)]
+        [UserPerm(GuildPerm.Administrator)]
+        public async Task RaiderRoleCheck(IRole role)
+        {
+            try
+            {
+                await RaidCompService.CheckRole(role, ctx.Channel, ctx.Guild, _creds, _httpFactory);
+            }
+            catch (Exception e)
+            {
+                await ctx.Channel.SendErrorAsync(e.Message);
+            }
+        }
+
         public enum CreateInviteType
         {
             Any,
