@@ -22,11 +22,9 @@ FROM mcr.microsoft.com/dotnet/runtime:6.0
 WORKDIR /app
 
 RUN set -xe
-RUN useradd -m nadeko
 RUN apt-get update
 RUN apt-get install -y libopus0 libsodium23 libsqlite3-0 curl ffmpeg python3 python3-pip sudo
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
-RUN echo 'Defaults>nadeko env_keep+="ASPNETCORE_* DOTNET_* NadekoBot_* shard_id total_shards TZ"' > /etc/sudoers.d/nadeko
 RUN pip3 install --upgrade youtube-dl
 RUN apt-get remove -y python3-pip
 RUN chmod +x /usr/local/bin/youtube-dl

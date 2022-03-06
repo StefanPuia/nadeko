@@ -12,9 +12,3 @@ do
         [ -d "$data_init/$i" ] && cp -r "$data_init/$i" "$data/$i"
     fi
 done
-
-# fix folder permissions
-chown -R nadeko:nadeko "$data"
-
-# drop to regular user and launch command
-exec sudo -u nadeko "$@"

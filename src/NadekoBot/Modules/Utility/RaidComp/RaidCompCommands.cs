@@ -4,11 +4,11 @@ namespace NadekoBot.Modules.Utility.RaidComp;
 
 public partial class Utility
 {
+    [Group]
     public partial class RaidCompCommands : NadekoModule<RaidCompService>
     {
         private readonly IBotCredentials _creds;
         private readonly IHttpClientFactory _httpFactory;
-        private readonly RaidCompService _raidCompService;
 
         public RaidCompCommands(
             IBotCredentials creds,
@@ -18,7 +18,6 @@ public partial class Utility
         {
             _creds = creds;
             _httpFactory = httpFactory;
-            _raidCompService = raidCompService;
             _eb = eb;
         }
 
@@ -29,7 +28,7 @@ public partial class Utility
         {
             try
             {
-                var buildMessage = await _raidCompService.ConvertCsv(csvLink);
+                var buildMessage = await _service.ConvertCsv(csvLink);
                 await ctx.Channel.SendConfirmAsync(_eb, buildMessage);
             }
             catch (Exception e)
@@ -45,7 +44,7 @@ public partial class Utility
         {
             try
             {
-                await _raidCompService.CheckRole(role, ctx.Channel, ctx.Guild);
+                await _service.CheckRole(role, ctx.Channel, ctx.Guild);
             }
             catch (Exception e)
             {
