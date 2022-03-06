@@ -96,6 +96,9 @@ Windows default
     cmd: NadekoBot.exe
     args: {0}")]
     public RestartConfig RestartCommand { get; set; }
+    
+    [Comment(@"Configuration for RaidComp integration")]
+    public RaidCompConfig RaidComp { get; set; }
 
     public Creds()
     {
@@ -119,6 +122,7 @@ Windows default
         CoordinatorUrl = "http://localhost:3442";
 
         RestartCommand = new();
+        RaidComp = new RaidCompConfig();
     }
 
 

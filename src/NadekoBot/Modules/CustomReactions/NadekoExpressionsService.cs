@@ -44,6 +44,8 @@ public sealed class NadekoExpressionsService : IEarlyBehavior, IReadyExecutor
     public int Priority
         => 0;
 
+    public bool AllowBots => false;
+
     private readonly object _gexprWriteLock = new();
 
     private readonly TypedKey<NadekoExpression> _gexprAddedKey = new("gexpr.added");

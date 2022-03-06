@@ -32,7 +32,7 @@ public class FeedsService : INService
                        .Include(x => x.FeedSubs)
                        .ToList()
                        .SelectMany(x => x.FeedSubs)
-                       .GroupBy(x => x.Url.ToLower())
+                       .GroupBy(x => x.Url)
                        .ToDictionary(x => x.Key, x => x.ToHashSet())
                        .ToConcurrent();
         }
@@ -143,12 +143,13 @@ public class FeedsService : INService
                         allSendTasks.Add(feedSendTasks.WhenAll());
                     }
                 }
-                catch
+                catch (Exception e)
                 {
+                    Log.Error(e?.Message ?? "Error reading feed");
                 }
             }
 
-            await Task.WhenAll(Task.WhenAll(allSendTasks), Task.Delay(10000));
+            await Task.WhenAll(Task.WhenAll(allSendTasks), Task.Delay(600000));
         }
     }
 
@@ -183,7 +184,7 @@ public class FeedsService : INService
         //adding all, in case bot wasn't on this guild when it started
         foreach (var feed in gc.FeedSubs)
         {
-            _subs.AddOrUpdate(feed.Url.ToLower(),
+            _subs.AddOrUpdate(feed.Url,
                 new HashSet<FeedSub>
                 {
                     feed

@@ -83,5 +83,38 @@ public partial class Administration
                     m => m.Author.Id == userId && DateTime.UtcNow - m.CreatedAt < _twoWeeks);
             }
         }
+
+        [Cmd]
+        [RequireContext(ContextType.Guild)]
+        [UserPerm(ChannelPerm.ManageMessages)]
+        [BotPerm(ChannelPerm.ManageMessages)]
+        [Priority(0)]
+        public async partial Task PruneOld(int count = -1, int ageMinutes = 0, string parameter = null)
+        {
+            count++;
+            switch (count)
+            {
+                case < 1:
+                    return;
+                case > 1000:
+                    count = 1000;
+                    break;
+            }
+
+            await _service.PruneWhere((ITextChannel)ctx.Channel, count, message =>
+                          {
+                              var pinned = false;
+                              if (parameter == "-s" || parameter == "--safe")
+                              {
+                                  pinned = message.IsPinned;
+                              }
+
+                              var isOld = message.Timestamp.AddMinutes(ageMinutes) < DateTimeOffset.Now;
+
+                              return !pinned && isOld;
+                          })
+                          .ConfigureAwait(false);
+            await ctx.Message.DeleteAsync().ConfigureAwait(false);
+        }
     }
 }

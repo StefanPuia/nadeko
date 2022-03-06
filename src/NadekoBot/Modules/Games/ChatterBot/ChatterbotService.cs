@@ -13,6 +13,8 @@ public class ChatterBotService : IEarlyBehavior
     public int Priority
         => 1;
 
+    public bool AllowBots => false;
+
     private readonly DiscordSocketClient _client;
     private readonly PermissionService _perms;
     private readonly CommandHandler _cmd;

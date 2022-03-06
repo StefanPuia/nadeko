@@ -126,7 +126,7 @@ public class CommandHandler : INService, IReadyExecutor
                 IUserMessage msg = await channel.SendMessageAsync(commandText);
                 msg = (IUserMessage)await channel.GetMessageAsync(msg.Id);
                 await TryRunCommand(guild, channel, msg);
-                //msg.DeleteAfter(5);
+                msg.DeleteAfter(5);
             }
             catch { }
         }
@@ -207,8 +207,8 @@ public class CommandHandler : INService, IReadyExecutor
 
     private Task MessageReceivedHandler(SocketMessage msg)
     {
-        //no bots, wait until bot connected and initialized
-        if (msg.Author.IsBot || !_bot.IsReady)
+        // wait until bot connected and initialized
+        if (!_bot.IsReady)
             return Task.CompletedTask;
 
         if (msg is not SocketUserMessage usrMsg)

@@ -6,5 +6,6 @@ namespace NadekoBot.Common.ModuleBehaviors;
 public interface IEarlyBehavior
 {
     int Priority { get; }
+    bool AllowBots { get; }
     Task<bool> RunBehavior(IGuild guild, IUserMessage msg);
 }

@@ -27,6 +27,11 @@ public sealed class BehaviorExecutor : IBehaviourExecutor, INService
     {
         foreach (var beh in earlyBehaviors)
         {
+            if (usrMsg.Author.IsBot && !beh.AllowBots)
+            {
+                continue;
+            }
+
             if (await beh.RunBehavior(guild, usrMsg))
                 return true;
         }

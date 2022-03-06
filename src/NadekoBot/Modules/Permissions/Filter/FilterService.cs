@@ -23,6 +23,8 @@ public sealed class FilterService : IEarlyBehavior
     public int Priority
         => int.MaxValue - 1;
 
+    public bool AllowBots => false;
+
     private readonly DbService _db;
 
     public FilterService(DiscordSocketClient client, DbService db)

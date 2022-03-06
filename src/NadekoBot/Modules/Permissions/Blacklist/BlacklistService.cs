@@ -11,6 +11,8 @@ public sealed class BlacklistService : IEarlyBehavior
     public int Priority
         => int.MaxValue;
 
+    public bool AllowBots => false;
+
     private readonly DbService _db;
     private readonly IPubSub _pubSub;
     private readonly IBotCredentials _creds;
