@@ -156,7 +156,7 @@ public class FeedsService : INService
     public List<FeedSub> GetFeeds(ulong guildId)
     {
         using var uow = _db.GetDbContext();
-        return uow.GuildConfigsForId(guildId, set => set.Include(x => x.FeedSubs).ThenInclude(x => x.GuildConfig))
+        return uow.GuildConfigsForId(guildId, set => set.Include(x => x.FeedSubs))
                   .FeedSubs.OrderBy(x => x.Id)
                   .ToList();
     }
