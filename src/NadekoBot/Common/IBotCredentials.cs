@@ -25,6 +25,7 @@ public interface IBotCredentials
     string CoordinatorUrl { get; set; }
     string TwitchClientId { get; set; }
     string TwitchClientSecret { get; set; }
+    string NetStatUrl { get; set; }
     RaidCompConfig RaidComp { get; set; }
 }
 

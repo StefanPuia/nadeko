@@ -1206,6 +1206,8 @@ raiderrolecheck:
 - rolecheck
 pruneold:
 - pruneold
+netstat:
+- netstat
 purgeuser:
 - purgeuser 
 imageonlychannel:
