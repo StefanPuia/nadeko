@@ -9,17 +9,20 @@ namespace NadekoBot.Modules.Utility.Services;
 public class RaidCompService : IEarlyBehavior, INService
 {
     private readonly IBotCredentials _creds;
+    private readonly DiscordSocketClient _client;
     private readonly IEmbedBuilderService _eb;
     private readonly IHttpClientFactory _httpFactory;
 
     public RaidCompService(
         IBotCredentials creds,
         IHttpClientFactory factory,
-        IEmbedBuilderService eb)
+        IEmbedBuilderService eb,
+        DiscordSocketClient client)
     {
         _creds = creds;
         _httpFactory = factory;
         _eb = eb;
+        _client = client;
     }
 
     public int Priority => -1;
@@ -30,11 +33,12 @@ public class RaidCompService : IEarlyBehavior, INService
         if (!_creds.RaidComp.AllowedRaidCompBots.Contains(msg.Author.Id) || msg.Attachments.Count != 1) return false;
         try
         {
+            var channel = _client.GetChannel(_creds.RaidComp.AutoChannel);
             var attachmentUrl = msg.Attachments.First().Url;
             if (attachmentUrl.ToLowerInvariant().EndsWith(".csv"))
             {
                 var buildString = await ConvertCsv(attachmentUrl);
-                await msg.Channel.SendConfirmAsync(_eb, buildString);
+                await ((ITextChannel) channel).SendConfirmAsync(_eb, buildString);
             }
         }
         catch (Exception e)

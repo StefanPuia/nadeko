@@ -36,7 +36,8 @@ public class RestartConfig
 
 public class RaidCompConfig
 {
-    public ICollection<ulong> AllowedRaidCompBots { get; set; }
     public string Api { get; set; }
     public string Web { get; set; }
+    public ulong AutoChannel { get; set; }
+    public ICollection<ulong> AllowedRaidCompBots { get; set; }
 }
