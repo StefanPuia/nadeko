@@ -12,3 +12,5 @@ do
         [ -d "$data_init/$i" ] && cp -r "$data_init/$i" "$data/$i"
     fi
 done
+
+exec "$@"
