@@ -172,7 +172,7 @@ public class FeedsService : INService
         };
 
         using var uow = _db.GetDbContext();
-        var gc = uow.GuildConfigsForId(guildId, set => set.Include(x => x.FeedSubs).ThenInclude(x => x.GuildConfig));
+        var gc = uow.GuildConfigsForId(guildId, set => set.Include(x => x.FeedSubs));
 
         if (gc.FeedSubs.Any(x => x.Url.ToLower() == fs.Url.ToLower()))
             return false;
