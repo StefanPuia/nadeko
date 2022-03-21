@@ -12,6 +12,7 @@ public sealed class MusicPlayer : IMusicPlayer
     public event Func<IMusicPlayer, IQueuedTrackInfo, Task>? OnCompleted;
     public event Func<IMusicPlayer, IQueuedTrackInfo, int, Task>? OnStarted;
     public event Func<IMusicPlayer, Task>? OnQueueStopped;
+    public event Func<IMusicPlayer, Task>? OnIdleTimeout;
     public bool IsKilled { get; private set; }
     public bool IsStopped { get; private set; }
     public bool IsPaused { get; private set; }
@@ -35,6 +36,8 @@ public sealed class MusicPlayer : IMusicPlayer
     private int? forceIndex;
     private readonly Thread _thread;
     private readonly Random _rng;
+
+    private const int IDLE_TIMEOUT_LIMIT = 5 * 60;
 
     public bool AutoPlay { get; set; }
 
@@ -95,6 +98,12 @@ public sealed class MusicPlayer : IMusicPlayer
             // wait until a song is available in the queue
             // or until the queue is resumed
             var track = _queue.GetCurrent(out var index);
+            
+            if ((IsStopped || IsPaused) && sw.Elapsed.TotalSeconds >= IDLE_TIMEOUT_LIMIT)
+            {
+                OnIdleTimeout?.Invoke(this);
+                break;
+            }
 
             if (track is null || IsStopped)
             {
@@ -197,6 +206,11 @@ public sealed class MusicPlayer : IMusicPlayer
 
                     if (IsPaused)
                     {
+                        if (sw.Elapsed.TotalSeconds >= IDLE_TIMEOUT_LIMIT)
+                        {
+                            OnIdleTimeout?.Invoke(this);
+                            break;
+                        }
                         await Task.Delay(200);
                         continue;
                     }
@@ -519,6 +533,7 @@ public sealed class MusicPlayer : IMusicPlayer
         OnCompleted = null;
         OnStarted = null;
         OnQueueStopped = null;
+        OnIdleTimeout = null;
         _queue.Clear();
         _songBuffer.Dispose();
         _vc.Dispose();

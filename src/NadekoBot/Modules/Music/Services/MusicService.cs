@@ -173,6 +173,7 @@ public sealed class MusicService : IMusicService
         mp.OnCompleted += OnTrackCompleted(guildId);
         mp.OnStarted += OnTrackStarted(guildId);
         mp.OnQueueStopped += OnQueueStopped(guildId);
+        mp.OnIdleTimeout += OnIdleTimeout(guildId);
 
         return mp;
     }
@@ -231,6 +232,9 @@ public sealed class MusicService : IMusicService
 
             return Task.CompletedTask;
         };
+
+    private Func<IMusicPlayer, Task> OnIdleTimeout(ulong guildId)
+        => _ => LeaveVoiceChannelAsync(guildId);
 
     // this has to be done because dragging bot to another vc isn't supported yet
     public async Task<bool> PlayAsync(ulong guildId, ulong voiceChannelId)
@@ -452,7 +456,7 @@ public sealed class MusicService : IMusicService
 
         if (TryGetMusicPlayer(guildId, out var mp))
             mp.AutoPlay = newValue;
-        
+
         return newValue;
     }
 
