@@ -14,7 +14,7 @@ public class CurrencyService : ICurrencyService, INService
     public Task<IWallet> GetWalletAsync(ulong userId, CurrencyType type = CurrencyType.Default)
     {
         if (type == CurrencyType.Default)
-            return Task.FromResult<IWallet>(new DefaultWallet(userId, _db.GetDbContext()));
+            return Task.FromResult<IWallet>(new DefaultWallet(userId, _db));
 
         throw new ArgumentOutOfRangeException(nameof(type));
     }
@@ -27,14 +27,12 @@ public class CurrencyService : ICurrencyService, INService
     {
         if (type == CurrencyType.Default)
         {
-            await using var ctx = _db.GetDbContext();
             foreach (var userId in userIds)
             {
-                var wallet = new DefaultWallet(userId, ctx);
+                var wallet = await GetWalletAsync(userId);
                 await wallet.Add(amount, txData);
             }
-
-            await ctx.SaveChangesAsync();
+            
             return;
         }
 
@@ -58,6 +56,7 @@ public class CurrencyService : ICurrencyService, INService
                              ? du.CurrencyAmount - amount
                              : 0
                      });
+            await ctx.SaveChangesAsync();
             return;
         }
 
@@ -69,7 +68,7 @@ public class CurrencyService : ICurrencyService, INService
         long amount,
         TxData txData)
     {
-        await using var wallet = await GetWalletAsync(userId);
+        var wallet = await GetWalletAsync(userId);
         await wallet.Add(amount, txData);
     }
 
@@ -78,7 +77,7 @@ public class CurrencyService : ICurrencyService, INService
         long amount,
         TxData txData)
     {
-        await using var wallet = await GetWalletAsync(user.Id);
+        var wallet = await GetWalletAsync(user.Id);
         await wallet.Add(amount, txData);
     }
 
@@ -87,7 +86,7 @@ public class CurrencyService : ICurrencyService, INService
         long amount,
         TxData txData)
     {
-        await using var wallet = await GetWalletAsync(userId);
+        var wallet = await GetWalletAsync(userId);
         return await wallet.Take(amount, txData);
     }
 
@@ -96,22 +95,7 @@ public class CurrencyService : ICurrencyService, INService
         long amount,
         TxData txData)
     {
-        await using var wallet = await GetWalletAsync(user.Id);
+        var wallet = await GetWalletAsync(user.Id);
         return await wallet.Take(amount, txData);
-    }
-
-    public async Task<bool> TransferAsync(
-        ulong fromId,
-        ulong toId,
-        long amount,
-        string fromName,
-        string note)
-    {
-        await using var fromWallet = await GetWalletAsync(fromId);
-        await using var toWallet = await GetWalletAsync(toId);
-
-        var extra = new TxData("gift", fromName, note, fromId);
-
-        return await fromWallet.Transfer(amount, toWallet, extra);
     }
 }

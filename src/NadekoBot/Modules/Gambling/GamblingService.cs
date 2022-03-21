@@ -60,7 +60,6 @@ public class GamblingService : INService, IReadyExecutor
                 await using var uow = _db.GetDbContext();
                 await uow.CurrencyTransactions
                          .DeleteAsync(ct => ct.DateAdded == null || now - ct.DateAdded < days);
-                await uow.SaveChangesAsync();
             }
             catch (Exception ex)
             {
@@ -102,17 +101,16 @@ public class GamblingService : INService, IReadyExecutor
                 if (maxDecay == 0)
                     maxDecay = int.MaxValue;
 
-                await uow.Database.ExecuteSqlInterpolatedAsync($@"
-UPDATE DiscordUser
-SET CurrencyAmount=
-    CASE WHEN
-    {maxDecay} > ROUND(CurrencyAmount * {config.Decay.Percent} - 0.5)
-    THEN
-    CurrencyAmount - ROUND(CurrencyAmount * {config.Decay.Percent} - 0.5)
-    ELSE
-    CurrencyAmount - {maxDecay}
-    END
-WHERE CurrencyAmount > {config.Decay.MinThreshold} AND UserId!={_client.CurrentUser.Id};");
+                var decay = (double)config.Decay.Percent;
+                await uow.DiscordUser
+                         .Where(x => x.CurrencyAmount > config.Decay.MinThreshold && x.UserId != _client.CurrentUser.Id)
+                         .UpdateAsync(old => new()
+                         {
+                             CurrencyAmount =
+                                 maxDecay > Sql.Round((old.CurrencyAmount * decay) - 0.5)
+                                     ? (long)(old.CurrencyAmount - Sql.Round((old.CurrencyAmount * decay) - 0.5))
+                                     : old.CurrencyAmount - maxDecay 
+                         });
 
                 _cache.SetLastCurrencyDecay();
                 await uow.SaveChangesAsync();

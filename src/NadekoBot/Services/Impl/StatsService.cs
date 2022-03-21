@@ -5,9 +5,9 @@ using System.Diagnostics;
 
 namespace NadekoBot.Services;
 
-public class StatsService : IStatsService, IReadyExecutor, INService, IDisposable
+public sealed class StatsService : IStatsService, IReadyExecutor, INService, IDisposable
 {
-    public const string BOT_VERSION = "4.0.3";
+    public const string BOT_VERSION = "4.0.5";
 
     public string Author
         => "Kwoth#2452";
@@ -133,11 +133,16 @@ public class StatsService : IStatsService, IReadyExecutor, INService, IDisposabl
         };
     }
 
-    public async Task OnReadyAsync()
+    private void InitializeChannelCount()
     {
         var guilds = _client.Guilds;
-        textChannels = guilds.Sum(g => g.Channels.Count(cx => cx is ITextChannel));
-        voiceChannels = guilds.Sum(g => g.Channels.Count(cx => cx is IVoiceChannel));
+        textChannels = guilds.Sum(static g => g.Channels.Count(static cx => cx is ITextChannel));
+        voiceChannels = guilds.Sum(static g => g.Channels.Count(static cx => cx is IVoiceChannel));
+    }
+    
+    public async Task OnReadyAsync()
+    {
+        InitializeChannelCount();
 
         using var timer = new PeriodicTimer(TimeSpan.FromHours(1));
         do
