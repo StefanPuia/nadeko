@@ -1,7 +1,4 @@
-[![Discord](https://discordapp.com/api/guilds/117523346618318850/widget.png)](https://discord.gg/nadekobot)
-[![Documentation Status](https://readthedocs.org/projects/nadekobot/badge/?version=latest)](http://nadekobot.readthedocs.io/en/v4/?badge=v4)
-[![Discord Bots](https://discordbots.org/api/widget/status/116275390695079945.svg)](https://top.gg/bot/116275390695079945)  
-
+[![Docker Image CI](https://github.com/StefanPuia/nadeko/actions/workflows/build-push.yml/badge.svg)](https://github.com/StefanPuia/nadeko/actions/workflows/build-push.yml)
   
 [![nadeko0](https://cdn.nadeko.bot/tutorial/docs-top.png)](https://nadeko.bot/)  
   
