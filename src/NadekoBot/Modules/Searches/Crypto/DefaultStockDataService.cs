@@ -47,10 +47,9 @@ public sealed class DefaultStockDataService : IStockDataService, INService
                 Exchange = symbol.FullExchangeName
             };
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            // what the hell is this api exception
-            Log.Warning(ex, "Error getting stock data: {ErrorMessage}", ex.Message);
+            // Log.Warning(ex, "Error getting stock data: {ErrorMessage}", ex.Message);
             return default;
         }
     }
