@@ -1,5 +1,5 @@
 [![Docker Image CI](https://github.com/StefanPuia/nadeko/actions/workflows/build-push.yml/badge.svg)](https://github.com/StefanPuia/nadeko/actions/workflows/build-push.yml)
-  
+
 [![nadeko0](https://cdn.nadeko.bot/tutorial/docs-top.png)](https://nadeko.bot/)  
   
 [![nadeko1](https://cdn.nadeko.bot/tutorial/docs-mid.png)](https://invite.nadeko.bot/)  

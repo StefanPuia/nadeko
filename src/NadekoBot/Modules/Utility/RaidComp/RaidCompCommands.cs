@@ -24,7 +24,7 @@ public partial class Utility
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [Ratelimit(5)]
-        public async partial Task RaidComp(string csvLink)
+        public async Task RaidComp(string csvLink)
         {
             try
             {
@@ -40,7 +40,7 @@ public partial class Utility
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
-        public async partial Task RaiderRoleCheck(IRole role)
+        public async Task RaiderRoleCheck(IRole role)
         {
             try
             {

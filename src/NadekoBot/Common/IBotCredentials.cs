@@ -25,6 +25,7 @@ public interface IBotCredentials
     string CoordinatorUrl { get; set; }
     string TwitchClientId { get; set; }
     string TwitchClientSecret { get; set; }
+    RaidCompConfig RaidComp { get; set; }
     GoogleApiConfig Google { get; set; }
     BotCacheImplemenation BotCache { get; set; }
 }
@@ -33,4 +34,12 @@ public class RestartConfig
 {
     public string Cmd { get; set; }
     public string Args { get; set; }
+}
+
+public class RaidCompConfig
+{
+    public string Api { get; set; }
+    public string Web { get; set; }
+    public ulong AutoChannel { get; set; }
+    public ICollection<ulong> AllowedRaidCompBots { get; set; }
 }

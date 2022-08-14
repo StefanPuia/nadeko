@@ -111,9 +111,3 @@ twitchClientSecret:
 restartCommand:
   cmd: 
   args: 
-# Configuration for RaidComp integration
-raidComp:
-  api: ''
-  web: ''
-  autoChannel: 0
-  allowedRaidCompBots: []

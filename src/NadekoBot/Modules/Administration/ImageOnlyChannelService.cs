@@ -11,7 +11,6 @@ namespace NadekoBot.Modules.Administration.Services;
 public sealed class SomethingOnlyChannelService : IExecOnMessage
 {
     public int Priority { get; } = 0;
-    public bool AllowBots => false;
     private readonly IMemoryCache _ticketCache;
     private readonly DiscordSocketClient _client;
     private readonly DbService _db;

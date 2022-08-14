@@ -99,7 +99,7 @@ public sealed class MusicPlayer : IMusicPlayer
             // wait until a song is available in the queue
             // or until the queue is resumed
             var track = _queue.GetCurrent(out var index);
-            
+
             if ((IsStopped || IsPaused) && sw.Elapsed.TotalSeconds >= IDLE_TIMEOUT_LIMIT)
             {
                 OnIdleTimeout?.Invoke(this);

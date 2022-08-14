@@ -13,8 +13,6 @@ public class PollService : IExecOnMessage
     public int Priority
         => 5;
 
-    public bool AllowBots => false;
-
     private readonly DbService _db;
     private readonly IBotStrings _strs;
     private readonly IEmbedBuilderService _eb;

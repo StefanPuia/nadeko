@@ -103,6 +103,9 @@ You should use this if Trovo stream notifications stopped working or you're gett
     [Comment(@"Obtain by creating an application at https://dev.twitch.tv/console/apps")]
     public string TwitchClientSecret { get; set; }
 
+    [Comment(@"Configuration for RaidComp integration")]
+    public RaidCompConfig RaidComp { get; set; }
+
     [Comment(@"Command and args which will be used to restart the bot.
 Only used if bot is executed directly (NOT through the coordinator)
 placeholders: 
@@ -139,6 +142,7 @@ Windows default
         CoordinatorUrl = "http://localhost:3442";
 
         RestartCommand = new();
+        RaidComp = new();
         Google = new();
     }
 

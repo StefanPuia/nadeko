@@ -6,7 +6,7 @@ using System.Text;
 
 namespace NadekoBot.Modules.Utility.Services;
 
-public class RaidCompService : IEarlyBehavior, INService
+public class RaidCompService : IExecOnMessage, INService
 {
     private readonly IBotCredentials _creds;
     private readonly DiscordSocketClient _client;
@@ -28,7 +28,7 @@ public class RaidCompService : IEarlyBehavior, INService
     public int Priority => -1;
     public bool AllowBots => true;
 
-    public async Task<bool> RunBehavior(IGuild guild, IUserMessage msg)
+    public async Task<bool> ExecOnMessageAsync(IGuild guild, IUserMessage msg)
     {
         if (!_creds.RaidComp.AllowedRaidCompBots.Contains(msg.Author.Id) || msg.Attachments.Count != 1) return false;
         try

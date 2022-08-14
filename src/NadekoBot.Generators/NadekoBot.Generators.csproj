@@ -13,14 +13,6 @@
         <PackageReference Include="Newtonsoft.Json" Version="13.0.1" PrivateAssets="all" GeneratePathProperty="true" />
     </ItemGroup>
     
-    <ItemGroup>
-      <Content Include="bin\Debug\netstandard2.0\NadekoBot.Generators.dll" />
-    </ItemGroup>
-    
-    <ItemGroup>
-      <Folder Include="bin\Debug\netstandard2.0" />
-    </ItemGroup>
-    
     <PropertyGroup>
         <GetTargetPathDependsOn>$(GetTargetPathDependsOn);GetDependencyTargetPaths</GetTargetPathDependsOn>
     </PropertyGroup>

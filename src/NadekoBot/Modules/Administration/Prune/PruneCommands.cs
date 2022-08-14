@@ -89,7 +89,7 @@ public partial class Administration
         [UserPerm(ChannelPerm.ManageMessages)]
         [BotPerm(ChannelPerm.ManageMessages)]
         [Priority(0)]
-        public async partial Task PruneOld(int count = -1, int ageMinutes = 0, string parameter = null)
+        public async Task PruneOld(int count = -1, int ageMinutes = 0, string parameter = null)
         {
             count++;
             switch (count)
