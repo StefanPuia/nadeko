@@ -1,5 +1,5 @@
 ﻿#nullable disable
-using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace NadekoBot;
 
@@ -11,6 +11,9 @@ public abstract record SmartText
     public bool IsPlainText
         => this is SmartPlainText;
 
+    public bool IsEmbedArray
+        => this is SmartEmbedTextArray;
+    
     public static SmartText operator +(SmartText text, string input)
         => text switch
         {
@@ -19,6 +22,10 @@ public abstract record SmartText
                 PlainText = set.PlainText + input
             },
             SmartPlainText spt => new SmartPlainText(spt.Text + input),
+            SmartEmbedTextArray arr => arr with
+            {
+                Content = arr.Content + input
+            },
             _ => throw new ArgumentOutOfRangeException(nameof(text))
         };
 
@@ -30,27 +37,45 @@ public abstract record SmartText
                 PlainText = input + set.PlainText
             },
             SmartPlainText spt => new SmartPlainText(input + spt.Text),
+            SmartEmbedTextArray arr => arr with
+            {
+                Content = input + arr.Content
+            },
             _ => throw new ArgumentOutOfRangeException(nameof(text))
         };
 
     public static SmartText CreateFrom(string input)
     {
-        if (string.IsNullOrWhiteSpace(input) || !input.TrimStart().StartsWith("{"))
+        if (string.IsNullOrWhiteSpace(input))
             return new SmartPlainText(input);
 
         try
         {
-            var smartEmbedText = JsonConvert.DeserializeObject<SmartEmbedText>(input);
+            var doc = JObject.Parse(input);
+            var root = doc.Root;
+            if (root.Type == JTokenType.Object)
+            {
+                if (((JObject)root).TryGetValue("embeds", out _))
+                {
+                    var arr = root.ToObject<SmartEmbedTextArray>();
 
-            if (smartEmbedText is null)
-                throw new FormatException();
+                    if (arr is null)
+                        return new SmartPlainText(input);
 
-            smartEmbedText.NormalizeFields();
+                    arr!.NormalizeFields();
+                    return arr;
+                }
 
-            if (!smartEmbedText.IsValid)
-                return new SmartPlainText(input);
+                var obj = root.ToObject<SmartEmbedText>();
 
-            return smartEmbedText;
+                if (obj is null || !(obj.IsValid || !string.IsNullOrWhiteSpace(obj.PlainText)))
+                    return new SmartPlainText(input);
+
+                obj.NormalizeFields();
+                return obj;
+            }
+            
+            return new SmartPlainText(input);
         }
         catch
         {

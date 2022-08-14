@@ -1,6 +1,6 @@
 # Placeholders
 
-Placeholders are used in Quotes, Custom Reactions, Greet/Bye messages, playing statuses, and a few other places.
+Placeholders are used in Quotes, Expressions, Greet/Bye messages, playing statuses, and a few other places.
 
 They can be used to make the message more user friendly, generate random numbers or pictures, etc.
 
@@ -28,6 +28,8 @@ Some features have their own specific placeholders which are noted in that featu
 - `%server.id%` - Server ID
 - `%server.name%` - Server name
 - `%server.members%` - Member count
+- `%server.boosters%` - Number of users boosting the server
+- `%server.boost_level%` - Server Boost level
 - `%server.time%` - Server time (requires `.timezone` to be set)
 
 ### Channel placeholders
@@ -79,16 +81,14 @@ Some features have their own specific placeholders which are noted in that featu
 
 ### Music placeholders
 
-!!! Note
-    These placeholders will only work in rotating playing statuses.
-
-- `%music.queued%` - Amount of songs currently queued
-- `%music.playing%` - Current song name
+- `%music.queued%` - Number of songs currently queued
+- `%music.playing%` - Current song name (random playing song if bot is playing on multiple servers)
+- `%music.servers%` - Number of servers currently listening to music
 
 ### Miscellaneous placeholders
 
 - `%rngX-Y%` - Returns a random number between X and Y
-- `%target%` - Returns anything the user has written after the trigger (only works on custom reactions)
-- `%img:stuff%` - Returns an `imgur.com` search for "stuff" (only works on custom reactions)
+- `%target%` - Returns anything the user has written after the trigger (only works on Expressions)
+- `%img:stuff%` - Returns an `imgur.com` search for "stuff" (only works on Expressions)
 
 ![img](https://puu.sh/B7mgI.png)

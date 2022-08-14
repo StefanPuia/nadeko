@@ -1,5 +1,6 @@
 ﻿#nullable disable
 using System.Globalization;
+using MessageType = NadekoBot.Extensions.MessageType;
 
 // ReSharper disable InconsistentNaming
 
@@ -17,6 +18,7 @@ public abstract class NadekoModule : ModuleBase
     public CommandHandler _cmdHandler { get; set; }
     public ILocalization _localization { get; set; }
     public IEmbedBuilderService _eb { get; set; }
+    public INadekoInteractionService _inter { get; set; }
 
     protected string prefix
         => _cmdHandler.GetPrefix(ctx.Guild);
@@ -29,20 +31,15 @@ public abstract class NadekoModule : ModuleBase
 
     protected string GetText(in LocStr data)
         => Strings.GetText(data, Culture);
-
-    public Task<IUserMessage> SendErrorAsync(string error)
-        => ctx.Channel.SendErrorAsync(_eb, error);
-
+    
     public Task<IUserMessage> SendErrorAsync(
         string title,
         string error,
         string url = null,
-        string footer = null)
+        string footer = null, 
+        NadekoInteraction inter = null)
         => ctx.Channel.SendErrorAsync(_eb, title, error, url, footer);
-
-    public Task<IUserMessage> SendConfirmAsync(string text)
-        => ctx.Channel.SendConfirmAsync(_eb, text);
-
+    
     public Task<IUserMessage> SendConfirmAsync(
         string title,
         string text,
@@ -50,26 +47,34 @@ public abstract class NadekoModule : ModuleBase
         string footer = null)
         => ctx.Channel.SendConfirmAsync(_eb, title, text, url, footer);
 
-    public Task<IUserMessage> SendPendingAsync(string text)
-        => ctx.Channel.SendPendingAsync(_eb, text);
+    // 
+    public Task<IUserMessage> SendErrorAsync(string text, NadekoInteraction inter = null)
+        => ctx.Channel.SendAsync(_eb, text, MessageType.Error, inter);
+    public Task<IUserMessage> SendConfirmAsync(string text, NadekoInteraction inter = null)
+        => ctx.Channel.SendAsync(_eb, text, MessageType.Ok, inter);
+    public Task<IUserMessage> SendPendingAsync(string text, NadekoInteraction inter = null)
+        => ctx.Channel.SendAsync(_eb, text, MessageType.Pending, inter);
 
-    public Task<IUserMessage> ErrorLocalizedAsync(LocStr str)
-        => SendErrorAsync(GetText(str));
+    
+    // localized normal
+    public Task<IUserMessage> ErrorLocalizedAsync(LocStr str, NadekoInteraction inter = null)
+        => SendErrorAsync(GetText(str), inter);
 
-    public Task<IUserMessage> PendingLocalizedAsync(LocStr str)
-        => SendPendingAsync(GetText(str));
+    public Task<IUserMessage> PendingLocalizedAsync(LocStr str, NadekoInteraction inter = null)
+        => SendPendingAsync(GetText(str), inter);
 
-    public Task<IUserMessage> ConfirmLocalizedAsync(LocStr str)
-        => SendConfirmAsync(GetText(str));
+    public Task<IUserMessage> ConfirmLocalizedAsync(LocStr str, NadekoInteraction inter = null)
+        => SendConfirmAsync(GetText(str), inter);
 
-    public Task<IUserMessage> ReplyErrorLocalizedAsync(LocStr str)
-        => SendErrorAsync($"{Format.Bold(ctx.User.ToString())} {GetText(str)}");
+    // localized replies
+    public Task<IUserMessage> ReplyErrorLocalizedAsync(LocStr str, NadekoInteraction inter = null)
+        => SendErrorAsync($"{Format.Bold(ctx.User.ToString())} {GetText(str)}", inter);
 
-    public Task<IUserMessage> ReplyPendingLocalizedAsync(LocStr str)
-        => SendPendingAsync($"{Format.Bold(ctx.User.ToString())} {GetText(str)}");
+    public Task<IUserMessage> ReplyPendingLocalizedAsync(LocStr str, NadekoInteraction inter = null)
+        => SendPendingAsync($"{Format.Bold(ctx.User.ToString())} {GetText(str)}", inter);
 
-    public Task<IUserMessage> ReplyConfirmLocalizedAsync(LocStr str)
-        => SendConfirmAsync($"{Format.Bold(ctx.User.ToString())} {GetText(str)}");
+    public Task<IUserMessage> ReplyConfirmLocalizedAsync(LocStr str, NadekoInteraction inter = null)
+        => SendConfirmAsync($"{Format.Bold(ctx.User.ToString())} {GetText(str)}", inter);
 
     public async Task<bool> PromptUserConfirmAsync(IEmbedBuilder embed)
     {

@@ -1,16 +1,13 @@
-#nullable disable
+#nullable disable warnings
+using Cloneable;
+
 namespace NadekoBot.Modules.Xp.Services;
 
-public class UserCacheItem
+[Cloneable]
+public sealed partial class UserXpGainData : ICloneable<UserXpGainData>
 {
-    public IGuildUser User { get; set; }
-    public IGuild Guild { get; set; }
-    public IMessageChannel Channel { get; set; }
+    public IGuildUser User { get; init; }
+    public IGuild Guild { get; init; }
+    public IMessageChannel Channel { get; init; }
     public int XpAmount { get; set; }
-
-    public override int GetHashCode()
-        => User.GetHashCode();
-
-    public override bool Equals(object obj)
-        => obj is UserCacheItem uci && uci.User == User;
 }

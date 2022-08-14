@@ -191,6 +191,11 @@ public class GreetService : INService, IReadyExecutor
             if (conf.AutoDeleteByeMessagesTimer > 0)
                 toDelete.DeleteAfter(conf.AutoDeleteByeMessagesTimer);
         }
+        catch (HttpException ex) when (ex.DiscordCode == DiscordErrorCode.InsufficientPermissions)
+        {
+            Log.Warning(ex, "Missing permissions to send a bye message, the bye message will be disabled on server: {GuildId}", channel.GuildId);
+            await SetBye(channel.GuildId, channel.Id, false);
+        }
         catch (Exception ex)
         {
             Log.Warning(ex, "Error embeding bye message");
@@ -218,6 +223,11 @@ public class GreetService : INService, IReadyExecutor
             var toDelete = await channel.SendAsync(text);
             if (conf.AutoDeleteGreetMessagesTimer > 0)
                 toDelete.DeleteAfter(conf.AutoDeleteGreetMessagesTimer);
+        }
+        catch (HttpException ex) when (ex.DiscordCode == DiscordErrorCode.InsufficientPermissions)
+        {
+            Log.Warning(ex, "Missing permissions to send a bye message, the greet message will be disabled on server: {GuildId}", channel.GuildId);
+            await SetGreet(channel.GuildId, channel.Id, false);
         }
         catch (Exception ex)
         {
@@ -256,15 +266,55 @@ public class GreetService : INService, IReadyExecutor
             {
                 text = new SmartEmbedText()
                 {
-                    PlainText = pt.Text
+                    Description = pt.Text
                 };
             }
-
-            ((SmartEmbedText)text).Footer = new()
+            
+            if (text is SmartEmbedText set)
             {
-                Text = $"This message was sent from {user.Guild} server.",
-                IconUrl = user.Guild.IconUrl
-            };
+                text = set with
+                {
+                    Footer = CreateFooterSource(user)
+                };
+            }
+            else if (text is SmartEmbedTextArray seta)
+            {
+                // if the greet dm message is a text array
+                var ebElem = seta.Embeds.LastOrDefault();
+                if (ebElem is null)
+                {
+                    // if there are no embeds, add an embed with the footer
+                    text = seta with
+                    {
+                        Embeds = new[]
+                        {
+                            new SmartEmbedArrayElementText()
+                            {
+                                Footer = CreateFooterSource(user)
+                            }
+                        }
+                    };
+                }
+                else
+                {
+                    // if the maximum amount of embeds is reached, edit the last embed
+                    if (seta.Embeds.Length >= 10)
+                    {
+                        seta.Embeds[^1] = seta.Embeds[^1] with
+                        {
+                            Footer = CreateFooterSource(user)
+                        };
+                    }
+                    else
+                    {
+                        // if there is less than 10 embeds, add an embed with footer only
+                        seta.Embeds = seta.Embeds.Append(new SmartEmbedArrayElementText()
+                        {
+                            Footer = CreateFooterSource(user)
+                        }).ToArray();
+                    }
+                }
+            }
 
             await user.SendAsync(text);
         }
@@ -275,6 +325,13 @@ public class GreetService : INService, IReadyExecutor
 
         return true;
     }
+
+    private static SmartTextEmbedFooter CreateFooterSource(IGuildUser user)
+        => new()
+        {
+            Text = $"This message was sent from {user.Guild} server.",
+            IconUrl = user.Guild.IconUrl
+        };
 
     private Task OnUserJoined(IGuildUser user)
     {

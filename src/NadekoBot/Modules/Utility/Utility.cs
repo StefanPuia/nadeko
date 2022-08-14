@@ -1,9 +1,13 @@
 #nullable disable
+using Microsoft.CodeAnalysis.CSharp.Scripting;
+using Microsoft.CodeAnalysis.Scripting;
+using NadekoBot.Modules.Utility.Services;
 using Newtonsoft.Json;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Nadeko.Common;
 using SystemTextJsonSamples;
 
 namespace NadekoBot.Modules.Utility;
@@ -32,6 +36,7 @@ public partial class Utility : NadekoModule
     private readonly IBotCredentials _creds;
     private readonly DownloadTracker _tracker;
     private readonly IHttpClientFactory _httpFactory;
+    private readonly VerboseErrorsService _veService;
 
     public Utility(
         DiscordSocketClient client,
@@ -39,7 +44,8 @@ public partial class Utility : NadekoModule
         IStatsService stats,
         IBotCredentials creds,
         DownloadTracker tracker,
-        IHttpClientFactory httpFactory)
+        IHttpClientFactory httpFactory,
+        VerboseErrorsService veService)
     {
         _client = client;
         _coord = coord;
@@ -47,13 +53,14 @@ public partial class Utility : NadekoModule
         _creds = creds;
         _tracker = tracker;
         _httpFactory = httpFactory;
+        _veService = veService;
     }
-
+    
     [Cmd]
     [RequireContext(ContextType.Guild)]
     [UserPerm(GuildPerm.ManageMessages)]
     [Priority(1)]
-    public async partial Task Say(ITextChannel channel, [Leftover] SmartText message)
+    public async Task Say(ITextChannel channel, [Leftover] SmartText message)
     {
         var rep = new ReplacementBuilder()
                   .WithDefault(ctx.User, channel, (SocketGuild)ctx.Guild, (DiscordSocketClient)ctx.Client)
@@ -68,12 +75,12 @@ public partial class Utility : NadekoModule
     [RequireContext(ContextType.Guild)]
     [UserPerm(GuildPerm.ManageMessages)]
     [Priority(0)]
-    public partial Task Say([Leftover] SmartText message)
+    public Task Say([Leftover] SmartText message)
         => Say((ITextChannel)ctx.Channel, message);
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task WhosPlaying([Leftover] string game)
+    public async Task WhosPlaying([Leftover] string game)
     {
         game = game?.Trim().ToUpperInvariant();
         if (string.IsNullOrWhiteSpace(game))
@@ -110,7 +117,7 @@ public partial class Utility : NadekoModule
     [Cmd]
     [RequireContext(ContextType.Guild)]
     [Priority(0)]
-    public async partial Task InRole(int page, [Leftover] IRole role = null)
+    public async Task InRole(int page, [Leftover] IRole role = null)
     {
         if (--page < 0)
             return;
@@ -146,12 +153,12 @@ public partial class Utility : NadekoModule
     [Cmd]
     [RequireContext(ContextType.Guild)]
     [Priority(1)]
-    public partial Task InRole([Leftover] IRole role = null)
+    public Task InRole([Leftover] IRole role = null)
         => InRole(1, role);
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task CheckPerms(MeOrBot who = MeOrBot.Me)
+    public async Task CheckPerms(MeOrBot who = MeOrBot.Me)
     {
         var builder = new StringBuilder();
         var user = who == MeOrBot.Me ? (IGuildUser)ctx.User : ((SocketGuild)ctx.Guild).CurrentUser;
@@ -171,7 +178,7 @@ public partial class Utility : NadekoModule
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task UserId([Leftover] IGuildUser target = null)
+    public async Task UserId([Leftover] IGuildUser target = null)
     {
         var usr = target ?? ctx.User;
         await ReplyConfirmLocalizedAsync(strs.userid("🆔",
@@ -181,23 +188,23 @@ public partial class Utility : NadekoModule
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task RoleId([Leftover] IRole role)
+    public async Task RoleId([Leftover] IRole role)
         => await ReplyConfirmLocalizedAsync(strs.roleid("🆔",
             Format.Bold(role.ToString()),
             Format.Code(role.Id.ToString())));
 
     [Cmd]
-    public async partial Task ChannelId()
+    public async Task ChannelId()
         => await ReplyConfirmLocalizedAsync(strs.channelid("🆔", Format.Code(ctx.Channel.Id.ToString())));
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task ServerId()
+    public async Task ServerId()
         => await ReplyConfirmLocalizedAsync(strs.serverid("🆔", Format.Code(ctx.Guild.Id.ToString())));
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task Roles(IGuildUser target, int page = 1)
+    public async Task Roles(IGuildUser target, int page = 1)
     {
         var guild = ctx.Guild;
 
@@ -241,12 +248,12 @@ public partial class Utility : NadekoModule
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public partial Task Roles(int page = 1)
+    public Task Roles(int page = 1)
         => Roles(null, page);
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task ChannelTopic([Leftover] ITextChannel channel = null)
+    public async Task ChannelTopic([Leftover] ITextChannel channel = null)
     {
         if (channel is null)
             channel = (ITextChannel)ctx.Channel;
@@ -259,7 +266,7 @@ public partial class Utility : NadekoModule
     }
 
     [Cmd]
-    public async partial Task Stats()
+    public async Task Stats()
     {
         var ownerIds = string.Join("\n", _creds.OwnerIds);
         if (string.IsNullOrWhiteSpace(ownerIds))
@@ -280,7 +287,7 @@ public partial class Utility : NadekoModule
                                             $"{_stats.MessageCounter} ({_stats.MessagesPerSecond:F2}/sec)",
                                             true)
                                         .AddField(GetText(strs.memory),
-                                            FormattableString.Invariant($"{_stats.GetPrivateMemory():F2} MB"),
+                                            FormattableString.Invariant($"{_stats.GetPrivateMemoryMegabytes():F2} MB"),
                                             true)
                                         .AddField(GetText(strs.owner_ids), ownerIds, true)
                                         .AddField(GetText(strs.uptime), _stats.GetUptimeString("\n"), true)
@@ -292,7 +299,7 @@ public partial class Utility : NadekoModule
     }
 
     [Cmd]
-    public async partial Task
+    public async Task
         Showemojis([Leftover] string _) // need to have the parameter so that the message.tags gets populated
     {
         var tags = ctx.Message.Tags.Where(t => t.Type == TagType.Emoji).Select(t => (Emote)t.Value);
@@ -310,7 +317,7 @@ public partial class Utility : NadekoModule
     [BotPerm(GuildPerm.ManageEmojisAndStickers)]
     [UserPerm(GuildPerm.ManageEmojisAndStickers)]
     [Priority(2)]
-    public partial Task EmojiAdd(string name, Emote emote)
+    public Task EmojiAdd(string name, Emote emote)
         => EmojiAdd(name, emote.Url);
 
     [Cmd]
@@ -318,7 +325,7 @@ public partial class Utility : NadekoModule
     [BotPerm(GuildPerm.ManageEmojisAndStickers)]
     [UserPerm(GuildPerm.ManageEmojisAndStickers)]
     [Priority(1)]
-    public partial Task EmojiAdd(Emote emote)
+    public Task EmojiAdd(Emote emote)
         => EmojiAdd(emote.Name, emote.Url);
 
     [Cmd]
@@ -326,7 +333,7 @@ public partial class Utility : NadekoModule
     [BotPerm(GuildPerm.ManageEmojisAndStickers)]
     [UserPerm(GuildPerm.ManageEmojisAndStickers)]
     [Priority(0)]
-    public async partial Task EmojiAdd(string name, string url = null)
+    public async Task EmojiAdd(string name, string url = null)
     {
         name = name.Trim(':');
 
@@ -337,7 +344,7 @@ public partial class Utility : NadekoModule
 
         using var http = _httpFactory.CreateClient();
         using var res = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
-        if (!res.IsImage() || res.GetImageSize() is null or > 262_144)
+        if (!res.IsImage() || res.GetContentLength() > 262_144)
         {
             await ReplyErrorLocalizedAsync(strs.invalid_emoji_link);
             return;
@@ -361,8 +368,43 @@ public partial class Utility : NadekoModule
     }
 
     [Cmd]
+    [RequireContext(ContextType.Guild)]
+    [BotPerm(GuildPerm.ManageEmojisAndStickers)]
+    [UserPerm(GuildPerm.ManageEmojisAndStickers)]
+    [Priority(0)]
+    public async Task EmojiRemove(params Emote[] emotes)
+    {
+        if (emotes.Length == 0)
+            return;
+        
+        var g = (SocketGuild)ctx.Guild;
+        
+        var fails = new List<Emote>();
+        foreach (var emote in emotes)
+        {
+            var guildEmote = g.Emotes.FirstOrDefault(x => x.Id == emote.Id);
+            if (guildEmote is null)
+            {
+                fails.Add(emote);
+            }
+            else
+            {
+                await ctx.Guild.DeleteEmoteAsync(guildEmote);
+            }
+        }
+
+        if (fails.Count > 0)
+        {
+            await ReplyPendingLocalizedAsync(strs.emoji_not_removed(fails.Select(x => x.ToString()).Join(" ")));
+            return;
+        }
+
+        await ctx.OkAsync();
+    }
+
+    [Cmd]
     [OwnerOnly]
-    public async partial Task ListServers(int page = 1)
+    public async Task ListServers(int page = 1)
     {
         page -= 1;
 
@@ -389,12 +431,12 @@ public partial class Utility : NadekoModule
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public partial Task ShowEmbed(ulong messageId)
+    public Task ShowEmbed(ulong messageId)
         => ShowEmbed((ITextChannel)ctx.Channel, messageId);
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task ShowEmbed(ITextChannel ch, ulong messageId)
+    public async Task ShowEmbed(ITextChannel ch, ulong messageId)
     {
         var user = (IGuildUser)ctx.User;
         var perms = user.GetPermissions(ch);
@@ -425,7 +467,7 @@ public partial class Utility : NadekoModule
     [Cmd]
     [RequireContext(ContextType.Guild)]
     [OwnerOnly]
-    public async partial Task SaveChat(int cnt)
+    public async Task SaveChat(int cnt)
     {
         var msgs = new List<IMessage>(cnt);
         await ctx.Channel.GetMessagesAsync(cnt).ForEachAsync(dled => msgs.AddRange(dled));
@@ -465,10 +507,7 @@ public partial class Utility : NadekoModule
     }
 
     [Cmd]
-#if GLOBAL_NADEKO
-        [Ratelimit(30)]
-#endif
-    public async partial Task Ping()
+    public async Task Ping()
     {
         await sem.WaitAsync(5000);
         try
@@ -485,44 +524,17 @@ public partial class Utility : NadekoModule
             sem.Release();
         }
     }
+    
+    [Cmd]
+    [RequireContext(ContextType.Guild)]
+    [UserPerm(GuildPerm.ManageMessages)]
+    public async Task VerboseError(bool? newstate = null)
+    {
+        var state = _veService.ToggleVerboseErrors(ctx.Guild.Id, newstate);
 
-
-    // [NadekoCommand, Usage, Description, Aliases]
-    // [RequireContext(ContextType.Guild)]
-    // public async Task CreateMyInvite(CreateInviteType type = CreateInviteType.Any)
-    // {
-    //     if (type == CreateInviteType.Any)
-    //     {
-    //         if (_inviteService.TryGetInvite(type, out var code))
-    //         {
-    //             await ReplyErrorLocalizedAsync(strs.your_invite($"https://discord.gg/{code}"));
-    //             return;
-    //         }
-    //     }
-    //     
-    //     var invite = await ((ITextChannel) ctx.Channel).CreateInviteAsync(isUnique: true);
-    // }
-    //
-    // [NadekoCommand, Usage, Description, Aliases]
-    // [RequireContext(ContextType.Guild)]
-    // public async partial Task InviteLb(int page = 1)
-    // {
-    //     if (--page < 0)
-    //         return;
-    //
-    //     var inviteUsers = await _inviteService.GetInviteUsersAsync(ctx.Guild.Id);
-    //     
-    //     var embed = _eb.Create()
-    //         .WithOkColor();
-    //
-    //     await ctx.SendPaginatedConfirmAsync(page, (curPage) =>
-    //     {
-    //         var items = inviteUsers.Skip(curPage * 9).Take(9);
-    //         var i = 0;
-    //         foreach (var item in items)
-    //             embed.AddField($"#{curPage * 9 + ++i} {item.UserName} [{item.User.Id}]", item.InvitedUsers);
-    //
-    //         return embed;
-    //     }, inviteUsers.Count, 9);
-    // }
+        if (state)
+            await ReplyConfirmLocalizedAsync(strs.verbose_errors_enabled);
+        else
+            await ReplyConfirmLocalizedAsync(strs.verbose_errors_disabled);
+    }
 }

@@ -4,10 +4,13 @@ using NadekoBot.Common.Configs;
 using NadekoBot.Common.ModuleBehaviors;
 using NadekoBot.Db;
 using NadekoBot.Modules.Administration;
+using NadekoBot.Modules.Utility;
 using NadekoBot.Services.Database.Models;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Net;
 using System.Reflection;
+using Nadeko.Common;
 using RunMode = Discord.Commands.RunMode;
 
 namespace NadekoBot;
@@ -32,19 +35,16 @@ public sealed class Bot
     private readonly IBotCredsProvider _credsProvider;
     // private readonly InteractionService _interactionService;
 
-    public Bot(int shardId, int? totalShards)
+    public Bot(int shardId, int? totalShards, string credPath = null)
     {
         if (shardId < 0)
             throw new ArgumentOutOfRangeException(nameof(shardId));
 
         ShardId = shardId;
-        _credsProvider = new BotCredsProvider(totalShards);
+        _credsProvider = new BotCredsProvider(totalShards, credPath);
         _creds = _credsProvider.GetCreds();
 
-        _db = new(_creds);
-
-        if (shardId == 0)
-            _db.Setup();
+        _db = new(_credsProvider);
 
         var messageCacheSize =
 #if GLOBAL_NADEKO
@@ -70,12 +70,14 @@ public sealed class Bot
                 ? GatewayIntents.All
                 : GatewayIntents.AllUnprivileged,
             LogGatewayIntentWarnings = false,
+            FormatUsersInBidirectionalUnicode = false,
+            DefaultRetryMode = RetryMode.AlwaysRetry ^ RetryMode.RetryRatelimit
         });
 
         _commandService = new(new()
         {
             CaseSensitiveCommands = false,
-            DefaultRunMode = RunMode.Sync
+            DefaultRunMode = RunMode.Sync,
         });
 
         // _interactionService = new(Client.Rest);
@@ -102,20 +104,20 @@ public sealed class Bot
         var svcs = new ServiceCollection().AddTransient(_ => _credsProvider.GetCreds()) // bot creds
                                           .AddSingleton(_credsProvider)
                                           .AddSingleton(_db) // database
-                                          .AddRedis(_creds.RedisOptions) // redis
                                           .AddSingleton(Client) // discord socket client
                                           .AddSingleton(_commandService)
                                           // .AddSingleton(_interactionService)
                                           .AddSingleton(this)
                                           .AddSingleton<ISeria, JsonSeria>()
-                                          .AddSingleton<IPubSub, RedisPubSub>()
                                           .AddSingleton<IConfigSeria, YamlSeria>()
-                                          .AddBotStringsServices(_creds.TotalShards)
                                           .AddConfigServices()
                                           .AddConfigMigrators()
                                           .AddMemoryCache()
                                           // music
-                                          .AddMusic();
+                                          .AddMusic()
+                                          // cache
+                                          .AddCache(_creds);
+        
         // admin
 #if GLOBAL_NADEKO
         svcs.AddSingleton<ILogCommandService, DummyLogCommandService>();
@@ -127,6 +129,12 @@ public sealed class Bot
             {
                 AllowAutoRedirect = false
             });
+        
+        svcs.AddHttpClient("google:search")
+            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler()
+            {
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+            });
 
         if (Environment.GetEnvironmentVariable("NADEKOBOT_IS_COORDINATED") != "1")
             svcs.AddSingleton<ICoordinator, SingleProcessCoordinator>();
@@ -137,25 +145,20 @@ public sealed class Bot
                 .AddSingleton<IReadyExecutor>(x => x.GetRequiredService<RemoteGrpcCoordinator>());
         }
 
-        svcs.AddSingleton<RedisLocalDataCache>()
-            .AddSingleton<ILocalDataCache>(x => x.GetRequiredService<RedisLocalDataCache>())
-            .AddSingleton<RedisImagesCache>()
-            .AddSingleton<IImageCache>(x => x.GetRequiredService<RedisImagesCache>())
-            .AddSingleton<IReadyExecutor>(x => x.GetRequiredService<RedisImagesCache>())
-            .AddSingleton<IDataCache, RedisCache>();
-
         svcs.Scan(scan => scan.FromAssemblyOf<IReadyExecutor>()
                               .AddClasses(classes => classes.AssignableToAny(
                                       // services
                                       typeof(INService),
 
                                       // behaviours
-                                      typeof(IEarlyBehavior),
-                                      typeof(ILateBlocker),
+                                      typeof(IExecOnMessage),
                                       typeof(IInputTransformer),
-                                      typeof(ILateExecutor))
+                                      typeof(IExecPreCommand),
+                                      typeof(IExecPostCommand),
+                                      typeof(IExecNoCommand))
+                                                .WithoutAttribute<DontAddToIocContainerAttribute>()
 #if GLOBAL_NADEKO
-                    .WithoutAttribute<NoPublicBotAttribute>()
+                                                .WithoutAttribute<NoPublicBotAttribute>()
 #endif
                               )
                               .AsSelfWithInterfaces()
@@ -163,8 +166,8 @@ public sealed class Bot
 
         //initialize Services
         Services = svcs.BuildServiceProvider();
-        var exec = Services.GetRequiredService<IBehaviourExecutor>();
-        exec.Initialize();
+        Services.GetRequiredService<IBehaviorHandler>().Initialize();
+        Services.GetRequiredService<CurrencyRewardService>();
 
         if (Client.ShardId == 0)
             ApplyConfigMigrations();
@@ -259,6 +262,7 @@ public sealed class Bot
         Client.JoinedGuild += Client_JoinedGuild;
         Client.LeftGuild += Client_LeftGuild;
 
+        // _ = Client.SetStatusAsync(UserStatus.Online);
         Log.Information("Shard {ShardId} logged in", Client.ShardId);
     }
 
@@ -286,6 +290,9 @@ public sealed class Bot
 
     public async Task RunAsync()
     {
+        if (ShardId == 0)
+            await _db.SetupAsync();
+        
         var sw = Stopwatch.StartNew();
 
         await LoginAsync(_creds.Token);

@@ -13,7 +13,7 @@ public partial class Administration
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
-        public async partial Task AntiAlt()
+        public async Task AntiAlt()
         {
             if (await _service.TryStopAntiAlt(ctx.Guild.Id))
             {
@@ -27,7 +27,7 @@ public partial class Administration
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
-        public async partial Task AntiAlt(
+        public async Task AntiAlt(
             StoopidTime minAge,
             PunishmentAction action,
             [Leftover] StoopidTime punishTime = null)
@@ -38,10 +38,14 @@ public partial class Administration
             if (minAgeMinutes < 1 || punishTimeMinutes < 0)
                 return;
 
+            var minutes = (int?)punishTime?.Time.TotalMinutes ?? 0;
+            if (action is PunishmentAction.TimeOut && minutes < 1)
+                minutes = 1;
+
             await _service.StartAntiAltAsync(ctx.Guild.Id,
                 minAgeMinutes,
                 action,
-                (int?)punishTime?.Time.TotalMinutes ?? 0);
+                minutes);
 
             await ctx.OkAsync();
         }
@@ -49,11 +53,14 @@ public partial class Administration
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
-        public async partial Task AntiAlt(StoopidTime minAge, PunishmentAction action, [Leftover] IRole role)
+        public async Task AntiAlt(StoopidTime minAge, PunishmentAction action, [Leftover] IRole role)
         {
             var minAgeMinutes = (int)minAge.Time.TotalMinutes;
 
             if (minAgeMinutes < 1)
+                return;
+
+            if (action == PunishmentAction.TimeOut)
                 return;
 
             await _service.StartAntiAltAsync(ctx.Guild.Id, minAgeMinutes, action, roleId: role.Id);
@@ -64,7 +71,7 @@ public partial class Administration
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
-        public partial Task AntiRaid()
+        public Task AntiRaid()
         {
             if (_service.TryStopAntiRaid(ctx.Guild.Id))
                 return ReplyConfirmLocalizedAsync(strs.prot_disable("Anti-Raid"));
@@ -75,7 +82,7 @@ public partial class Administration
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
         [Priority(1)]
-        public partial Task AntiRaid(
+        public Task AntiRaid(
             int userThreshold,
             int seconds,
             PunishmentAction action,
@@ -86,7 +93,7 @@ public partial class Administration
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
         [Priority(2)]
-        public partial Task AntiRaid(int userThreshold, int seconds, PunishmentAction action)
+        public Task AntiRaid(int userThreshold, int seconds, PunishmentAction action)
             => InternalAntiRaid(userThreshold, seconds, action);
 
         private async Task InternalAntiRaid(
@@ -122,6 +129,9 @@ public partial class Administration
             var time = (int?)punishTime?.Time.TotalMinutes ?? 0;
             if (time is < 0 or > 60 * 24)
                 return;
+            
+            if(action is PunishmentAction.TimeOut && time < 1)
+                return;
 
             var stats = await _service.StartAntiRaidAsync(ctx.Guild.Id, userThreshold, seconds, action, time);
 
@@ -135,7 +145,7 @@ public partial class Administration
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
-        public partial Task AntiSpam()
+        public Task AntiSpam()
         {
             if (_service.TryStopAntiSpam(ctx.Guild.Id))
                 return ReplyConfirmLocalizedAsync(strs.prot_disable("Anti-Spam"));
@@ -146,7 +156,7 @@ public partial class Administration
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
         [Priority(0)]
-        public partial Task AntiSpam(int messageCount, PunishmentAction action, [Leftover] IRole role)
+        public Task AntiSpam(int messageCount, PunishmentAction action, [Leftover] IRole role)
         {
             if (action != PunishmentAction.AddRole)
                 return Task.CompletedTask;
@@ -158,14 +168,14 @@ public partial class Administration
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
         [Priority(1)]
-        public partial Task AntiSpam(int messageCount, PunishmentAction action, [Leftover] StoopidTime punishTime)
+        public Task AntiSpam(int messageCount, PunishmentAction action, [Leftover] StoopidTime punishTime)
             => InternalAntiSpam(messageCount, action, punishTime);
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
         [Priority(2)]
-        public partial Task AntiSpam(int messageCount, PunishmentAction action)
+        public Task AntiSpam(int messageCount, PunishmentAction action)
             => InternalAntiSpam(messageCount, action);
 
         private async Task InternalAntiSpam(
@@ -187,6 +197,9 @@ public partial class Administration
             if (time is < 0 or > 60 * 24)
                 return;
 
+            if (action is PunishmentAction.TimeOut && time < 1)
+                return;
+
             var stats = await _service.StartAntiSpamAsync(ctx.Guild.Id, messageCount, action, time, role?.Id);
 
             await SendConfirmAsync(GetText(strs.prot_enable("Anti-Spam")),
@@ -196,7 +209,7 @@ public partial class Administration
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
-        public async partial Task AntispamIgnore()
+        public async Task AntispamIgnore()
         {
             var added = await _service.AntiSpamIgnoreAsync(ctx.Guild.Id, ctx.Channel.Id);
 
@@ -214,7 +227,7 @@ public partial class Administration
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
-        public async partial Task AntiList()
+        public async Task AntiList()
         {
             var (spam, raid, alt) = _service.GetAntiStats(ctx.Guild.Id);
 

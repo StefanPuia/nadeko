@@ -1,7 +1,10 @@
 ﻿#nullable disable
 using CodeHollow.FeedReader;
 using CodeHollow.FeedReader.Feeds;
+using LinqToDB;
+using LinqToDB.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Nadeko.Common;
 using NadekoBot.Db;
 using NadekoBot.Services.Database.Models;
 
@@ -10,11 +13,12 @@ namespace NadekoBot.Modules.Searches.Services;
 public class FeedsService : INService
 {
     private readonly DbService _db;
-    private readonly ConcurrentDictionary<string, HashSet<FeedSub>> _subs;
+    private readonly ConcurrentDictionary<string, List<FeedSub>> _subs;
     private readonly DiscordSocketClient _client;
     private readonly IEmbedBuilderService _eb;
 
     private readonly ConcurrentDictionary<string, DateTime> _lastPosts = new();
+    private readonly Dictionary<string, uint> _errorCounters = new();
 
     public FeedsService(
         Bot bot,
@@ -33,7 +37,7 @@ public class FeedsService : INService
                        .ToList()
                        .SelectMany(x => x.FeedSubs)
                        .GroupBy(x => x.Url)
-                       .ToDictionary(x => x.Key, x => x.ToHashSet())
+                       .ToDictionary(x => x.Key, x => x.ToList())
                        .ToConcurrent();
         }
 
@@ -41,6 +45,38 @@ public class FeedsService : INService
         _eb = eb;
 
         _ = Task.Run(TrackFeeds);
+    }
+
+    private void ClearErrors(string url)
+        => _errorCounters.Remove(url);
+
+    private async Task<uint> AddError(string url, List<int> ids)
+    {
+        try
+        {
+            var newValue = _errorCounters[url] = _errorCounters.GetValueOrDefault(url) + 1;
+
+            if (newValue >= 100)
+            {
+                // remove from db
+                await using var ctx = _db.GetDbContext();
+                await ctx.GetTable<FeedSub>()
+                         .DeleteAsync(x => ids.Contains(x.Id));
+                
+                // remove from the local cache
+                _subs.TryRemove(url, out _);
+
+                // reset the error counter
+                ClearErrors(url);
+            }
+
+            return newValue;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error adding rss errors...");
+            return 0;
+        }
     }
 
     public async Task<EmbedBuilder> TrackFeeds()
@@ -53,7 +89,7 @@ public class FeedsService : INService
                 if (kvp.Value.Count == 0)
                     continue;
 
-                var rssUrl = kvp.Key;
+                var rssUrl = kvp.Value.First().Url;
                 try
                 {
                     var feed = await FeedReader.ReadAsync(rssUrl);
@@ -134,22 +170,32 @@ public class FeedsService : INService
                             embed.WithDescription(desc.TrimTo(2048));
 
                         //send the created embed to all subscribed channels
-                        var feedSendTasks = kvp.Value.Where(x => x.GuildConfig is not null)
+                        var feedSendTasks = kvp.Value
+                                               .Where(x => x.GuildConfig is not null)
                                                .Select(x => _client.GetGuild(x.GuildConfig.GuildId)
                                                                    ?.GetTextChannel(x.ChannelId))
                                                .Where(x => x is not null)
                                                .Select(x => x.EmbedAsync(embed));
 
                         allSendTasks.Add(feedSendTasks.WhenAll());
+
+                        // as data retrieval was sucessful, reset error counter
+                        ClearErrors(rssUrl);
                     }
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
-                    Log.Error(e?.Message ?? "Error reading feed");
+                    var errorCount = await AddError(rssUrl, kvp.Value.Select(x => x.Id).ToList());
+                    
+                    Log.Warning("An error occured while getting rss stream ({ErrorCount} / 100) {RssFeed}"
+                                + "\n {Message}",
+                        errorCount,
+                        rssUrl,
+                        $"[{ex.GetType().Name}]: {ex.Message}");
                 }
             }
 
-            await Task.WhenAll(Task.WhenAll(allSendTasks), Task.Delay(600000));
+            await Task.WhenAll(Task.WhenAll(allSendTasks), Task.Delay(30000));
         }
     }
 
@@ -185,7 +231,7 @@ public class FeedsService : INService
         foreach (var feed in gc.FeedSubs)
         {
             _subs.AddOrUpdate(feed.Url,
-                new HashSet<FeedSub>
+                new List<FeedSub>
                 {
                     feed
                 },
@@ -213,7 +259,7 @@ public class FeedsService : INService
             return false;
         var toRemove = items[index];
         _subs.AddOrUpdate(toRemove.Url.ToLower(),
-            new HashSet<FeedSub>(),
+            new List<FeedSub>(),
             (_, old) =>
             {
                 old.Remove(toRemove);

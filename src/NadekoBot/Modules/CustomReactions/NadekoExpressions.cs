@@ -1,4 +1,6 @@
-﻿#nullable disable
+#nullable disable
+
+using Nadeko.Common;
 
 namespace NadekoBot.Modules.NadekoExpressions;
 
@@ -24,7 +26,7 @@ public partial class NadekoExpressions : NadekoModule<NadekoExpressionsService>
            || (ctx.Guild is not null && ((IGuildUser)ctx.User).GuildPermissions.Administrator);
 
     [Cmd]
-    public async partial Task ExprAdd(string key, [Leftover] string message)
+    public async Task ExprAdd(string key, [Leftover] string message)
     {
         if (string.IsNullOrWhiteSpace(message) || string.IsNullOrWhiteSpace(key))
             return;
@@ -47,7 +49,7 @@ public partial class NadekoExpressions : NadekoModule<NadekoExpressionsService>
     }
 
     [Cmd]
-    public async partial Task ExprEdit(kwum id, [Leftover] string message)
+    public async Task ExprEdit(kwum id, [Leftover] string message)
     {
         var channel = ctx.Channel as ITextChannel;
         if (string.IsNullOrWhiteSpace(message) || id < 0)
@@ -77,7 +79,7 @@ public partial class NadekoExpressions : NadekoModule<NadekoExpressionsService>
 
     [Cmd]
     [Priority(1)]
-    public async partial Task ExprList(int page = 1)
+    public async Task ExprList(int page = 1)
     {
         if (--page < 0 || page > 999)
             return;
@@ -112,7 +114,7 @@ public partial class NadekoExpressions : NadekoModule<NadekoExpressionsService>
     }
 
     [Cmd]
-    public async partial Task ExprShow(kwum id)
+    public async Task ExprShow(kwum id)
     {
         var found = _service.GetExpression(ctx.Guild?.Id, id);
 
@@ -131,7 +133,7 @@ public partial class NadekoExpressions : NadekoModule<NadekoExpressionsService>
     }
 
     [Cmd]
-    public async partial Task ExprDelete(kwum id)
+    public async Task ExprDelete(kwum id)
     {
         if (!AdminInGuildOrOwnerInDm())
         {
@@ -155,7 +157,7 @@ public partial class NadekoExpressions : NadekoModule<NadekoExpressionsService>
     }
 
     [Cmd]
-    public async partial Task ExprReact(kwum id, params string[] emojiStrs)
+    public async Task ExprReact(kwum id, params string[] emojiStrs)
     {
         if (!AdminInGuildOrOwnerInDm())
         {
@@ -209,24 +211,24 @@ public partial class NadekoExpressions : NadekoModule<NadekoExpressionsService>
     }
 
     [Cmd]
-    public partial Task ExprCa(kwum id)
+    public Task ExprCa(kwum id)
         => InternalExprEdit(id, ExprField.ContainsAnywhere);
 
     [Cmd]
-    public partial Task ExprDm(kwum id)
+    public Task ExprDm(kwum id)
         => InternalExprEdit(id, ExprField.DmResponse);
 
     [Cmd]
-    public partial Task ExprAd(kwum id)
+    public Task ExprAd(kwum id)
         => InternalExprEdit(id, ExprField.AutoDelete);
 
     [Cmd]
-    public partial Task ExprAt(kwum id)
+    public Task ExprAt(kwum id)
         => InternalExprEdit(id, ExprField.AllowTarget);
 
     [Cmd]
     [OwnerOnly]
-    public async partial Task ExprsReload()
+    public async Task ExprsReload()
     {
         await _service.TriggerReloadExpressions();
 
@@ -241,7 +243,7 @@ public partial class NadekoExpressions : NadekoModule<NadekoExpressionsService>
             return;
         }
 
-        var (success, newVal) = await _service.ToggleExprOptionAsync(id, option);
+        var (success, newVal) = await _service.ToggleExprOptionAsync(ctx.Guild?.Id, id, option);
         if (!success)
         {
             await ReplyErrorLocalizedAsync(strs.expr_no_found_id);
@@ -263,11 +265,11 @@ public partial class NadekoExpressions : NadekoModule<NadekoExpressionsService>
     [Cmd]
     [RequireContext(ContextType.Guild)]
     [UserPerm(GuildPerm.Administrator)]
-    public async partial Task ExprClear()
+    public async Task ExprClear()
     {
         if (await PromptUserConfirmAsync(_eb.Create()
-                                            .WithTitle("Custom reaction clear")
-                                            .WithDescription("This will delete all custom reactions on this server.")))
+                                            .WithTitle("Expression clear")
+                                            .WithDescription("This will delete all expressions on this server.")))
         {
             var count = _service.DeleteAllExpressions(ctx.Guild.Id);
             await ReplyConfirmLocalizedAsync(strs.exprs_cleared(count));
@@ -275,7 +277,7 @@ public partial class NadekoExpressions : NadekoModule<NadekoExpressionsService>
     }
 
     [Cmd]
-    public async partial Task ExprsExport()
+    public async Task ExprsExport()
     {
         if (!AdminInGuildOrOwnerInDm())
         {
@@ -294,7 +296,7 @@ public partial class NadekoExpressions : NadekoModule<NadekoExpressionsService>
 #if GLOBAL_NADEKO
     [OwnerOnly]
 #endif
-    public async partial Task ExprsImport([Leftover] string input = null)
+    public async Task ExprsImport([Leftover] string input = null)
     {
         if (!AdminInGuildOrOwnerInDm())
         {

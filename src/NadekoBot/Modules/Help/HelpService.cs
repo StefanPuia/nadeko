@@ -1,33 +1,41 @@
 #nullable disable
 using CommandLine;
+using Nadeko.Common;
+using Nadeko.Medusa;
 using NadekoBot.Common.ModuleBehaviors;
 using NadekoBot.Modules.Administration.Services;
 
 namespace NadekoBot.Modules.Help.Services;
 
-public class HelpService : ILateExecutor, INService
+public class HelpService : IExecNoCommand, INService
 {
     private readonly CommandHandler _ch;
     private readonly IBotStrings _strings;
     private readonly DiscordPermOverrideService _dpos;
     private readonly BotConfigService _bss;
     private readonly IEmbedBuilderService _eb;
+    private readonly ILocalization _loc;
+    private readonly IMedusaLoaderService _medusae;
 
     public HelpService(
         CommandHandler ch,
         IBotStrings strings,
         DiscordPermOverrideService dpos,
         BotConfigService bss,
-        IEmbedBuilderService eb)
+        IEmbedBuilderService eb,
+        ILocalization loc,
+        IMedusaLoaderService medusae)
     {
         _ch = ch;
         _strings = strings;
         _dpos = dpos;
         _bss = bss;
         _eb = eb;
+        _loc = loc;
+        _medusae = medusae;
     }
 
-    public Task LateExecute(IGuild guild, IUserMessage msg)
+    public Task ExecOnNoCommandAsync(IGuild guild, IUserMessage msg)
     {
         var settings = _bss.Data;
         if (guild is null)
@@ -57,13 +65,16 @@ public class HelpService : ILateExecutor, INService
     public IEmbedBuilder GetCommandHelp(CommandInfo com, IGuild guild)
     {
         var prefix = _ch.GetPrefix(guild);
-
+        
         var str = $"**`{prefix + com.Aliases.First()}`**";
         var alias = com.Aliases.Skip(1).FirstOrDefault();
         if (alias is not null)
             str += $" **/ `{prefix + alias}`**";
 
-        var em = _eb.Create().AddField(str, $"{com.RealSummary(_strings, guild?.Id, prefix)}", true);
+        var culture = _loc.GetCultureInfo(guild);
+        
+        var em = _eb.Create()
+                    .AddField(str, $"{com.RealSummary(_strings, _medusae, culture,  prefix)}", true);
 
         _dpos.TryGetOverrides(guild?.Id ?? 0, com.Name, out var overrides);
         var reqs = GetCommandRequirements(com, overrides);
@@ -71,8 +82,7 @@ public class HelpService : ILateExecutor, INService
             em.AddField(GetText(strs.requires, guild), string.Join("\n", reqs));
 
         em.AddField(_strings.GetText(strs.usage),
-              string.Join("\n",
-                  Array.ConvertAll(com.RealRemarksArr(_strings, guild?.Id, prefix), arg => Format.Code(arg))))
+              string.Join("\n", com.RealRemarksArr(_strings,_medusae, culture, prefix).Map(arg => Format.Code(arg))))
           .WithFooter(GetText(strs.module(com.Module.GetTopLevelModule().Name), guild))
           .WithOkColor();
 
@@ -122,6 +132,25 @@ public class HelpService : ILateExecutor, INService
 
         if (cmd.Preconditions.Any(x => x is OwnerOnlyAttribute))
             toReturn.Add("Bot Owner Only");
+        
+        if(cmd.Preconditions.Any(x => x is NoPublicBotAttribute)
+           || cmd.Module
+                  .Preconditions
+                  .Any(x => x is NoPublicBotAttribute)
+            || cmd.Module.GetTopLevelModule()
+                  .Preconditions
+                  .Any(x => x is NoPublicBotAttribute))
+            toReturn.Add("No Public Bot");
+
+        if (cmd.Preconditions
+               .Any(x => x is OnlyPublicBotAttribute)
+            || cmd.Module
+                  .Preconditions
+                  .Any(x => x is OnlyPublicBotAttribute)
+            || cmd.Module.GetTopLevelModule()
+                  .Preconditions
+                  .Any(x => x is OnlyPublicBotAttribute))
+            toReturn.Add("Only Public Bot");
 
         var userPerm = (UserPermAttribute)cmd.Preconditions.FirstOrDefault(ca => ca is UserPermAttribute);
 

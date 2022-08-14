@@ -1,4 +1,5 @@
-global using System.Collections.Concurrent;
+// global using System.Collections.Concurrent;
+global using NonBlocking;
 
 // packages
 global using Serilog;
@@ -7,9 +8,11 @@ global using Humanizer;
 // nadekobot
 global using NadekoBot;
 global using NadekoBot.Services;
-global using NadekoBot.Common;
+global using Nadeko.Common; // new project
+global using NadekoBot.Common; // old + nadekobot specific things
 global using NadekoBot.Common.Attributes;
 global using NadekoBot.Extensions;
+global using Nadeko.Snake;
 
 // discord
 global using Discord;

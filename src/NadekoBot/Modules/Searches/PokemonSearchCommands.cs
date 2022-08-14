@@ -9,25 +9,19 @@ public partial class Searches
     [Group]
     public partial class PokemonSearchCommands : NadekoModule<SearchesService>
     {
-        public IReadOnlyDictionary<string, SearchPokemon> Pokemons
-            => _cache.LocalData.Pokemons;
+        private readonly ILocalDataCache _cache;
 
-        public IReadOnlyDictionary<string, SearchPokemonAbility> PokemonAbilities
-            => _cache.LocalData.PokemonAbilities;
-
-        private readonly IDataCache _cache;
-
-        public PokemonSearchCommands(IDataCache cache)
+        public PokemonSearchCommands(ILocalDataCache cache)
             => _cache = cache;
 
         [Cmd]
-        public async partial Task Pokemon([Leftover] string pokemon = null)
+        public async Task Pokemon([Leftover] string pokemon = null)
         {
             pokemon = pokemon?.Trim().ToUpperInvariant();
             if (string.IsNullOrWhiteSpace(pokemon))
                 return;
 
-            foreach (var kvp in Pokemons)
+            foreach (var kvp in await _cache.GetPokemonsAsync())
             {
                 if (kvp.Key.ToUpperInvariant() == pokemon.ToUpperInvariant())
                 {
@@ -53,12 +47,12 @@ public partial class Searches
         }
 
         [Cmd]
-        public async partial Task PokemonAbility([Leftover] string ability = null)
+        public async Task PokemonAbility([Leftover] string ability = null)
         {
             ability = ability?.Trim().ToUpperInvariant().Replace(" ", "", StringComparison.InvariantCulture);
             if (string.IsNullOrWhiteSpace(ability))
                 return;
-            foreach (var kvp in PokemonAbilities)
+            foreach (var kvp in await _cache.GetPokemonAbilitiesAsync())
             {
                 if (kvp.Key.ToUpperInvariant() == ability)
                 {

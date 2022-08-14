@@ -21,7 +21,7 @@ namespace NadekoBot.Tests
             var stringsSource = new LocalFileStringsSource(
                 responsesPath,
                 commandsPath);
-            var strings = new LocalBotStringsProvider(stringsSource);
+            var strings = new MemoryBotStringsProvider(stringsSource);
 
             var culture = new CultureInfo("en-US");
 
@@ -47,7 +47,7 @@ namespace NadekoBot.Tests
                                || !(type.GetCustomAttribute<GroupAttribute>(true) is null)) // or a submodule
                 .SelectMany(x => x.GetMethods()
                         .Where(mi => mi.CustomAttributes
-                            .Any(ca => ca.AttributeType == typeof(NadekoCommandAttribute))))
+                            .Any(ca => ca.AttributeType == typeof(CmdAttribute))))
                 .Select(x => x.Name.ToLowerInvariant())
                 .ToArray();
 

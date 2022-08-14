@@ -7,12 +7,13 @@ using NadekoBot.Modules.Permissions.Common;
 using NadekoBot.Modules.Permissions.Services;
 using NadekoBot.Services.Database.Models;
 using System.Runtime.CompilerServices;
+using Nadeko.Common;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
 namespace NadekoBot.Modules.NadekoExpressions;
 
-public sealed class NadekoExpressionsService : IEarlyBehavior, IReadyExecutor
+public sealed class NadekoExpressionsService : IExecOnMessage, IReadyExecutor
 {
     private const string MENTION_PH = "%bot.mention%";
 
@@ -191,7 +192,7 @@ public sealed class NadekoExpressionsService : IEarlyBehavior, IReadyExecutor
                     continue;
                 }
 
-                // if CA is disabled, and CR has AllowTarget, then the
+                // if CA is disabled, and expr has AllowTarget, then the
                 // content has to start with the trigger followed by a space
                 if (expr.AllowTarget
                     && content.StartsWith(trigger, StringComparison.OrdinalIgnoreCase)
@@ -222,7 +223,7 @@ public sealed class NadekoExpressionsService : IEarlyBehavior, IReadyExecutor
         return result[_rng.Next(0, result.Count)];
     }
 
-    public async Task<bool> RunBehavior(IGuild guild, IUserMessage msg)
+    public async Task<bool> ExecOnMessageAsync(IGuild guild, IUserMessage msg)
     {
         // maybe this message is an expression
         var expr = TryGetExpression(msg);
@@ -450,14 +451,15 @@ public sealed class NadekoExpressionsService : IEarlyBehavior, IReadyExecutor
         await UpdateInternalAsync(guildId, expr);
     }
 
-    public async Task<(bool Sucess, bool NewValue)> ToggleExprOptionAsync(int id, ExprField field)
+    public async Task<(bool Sucess, bool NewValue)> ToggleExprOptionAsync(ulong? guildId, int id, ExprField field)
     {
         var newVal = false;
         NadekoExpression expr;
         await using (var uow = _db.GetDbContext())
         {
             expr = uow.Expressions.GetById(id);
-            if (expr is null)
+            
+            if (expr is null || expr.GuildId != guildId)
                 return (false, false);
             if (field == ExprField.AutoDelete)
                 newVal = expr.AutoDeleteTrigger = !expr.AutoDeleteTrigger;
@@ -471,7 +473,7 @@ public sealed class NadekoExpressionsService : IEarlyBehavior, IReadyExecutor
             await uow.SaveChangesAsync();
         }
 
-        await UpdateInternalAsync(expr.GuildId, expr);
+        await UpdateInternalAsync(guildId, expr);
 
         return (true, newVal);
     }

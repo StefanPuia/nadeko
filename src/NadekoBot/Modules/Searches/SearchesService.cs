@@ -1,7 +1,6 @@
 ﻿#nullable disable
-using AngleSharp.Html.Dom;
-using AngleSharp.Html.Parser;
 using Html2Markdown;
+using Nadeko.Common;
 using NadekoBot.Modules.Searches.Common;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -10,7 +9,6 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
-using System.Net;
 using Color = SixLabors.ImageSharp.Color;
 using Image = SixLabors.ImageSharp.Image;
 
@@ -26,23 +24,14 @@ public class SearchesService : INService
         Birds
     }
 
-    private static readonly HtmlParser _googleParser = new(new()
-    {
-        IsScripting = false,
-        IsEmbedded = false,
-        IsSupportingProcessingInstructions = false,
-        IsKeepingSourceReferences = false,
-        IsNotSupportingFrames = true
-    });
-
     public List<WoWJoke> WowJokes { get; } = new();
     public List<MagicItem> MagicItems { get; } = new();
     private readonly IHttpClientFactory _httpFactory;
     private readonly IGoogleApiService _google;
     private readonly IImageCache _imgs;
-    private readonly IDataCache _cache;
+    private readonly IBotCache _c;
     private readonly FontProvider _fonts;
-    private readonly IBotCredentials _creds;
+    private readonly IBotCredsProvider _creds;
     private readonly NadekoRandom _rng;
     private readonly List<string> _yomamaJokes;
 
@@ -51,15 +40,16 @@ public class SearchesService : INService
 
     public SearchesService(
         IGoogleApiService google,
-        IDataCache cache,
+        IImageCache images,
+        IBotCache c,
         IHttpClientFactory factory,
         FontProvider fonts,
-        IBotCredentials creds)
+        IBotCredsProvider creds)
     {
         _httpFactory = factory;
         _google = google;
-        _imgs = cache.LocalImages;
-        _cache = cache;
+        _imgs = images;
+        _c = c;
         _fonts = fonts;
         _creds = creds;
         _rng = new();
@@ -85,36 +75,28 @@ public class SearchesService : INService
     }
 
     public async Task<Stream> GetRipPictureAsync(string text, Uri imgUrl)
-    {
-        var data = await _cache.GetOrAddCachedDataAsync($"nadeko_rip_{text}_{imgUrl}",
-            GetRipPictureFactory,
-            (text, imgUrl),
-            TimeSpan.FromDays(1));
-
-        return data.ToStream();
-    }
+        => (await GetRipPictureFactory(text, imgUrl)).ToStream();
 
     private void DrawAvatar(Image bg, Image avatarImage)
         => bg.Mutate(x => x.Grayscale().DrawImage(avatarImage, new(83, 139), new GraphicsOptions()));
 
-    public async Task<byte[]> GetRipPictureFactory((string text, Uri avatarUrl) arg)
+    public async Task<byte[]> GetRipPictureFactory(string text, Uri avatarUrl)
     {
-        var (text, avatarUrl) = arg;
-        using var bg = Image.Load<Rgba32>(_imgs.Rip.ToArray());
-        var (succ, data) = (false, (byte[])null); //await _cache.TryGetImageDataAsync(avatarUrl);
-        if (!succ)
+        using var bg = Image.Load<Rgba32>(await _imgs.GetRipBgAsync());
+        var result = await _c.GetImageDataAsync(avatarUrl);
+        if (!result.TryPickT0(out var data, out _))
         {
             using var http = _httpFactory.CreateClient();
             data = await http.GetByteArrayAsync(avatarUrl);
             using (var avatarImg = Image.Load<Rgba32>(data))
             {
                 avatarImg.Mutate(x => x.Resize(85, 85).ApplyRoundedCorners(42));
-                await using var avStream = avatarImg.ToStream();
+                await using var avStream = await avatarImg.ToStreamAsync();
                 data = avStream.ToArray();
                 DrawAvatar(bg, avatarImg);
             }
 
-            await _cache.SetImageDataAsync(avatarUrl, data);
+            await _c.SetImageDataAsync(avatarUrl, data);
         }
         else
         {
@@ -123,21 +105,17 @@ public class SearchesService : INService
         }
 
         bg.Mutate(x => x.DrawText(
-            new()
+            new TextOptions(_fonts.RipFont)
             {
-                TextOptions = new TextOptions
-                {
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    WrapTextWidth = 190
-                }.WithFallbackFonts(_fonts.FallBackFonts)
+                HorizontalAlignment = HorizontalAlignment.Center,
+                FallbackFontFamilies = _fonts.FallBackFonts,
+                Origin = new(bg.Width / 2, 225),
             },
             text,
-            _fonts.RipFont,
-            Color.Black,
-            new(25, 225)));
+            Color.Black));
 
         //flowa
-        using (var flowers = Image.Load(_imgs.RipOverlay.ToArray()))
+        using (var flowers = Image.Load(await _imgs.GetRipOverlayAsync()))
         {
             bg.Mutate(x => x.DrawImage(flowers, new(0, 0), new GraphicsOptions()));
         }
@@ -146,13 +124,12 @@ public class SearchesService : INService
         return stream.ToArray();
     }
 
-    public Task<WeatherData> GetWeatherDataAsync(string query)
+    public async Task<WeatherData> GetWeatherDataAsync(string query)
     {
         query = query.Trim().ToLowerInvariant();
 
-        return _cache.GetOrAddCachedDataAsync($"nadeko_weather_{query}",
-            GetWeatherDataFactory,
-            query,
+        return await _c.GetOrAddAsync(new($"nadeko_weather_{query}"),
+            async () => await GetWeatherDataFactory(query),
             TimeSpan.FromHours(3));
     }
 
@@ -161,7 +138,7 @@ public class SearchesService : INService
         using var http = _httpFactory.CreateClient();
         try
         {
-            var data = await http.GetStringAsync("http://api.openweathermap.org/data/2.5/weather?"
+            var data = await http.GetStringAsync("https://api.openweathermap.org/data/2.5/weather?"
                                                  + $"q={query}&"
                                                  + "appid=42cd627dd60debf25a5739e50a217d74&"
                                                  + "units=metric");
@@ -193,26 +170,28 @@ public class SearchesService : INService
         if (string.IsNullOrEmpty(query))
             return (default, TimeErrors.InvalidInput);
 
-        if (string.IsNullOrWhiteSpace(_creds.LocationIqApiKey) || string.IsNullOrWhiteSpace(_creds.TimezoneDbApiKey))
+
+        var locIqKey = _creds.GetCreds().LocationIqApiKey;
+        var tzDbKey = _creds.GetCreds().TimezoneDbApiKey;
+        if (string.IsNullOrWhiteSpace(locIqKey) || string.IsNullOrWhiteSpace(tzDbKey))
             return (default, TimeErrors.ApiKeyMissing);
 
         try
         {
             using var http = _httpFactory.CreateClient();
-            var res = await _cache.GetOrAddCachedDataAsync($"geo_{query}",
-                _ =>
+            var res = await _c.GetOrAddAsync(new($"searches:geo:{query}"),
+                async () =>
                 {
                     var url = "https://eu1.locationiq.com/v1/search.php?"
-                              + (string.IsNullOrWhiteSpace(_creds.LocationIqApiKey)
+                              + (string.IsNullOrWhiteSpace(locIqKey)
                                   ? "key="
-                                  : $"key={_creds.LocationIqApiKey}&")
+                                  : $"key={locIqKey}&")
                               + $"q={Uri.EscapeDataString(query)}&"
                               + "format=json";
 
-                    var res = http.GetStringAsync(url);
+                    var res = await http.GetStringAsync(url);
                     return res;
                 },
-                "",
                 TimeSpan.FromHours(1));
 
             var responses = JsonConvert.DeserializeObject<LocationIqResponse[]>(res);
@@ -226,7 +205,7 @@ public class SearchesService : INService
 
             using var req = new HttpRequestMessage(HttpMethod.Get,
                 "http://api.timezonedb.com/v2.1/get-time-zone?"
-                + $"key={_creds.TimezoneDbApiKey}"
+                + $"key={tzDbKey}"
                 + $"&format=json"
                 + $"&by=position"
                 + $"&lat={geoData.Lat}"
@@ -324,9 +303,8 @@ public class SearchesService : INService
     public async Task<MtgData> GetMtgCardAsync(string search)
     {
         search = search.Trim().ToLowerInvariant();
-        var data = await _cache.GetOrAddCachedDataAsync($"nadeko_mtg_{search}",
-            GetMtgCardFactory,
-            search,
+        var data = await _c.GetOrAddAsync(new($"mtg:{search}"),
+            async () => await GetMtgCardFactory(search),
             TimeSpan.FromDays(1));
 
         if (data is null || data.Length == 0)
@@ -377,12 +355,11 @@ public class SearchesService : INService
         return await cards.Select(GetMtgDataAsync).WhenAll();
     }
 
-    public Task<HearthstoneCardData> GetHearthstoneCardDataAsync(string name)
+    public async Task<HearthstoneCardData> GetHearthstoneCardDataAsync(string name)
     {
         name = name.ToLowerInvariant();
-        return _cache.GetOrAddCachedDataAsync($"nadeko_hearthstone_{name}",
-            HearthstoneCardDataFactory,
-            name,
+        return await _c.GetOrAddAsync($"hearthstone:{name}",
+            () => HearthstoneCardDataFactory(name),
             TimeSpan.FromDays(1));
     }
 
@@ -390,7 +367,7 @@ public class SearchesService : INService
     {
         using var http = _httpFactory.CreateClient();
         http.DefaultRequestHeaders.Clear();
-        http.DefaultRequestHeaders.Add("x-rapidapi-key", _creds.RapidApiKey);
+        http.DefaultRequestHeaders.Add("x-rapidapi-key", _creds.GetCreds().RapidApiKey);
         try
         {
             var response = await http.GetStringAsync("https://omgvamp-hearthstone-v1.p.rapidapi.com/"
@@ -419,16 +396,22 @@ public class SearchesService : INService
         }
     }
 
-    public Task<OmdbMovie> GetMovieDataAsync(string name)
+    public async Task<OmdbMovie> GetMovieDataAsync(string name)
     {
         name = name.Trim().ToLowerInvariant();
-        return _cache.GetOrAddCachedDataAsync($"nadeko_movie_{name}", GetMovieDataFactory, name, TimeSpan.FromDays(1));
+        return await _c.GetOrAddAsync(new($"movie:{name}"),
+            () => GetMovieDataFactory(name),
+            TimeSpan.FromDays(1));
     }
 
     private async Task<OmdbMovie> GetMovieDataFactory(string name)
     {
         using var http = _httpFactory.CreateClient();
-        var res = await http.GetStringAsync(string.Format("https://omdbapi.nadeko.bot/?t={0}&y=&plot=full&r=json",
+        var res = await http.GetStringAsync(string.Format("https://omdbapi.nadeko.bot/"
+                                                          + "?t={0}"
+                                                          + "&y="
+                                                          + "&plot=full"
+                                                          + "&r=json",
             name.Trim().Replace(' ', '+')));
         var movie = JsonConvert.DeserializeObject<OmdbMovie>(res);
         if (movie?.Title is null)
@@ -440,27 +423,12 @@ public class SearchesService : INService
     public async Task<int> GetSteamAppIdByName(string query)
     {
         const string steamGameIdsKey = "steam_names_to_appid";
-        // var exists = await db.KeyExistsAsync(steamGameIdsKey);
 
-        // if we didn't get steam name to id map already, get it
-        //if (!exists)
-        //{
-        //    using (var http = _httpFactory.CreateClient())
-        //    {
-        //        // https://api.steampowered.com/ISteamApps/GetAppList/v2/
-        //        var gamesStr = await http.GetStringAsync("https://api.steampowered.com/ISteamApps/GetAppList/v2/");
-        //        var apps = JsonConvert.DeserializeAnonymousType(gamesStr, new { applist = new { apps = new List<SteamGameId>() } }).applist.apps;
-
-        //        //await db.HashSetAsync("steam_game_ids", apps.Select(app => new HashEntry(app.Name.Trim().ToLowerInvariant(), app.AppId)).ToArray());
-        //        await db.StringSetAsync("steam_game_ids", gamesStr, TimeSpan.FromHours(24));
-        //        //await db.KeyExpireAsync("steam_game_ids", TimeSpan.FromHours(24), CommandFlags.FireAndForget);
-        //    }
-        //}
-
-        var gamesMap = await _cache.GetOrAddCachedDataAsync(steamGameIdsKey,
-            async _ =>
+        var gamesMap = await _c.GetOrAddAsync(new(steamGameIdsKey),
+            async () =>
             {
                 using var http = _httpFactory.CreateClient();
+                
                 // https://api.steampowered.com/ISteamApps/GetAppList/v2/
                 var gamesStr = await http.GetStringAsync("https://api.steampowered.com/ISteamApps/GetAppList/v2/");
                 var apps = JsonConvert
@@ -471,23 +439,18 @@ public class SearchesService : INService
                                    {
                                        apps = new List<SteamGameId>()
                                    }
-                               })
+                               })!
                            .applist.apps;
 
                 return apps.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
                            .GroupBy(x => x.Name)
                            .ToDictionary(x => x.Key, x => x.First().AppId);
-                //await db.HashSetAsync("steam_game_ids", apps.Select(app => new HashEntry(app.Name.Trim().ToLowerInvariant(), app.AppId)).ToArray());
-                //await db.StringSetAsync("steam_game_ids", gamesStr, TimeSpan.FromHours(24));
-                //await db.KeyExpireAsync("steam_game_ids", TimeSpan.FromHours(24), CommandFlags.FireAndForget);
             },
-            default(string),
             TimeSpan.FromHours(24));
 
         if (gamesMap is null)
             return -1;
-
-
+        
         query = query.Trim();
 
         var keyList = gamesMap.Keys.ToList();
@@ -502,150 +465,5 @@ public class SearchesService : INService
         }
 
         return gamesMap[key];
-
-
-        //// try finding the game id
-        //var val = db.HashGet(STEAM_GAME_IDS_KEY, query);
-        //if (val == default)
-        //    return -1; // not found
-
-        //var appid = (int)val;
-        //return appid;
-
-        // now that we have appid, get the game info with that appid
-        //var gameData = await _cache.GetOrAddCachedDataAsync($"steam_game:{appid}", SteamGameDataFactory, appid, TimeSpan.FromHours(12))
-        //;
-
-        //return gameData;
-    }
-
-    public async Task<GoogleSearchResultData> GoogleSearchAsync(string query)
-    {
-        query = WebUtility.UrlEncode(query)?.Replace(' ', '+');
-
-        var fullQueryLink = $"https://www.google.ca/search?q={query}&safe=on&lr=lang_eng&hl=en&ie=utf-8&oe=utf-8";
-
-        using var msg = new HttpRequestMessage(HttpMethod.Get, fullQueryLink);
-        msg.Headers.Add("User-Agent",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36");
-        msg.Headers.Add("Cookie", "CONSENT=YES+shp.gws-20210601-0-RC2.en+FX+423;");
-
-        using var http = _httpFactory.CreateClient();
-        http.DefaultRequestHeaders.Clear();
-
-        using var response = await http.SendAsync(msg);
-        await using var content = await response.Content.ReadAsStreamAsync();
-
-        using var document = await _googleParser.ParseDocumentAsync(content);
-        var elems = document.QuerySelectorAll("div.g > div > div");
-
-        var resultsElem = document.QuerySelectorAll("#resultStats").FirstOrDefault();
-        var totalResults = resultsElem?.TextContent;
-        //var time = resultsElem.Children.FirstOrDefault()?.TextContent
-        //^ this doesn't work for some reason, <nobr> is completely missing in parsed collection
-        if (!elems.Any())
-            return default;
-
-        var results = elems.Select(elem =>
-                           {
-                               var children = elem.Children.ToList();
-                               if (children.Count < 2)
-                                   return null;
-
-                               var href = (children[0].QuerySelector("a") as IHtmlAnchorElement)?.Href;
-                               var name = children[0].QuerySelector("h3")?.TextContent;
-
-                               if (href is null || name is null)
-                                   return null;
-
-                               var txt = children[1].TextContent;
-
-                               if (string.IsNullOrWhiteSpace(txt))
-                                   return null;
-
-                               return new GoogleSearchResult(name, href, txt);
-                           })
-                           .Where(x => x is not null)
-                           .ToList();
-
-        return new(results.AsReadOnly(), fullQueryLink, totalResults);
-    }
-
-    public async Task<GoogleSearchResultData> DuckDuckGoSearchAsync(string query)
-    {
-        query = WebUtility.UrlEncode(query)?.Replace(' ', '+');
-
-        var fullQueryLink = "https://html.duckduckgo.com/html";
-
-        using var http = _httpFactory.CreateClient();
-        http.DefaultRequestHeaders.Clear();
-        http.DefaultRequestHeaders.Add("User-Agent",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.77 Safari/537.36");
-
-        using var formData = new MultipartFormDataContent();
-        formData.Add(new StringContent(query), "q");
-        using var response = await http.PostAsync(fullQueryLink, formData);
-        var content = await response.Content.ReadAsStringAsync();
-
-        using var document = await _googleParser.ParseDocumentAsync(content);
-        var searchResults = document.QuerySelector(".results");
-        var elems = searchResults.QuerySelectorAll(".result");
-
-        if (!elems.Any())
-            return default;
-
-        var results = elems.Select(elem =>
-                           {
-                               if (elem.QuerySelector(".result__a") is not IHtmlAnchorElement anchor)
-                                   return null;
-
-                               var href = anchor.Href;
-                               var name = anchor.TextContent;
-
-                               if (string.IsNullOrWhiteSpace(href) || string.IsNullOrWhiteSpace(name))
-                                   return null;
-
-                               var txt = elem.QuerySelector(".result__snippet")?.TextContent;
-
-                               if (string.IsNullOrWhiteSpace(txt))
-                                   return null;
-
-                               return new GoogleSearchResult(name, href, txt);
-                           })
-                           .Where(x => x is not null)
-                           .ToList();
-
-        return new(results.AsReadOnly(), fullQueryLink, "0");
-    }
-
-    //private async Task<SteamGameData> SteamGameDataFactory(int appid)
-    //{
-    //    using (var http = _httpFactory.CreateClient())
-    //    {
-    //        //  https://store.steampowered.com/api/appdetails?appids=
-    //        var responseStr = await http.GetStringAsync($"https://store.steampowered.com/api/appdetails?appids={appid}");
-    //        var data = JsonConvert.DeserializeObject<Dictionary<int, SteamGameData.Container>>(responseStr);
-    //        if (!data.ContainsKey(appid) || !data[appid].Success)
-    //            return null; // for some reason we can't get the game with valid appid. SHould never happen
-
-    //        return data[appid].Data;
-    //    }
-    //}
-
-    public class GoogleSearchResultData
-    {
-        public IReadOnlyList<GoogleSearchResult> Results { get; }
-        public string FullQueryLink { get; }
-        public string TotalResults { get; }
-
-        public GoogleSearchResultData(
-            IReadOnlyList<GoogleSearchResult> results,
-            string fullQueryLink,
-            string totalResults)
-        {
-            Results = results;
-            FullQueryLink = fullQueryLink;
-            TotalResults = totalResults;
-        }
     }
 }

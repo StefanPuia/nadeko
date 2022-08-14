@@ -1,5 +1,5 @@
 # DO NOT CHANGE
-version: 3
+version: 4
 # Most commands, when executed, have a small colored line
 # next to the response. The color depends whether the command
 # is completed, errored or in progress (pending)
@@ -18,6 +18,8 @@ defaultLocale: en-US
 # Style in which executed commands will show up in the console.
 # Allowed values: Simple, Normal, None
 consoleOutputType: Normal
+# Whether the bot will check for new releases every hour
+checkForUpdates: false
 # Do you want any messages sent by users in Bot's DM to be forwarded to the owner(s)?
 forwardMessages: false
 # Do you want the message to be forwarded only to the first owner specified in the list of owners (in creds.yml),
@@ -73,12 +75,12 @@ prefix: .
 # Toggles whether your bot will group greet/bye messages into a single message every 5 seconds.
 # 1st user who joins will get greeted immediately
 # If more users join within the next 5 seconds, they will be greeted in groups of 5.
-# This will cause %user.mention% and other placeholders to be replaced with multiple users. 
+# This will cause %user.mention% and other placeholders to be replaced with multiple users.
 # Keep in mind this might break some of your embeds - for example if you have %user.avatar% in the thumbnail,
 # it will become invalid, as it will resolve to a list of avatars of grouped users.
 # note: This setting is primarily used if you're afraid of raids, or you're running medium/large bots where some
-#       servers might get hundreds of people join at once. This is used to prevent the bot from getting ratelimited,
-#       and (slightly) reduce the greet spam in those servers.
+# servers might get hundreds of people join at once. This is used to prevent the bot from getting ratelimited,
+# and (slightly) reduce the greet spam in those servers.
 groupGreets: false
 # Whether the bot will rotate through all specified statuses.
 # This setting can be changed via .ropl command.

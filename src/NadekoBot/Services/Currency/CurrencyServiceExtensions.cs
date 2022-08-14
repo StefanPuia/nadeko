@@ -10,20 +10,30 @@ public static class CurrencyServiceExtensions
         return await wallet.GetBalance();
     }
     
-    // todo transfer should be a transaction
+    // FUTURE should be a transaction
     public static async Task<bool> TransferAsync(
         this ICurrencyService cs,
-        ulong fromId,
-        ulong toId,
+        IEmbedBuilderService ebs,
+        IUser from,
+        IUser to,
         long amount,
-        string fromName,
-        string note)
+        string? note,
+        string formattedAmount)
     {
-        var fromWallet = await cs.GetWalletAsync(fromId);
-        var toWallet = await cs.GetWalletAsync(toId);
+        var fromWallet = await cs.GetWalletAsync(from.Id);
+        var toWallet = await cs.GetWalletAsync(to.Id);
 
-        var extra = new TxData("gift", fromName, note, fromId);
+        var extra = new TxData("gift", from.ToString()!, note, from.Id);
 
-        return await fromWallet.Transfer(amount, toWallet, extra);
+        if (await fromWallet.Transfer(amount, toWallet, extra))
+        {
+            await to.SendConfirmAsync(ebs,
+                string.IsNullOrWhiteSpace(note)
+                    ? $"Received {formattedAmount} from {from} "
+                    : $"Received {formattedAmount} from {from}: {note}");
+            return true;
+        }
+
+        return false;
     }
 }

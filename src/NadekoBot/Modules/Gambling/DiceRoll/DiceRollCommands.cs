@@ -19,46 +19,55 @@ public partial class Gambling
         private static readonly char[] _fateRolls = { '-', ' ', '+' };
         private readonly IImageCache _images;
 
-        public DiceRollCommands(IDataCache data)
-            => _images = data.LocalImages;
+        public DiceRollCommands(ImageCache images)
+            => _images = images;
 
         [Cmd]
-        public async partial Task Roll()
+        public async Task Roll()
         {
             var rng = new NadekoRandom();
             var gen = rng.Next(1, 101);
 
             var num1 = gen / 10;
             var num2 = gen % 10;
-
-            using var img1 = GetDice(num1);
-            using var img2 = GetDice(num2);
+            
+            using var img1 = await GetDiceAsync(num1);
+            using var img2 = await GetDiceAsync(num2);
             using var img = new[] { img1, img2 }.Merge(out var format);
-            await using var ms = img.ToStream(format);
+            await using var ms = await img.ToStreamAsync(format);
+
+            var fileName = $"dice.{format.FileExtensions.First()}";
+
+            var eb = _eb.Create(ctx)
+                .WithOkColor()
+                .WithAuthor(ctx.User)
+                .AddField(GetText(strs.roll2), gen)
+                .WithImageUrl($"attachment://{fileName}");
+
             await ctx.Channel.SendFileAsync(ms,
-                $"dice.{format.FileExtensions.First()}",
-                Format.Bold(ctx.User.ToString()) + " " + GetText(strs.dice_rolled(Format.Code(gen.ToString()))));
+                fileName,
+                embed: eb.Build());
         }
 
         [Cmd]
         [Priority(1)]
-        public async partial Task Roll(int num)
+        public async Task Roll(int num)
             => await InternalRoll(num, true);
 
 
         [Cmd]
         [Priority(1)]
-        public async partial Task Rolluo(int num = 1)
+        public async Task Rolluo(int num = 1)
             => await InternalRoll(num, false);
 
         [Cmd]
         [Priority(0)]
-        public async partial Task Roll(string arg)
+        public async Task Roll(string arg)
             => await InternallDndRoll(arg, true);
 
         [Cmd]
         [Priority(0)]
-        public async partial Task Rolluo(string arg)
+        public async Task Rolluo(string arg)
             => await InternallDndRoll(arg, false);
 
         private async Task InternalRoll(int num, bool ordered)
@@ -96,7 +105,7 @@ public partial class Gambling
                 else
                     toInsert = dice.Count;
 
-                dice.Insert(toInsert, GetDice(randomNumber));
+                dice.Insert(toInsert, await GetDiceAsync(randomNumber));
                 values.Insert(toInsert, randomNumber);
             }
 
@@ -105,14 +114,18 @@ public partial class Gambling
             foreach (var d in dice)
                 d.Dispose();
 
+            var imageName = $"dice.{format.FileExtensions.First()}";
+            var eb = _eb.Create(ctx)
+                .WithOkColor()
+                .WithAuthor(ctx.User)
+                .AddField(GetText(strs.rolls), values.Select(x => Format.Code(x.ToString())).Join(' '), true)
+                .AddField(GetText(strs.total), values.Sum(), true)
+                .WithDescription(GetText(strs.dice_rolled_num(Format.Bold(values.Count.ToString()))))
+                .WithImageUrl($"attachment://{imageName}");
+
             await ctx.Channel.SendFileAsync(ms,
-                $"dice.{format.FileExtensions.First()}",
-                Format.Bold(ctx.User.ToString())
-                + " "
-                + GetText(strs.dice_rolled_num(Format.Bold(values.Count.ToString())))
-                + " "
-                + GetText(strs.total_average(Format.Bold(values.Sum().ToString()),
-                    Format.Bold((values.Sum() / (1.0f * values.Count)).ToString("N2")))));
+                imageName,
+                embed: eb.Build());
         }
 
         private async Task InternallDndRoll(string arg, bool ordered)
@@ -130,9 +143,8 @@ public partial class Gambling
                     rolls.Add(_fateRolls[rng.Next(0, _fateRolls.Length)]);
                 var embed = _eb.Create()
                                .WithOkColor()
-                               .WithDescription(ctx.User.Mention
-                                                + " "
-                                                + GetText(strs.dice_rolled_num(Format.Bold(n1.ToString()))))
+                               .WithAuthor(ctx.User)
+                               .WithDescription(GetText(strs.dice_rolled_num(Format.Bold(n1.ToString()))))
                                .AddField(Format.Bold("Result"),
                                    string.Join(" ", rolls.Select(c => Format.Code($"[{c}]"))));
 
@@ -160,10 +172,9 @@ public partial class Gambling
                     var sum = arr.Sum();
                     var embed = _eb.Create()
                                    .WithOkColor()
-                                   .WithDescription(ctx.User.Mention
-                                                    + " "
-                                                    + GetText(strs.dice_rolled_num(n1 + $"`1 - {n2}`")))
-                                   .AddField(Format.Bold("Rolls"),
+                                   .WithAuthor(ctx.User)
+                                   .WithDescription(GetText(strs.dice_rolled_num(n1 + $"`1 - {n2}`")))
+                                   .AddField(Format.Bold(GetText(strs.rolls)),
                                        string.Join(" ",
                                            (ordered ? arr.OrderBy(x => x).AsEnumerable() : arr).Select(x
                                                => Format.Code(x.ToString()))))
@@ -175,7 +186,7 @@ public partial class Gambling
         }
 
         [Cmd]
-        public async partial Task NRoll([Leftover] string range)
+        public async Task NRoll([Leftover] string range)
         {
             int rolled;
             if (range.Contains("-"))
@@ -195,20 +206,19 @@ public partial class Gambling
             await ReplyConfirmLocalizedAsync(strs.dice_rolled(Format.Bold(rolled.ToString())));
         }
 
-        private Image<Rgba32> GetDice(int num)
+        private async Task<Image<Rgba32>> GetDiceAsync(int num)
         {
             if (num is < 0 or > 10)
                 throw new ArgumentOutOfRangeException(nameof(num));
 
             if (num == 10)
             {
-                var images = _images.Dice;
-                using var imgOne = Image.Load(images[1]);
-                using var imgZero = Image.Load(images[0]);
+                using var imgOne = Image.Load<Rgba32>(await _images.GetDiceAsync(1));
+                using var imgZero = Image.Load<Rgba32>(await _images.GetDiceAsync(0));
                 return new[] { imgOne, imgZero }.Merge();
             }
 
-            return Image.Load(_images.Dice[num]);
+            return Image.Load<Rgba32>(await _images.GetDiceAsync(num));
         }
     }
 }

@@ -4,6 +4,7 @@ using LinqToDB.EntityFrameworkCore;
 using NadekoBot.Common.ModuleBehaviors;
 using NadekoBot.Services.Database.Models;
 using System.Text.RegularExpressions;
+using Nadeko.Common;
 
 namespace NadekoBot.Modules.Utility.Services;
 
@@ -80,10 +81,10 @@ public class RemindService : INService, IReadyExecutor
     {
         await using var uow = _db.GetDbContext();
         return await uow.Reminders
-                  .ToLinqToDBTable()
-                  .Where(x => x.ServerId / 4194304 % (ulong)_creds.TotalShards == (ulong)_client.ShardId
-                              && x.When < now)
-                  .ToListAsyncLinqToDB();
+                        .ToLinqToDBTable()
+                        .Where(x => Linq2DbExpressions.GuildOnShard(x.ServerId, _creds.TotalShards, _client.ShardId)
+                                    && x.When < now)
+                        .ToListAsyncLinqToDB();
     }
 
     public bool TryParseRemindMessage(string input, out RemindObject obj)
@@ -177,5 +178,28 @@ public class RemindService : INService, IReadyExecutor
     {
         public string What { get; set; }
         public TimeSpan Time { get; set; }
+    }
+
+    public async Task AddReminderAsync(ulong userId,
+        ulong targetId,
+        ulong? guildId,
+        bool isPrivate,
+        DateTime time,
+        string message)
+    {
+        var rem = new Reminder
+        {
+            UserId = userId,
+            ChannelId = targetId,
+            ServerId = guildId ?? 0,
+            IsPrivate = isPrivate,
+            When = time,
+            Message = message, 
+        };
+
+        await using var ctx = _db.GetDbContext();
+        await ctx.Reminders
+                 .AddAsync(rem);
+        await ctx.SaveChangesAsync();
     }
 }

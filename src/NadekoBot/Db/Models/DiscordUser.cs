@@ -3,6 +3,8 @@ using NadekoBot.Services.Database.Models;
 
 namespace NadekoBot.Db.Models;
 
+
+// FUTURE remove LastLevelUp from here and UserXpStats
 public class DiscordUser : DbEntity
 {
     public ulong UserId { get; set; }
@@ -10,12 +12,11 @@ public class DiscordUser : DbEntity
     public string Discriminator { get; set; }
     public string AvatarId { get; set; }
 
+    public int? ClubId { get; set; }
     public ClubInfo Club { get; set; }
     public bool IsClubAdmin { get; set; }
 
-    public int TotalXp { get; set; }
-    public DateTime LastLevelUp { get; set; } = DateTime.UtcNow;
-    public DateTime LastXpGain { get; set; } = DateTime.MinValue;
+    public long TotalXp { get; set; }
     public XpNotificationLocation NotifyOnLevelUp { get; set; }
 
     public long CurrencyAmount { get; set; }

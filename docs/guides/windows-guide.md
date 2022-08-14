@@ -19,7 +19,7 @@
 
 **Optional**
 
-- [Notepad++] (makes it easier to edit your credentials)
+- [Visual Studio Code](https://code.visualstudio.com/Download) (Highly suggested if you plan on editing files)
 - [Visual C++ 2010 (x86)] and [Visual C++ 2017 (x64)] (both are required if you want Nadeko to play music - restart Windows after installation)
 
 #### Setup
@@ -31,7 +31,8 @@
  ![Create a new bot](https://i.imgur.com/JxtRk9e.png "Create a new bot")
 - Click on **`DOWNLOAD`** at the lower right
  ![Bot Setup](https://i.imgur.com/HqAl36p.png "Bot Setup")
-- Click on **`Install`** next to **`Redis`**.
+- Click on **`Install`** next to **`Redis`**. 
+- **(Note: Redis is optional unless you are are using the bot on 2000+ servers)**
 - Note: If Redis fails to install, install Redis manually here: [Redis Installer](https://github.com/MicrosoftArchive/redis/releases/tag/win-3.0.504) Download and run the **`.msi`** file.
 - If you will use the music module, click on **`Install`** next to **`FFMPEG`** and **`Youtube-DL`**.
 - If any dependencies fail to install, you can temporarily disable your Windows Defender/AV until you install them. If you don't want to, then read [the last section of this guide](#Manual-Prerequisite-Installation).
@@ -63,9 +64,9 @@ You can still install them manually:
 - [ffmpeg-32bit] | [ffmpeg-64bit] - Download the **appropriate version** for your system (32 bit if you're running a 32 bit OS, or 64 if you're running a 64bit OS). Unzip it, and move `ffmpeg.exe` to a path that's in your PATH environment variable. If you don't know what that is, then just move the `ffmpeg.exe` file to NadekoBot/system
 - [youtube-dl] - Click to download the file. Then put `youtube-dl.exe` in a path that's in your PATH environment variable. If you don't know what that is, then just move the `youtube-dl.exe` file to NadekoBot/system
 
-### Windows From Source
+## **⚠ IF YOU ARE FOLLOWING THE GUIDE ABOVE, IGNORE THIS SECTION ⚠**
 
-⚠ IF YOU ARE FOLLOWING THE GUIDE ABOVE, IGNORE THIS SECTION ⚠ 
+### Windows From Source
 
 ##### Prerequisites
 

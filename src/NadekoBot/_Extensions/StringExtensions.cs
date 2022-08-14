@@ -2,6 +2,7 @@ using NadekoBot.Common.Yml;
 using Newtonsoft.Json;
 using System.Text;
 using System.Text.RegularExpressions;
+using Nadeko.Common;
 
 namespace NadekoBot.Extensions;
 
@@ -23,7 +24,7 @@ public static class StringExtensions
     {
         var spaces = length - str.Length;
         var padLeft = (spaces / 2) + str.Length;
-        return str.PadLeft(padLeft).PadRight(length);
+        return str.PadLeft(padLeft, '_').PadRight(length, '_');
     }
 
     public static T? MapJson<T>(this string str)
@@ -89,7 +90,7 @@ public static class StringExtensions
     public static async Task<Stream> ToStream(this string str)
     {
         var ms = new MemoryStream();
-        await using var sw = new StreamWriter(ms);
+        var sw = new StreamWriter(ms);
         await sw.WriteAsync(str);
         await sw.FlushAsync();
         ms.Position = 0;

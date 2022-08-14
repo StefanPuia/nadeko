@@ -1,4 +1,5 @@
-#nullable disable
+#nullable disable warnings
+using Nadeko.Common;
 using NadekoBot.Common.Yml;
 using NadekoBot.Db;
 using NadekoBot.Services.Database.Models;
@@ -43,13 +44,13 @@ public partial class Utility
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [Priority(1)]
-        public partial Task ListQuotes(OrderType order = OrderType.Keyword)
+        public Task ListQuotes(OrderType order = OrderType.Keyword)
             => ListQuotes(1, order);
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [Priority(0)]
-        public async partial Task ListQuotes(int page = 1, OrderType order = OrderType.Keyword)
+        public async Task ListQuotes(int page = 1, OrderType order = OrderType.Keyword)
         {
             page -= 1;
             if (page < 0)
@@ -74,7 +75,7 @@ public partial class Utility
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
-        public async partial Task QuotePrint([Leftover] string keyword)
+        public async Task QuotePrint([Leftover] string keyword)
         {
             if (string.IsNullOrWhiteSpace(keyword))
                 return;
@@ -105,7 +106,7 @@ public partial class Utility
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
-        public async partial Task QuoteShow(int id)
+        public async Task QuoteShow(int id)
         {
             Quote quote;
             await using (var uow = _db.GetDbContext())
@@ -134,33 +135,43 @@ public partial class Utility
                                                .WithFooter(
                                                    GetText(strs.created_by($"{data.AuthorName} ({data.AuthorId})"))));
 
-        [Cmd]
-        [RequireContext(ContextType.Guild)]
-        public async partial Task QuoteSearch(string keyword, [Leftover] string text)
+        private async Task QuoteSearchinternalAsync(string? keyword, string textOrAuthor)
         {
-            if (string.IsNullOrWhiteSpace(keyword) || string.IsNullOrWhiteSpace(text))
+            if (string.IsNullOrWhiteSpace(textOrAuthor))
                 return;
 
-            keyword = keyword.ToUpperInvariant();
+            keyword = keyword?.ToUpperInvariant();
 
-            Quote keywordquote;
+            Quote quote;
             await using (var uow = _db.GetDbContext())
             {
-                keywordquote = await uow.Quotes.SearchQuoteKeywordTextAsync(ctx.Guild.Id, keyword, text);
+                quote = await uow.Quotes.SearchQuoteKeywordTextAsync(ctx.Guild.Id, keyword, textOrAuthor);
             }
 
-            if (keywordquote is null)
+            if (quote is null)
                 return;
 
-            await ctx.Channel.SendMessageAsync($"`#{keywordquote.Id}` 💬 "
-                                               + keyword.ToLowerInvariant()
+            await ctx.Channel.SendMessageAsync($"`#{quote.Id}` 💬 "
+                                               + quote.Keyword.ToLowerInvariant()
                                                + ":  "
-                                               + keywordquote.Text.SanitizeAllMentions());
+                                               + quote.Text.SanitizeAllMentions());
         }
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
-        public async partial Task QuoteId(int id)
+        [Priority(0)]
+        public Task QuoteSearch(string textOrAuthor)
+            => QuoteSearchinternalAsync(null, textOrAuthor);
+        
+        [Cmd]
+        [RequireContext(ContextType.Guild)]
+        [Priority(1)]
+        public Task QuoteSearch(string keyword, [Leftover] string textOrAuthor)
+            => QuoteSearchinternalAsync(keyword, textOrAuthor);
+
+        [Cmd]
+        [RequireContext(ContextType.Guild)]
+        public async Task QuoteId(int id)
         {
             if (id < 0)
                 return;
@@ -192,7 +203,7 @@ public partial class Utility
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
-        public async partial Task QuoteAdd(string keyword, [Leftover] string text)
+        public async Task QuoteAdd(string keyword, [Leftover] string text)
         {
             if (string.IsNullOrWhiteSpace(keyword) || string.IsNullOrWhiteSpace(text))
                 return;
@@ -218,7 +229,7 @@ public partial class Utility
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
-        public async partial Task QuoteDelete(int id)
+        public async Task QuoteDelete(int id)
         {
             var hasManageMessages = ((IGuildUser)ctx.Message.Author).GuildPermissions.ManageMessages;
 
@@ -248,7 +259,7 @@ public partial class Utility
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.ManageMessages)]
-        public async partial Task DelAllQuotes([Leftover] string keyword)
+        public async Task DelAllQuotes([Leftover] string keyword)
         {
             if (string.IsNullOrWhiteSpace(keyword))
                 return;
@@ -268,7 +279,7 @@ public partial class Utility
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
-        public async partial Task QuotesExport()
+        public async Task QuotesExport()
         {
             IEnumerable<Quote> quotes;
             await using (var uow = _db.GetDbContext())
@@ -292,7 +303,7 @@ public partial class Utility
 #if GLOBAL_NADEKO
             [OwnerOnly]
 #endif
-        public async partial Task QuotesImport([Leftover] string input = null)
+        public async Task QuotesImport([Leftover] string input = null)
         {
             input = input?.Trim();
 

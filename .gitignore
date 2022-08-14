@@ -1,5 +1,13 @@
 #Manually added files
 
+src/NadekoBot/data/last_known_version.txt
+
+# medusa stuff
+!src/NadekoBot/data/medusae/medusa.yml
+src/NadekoBot/data/medusae/**
+
+# other
+
 command_errors*.txt
 output/
 src/NadekoBot/output

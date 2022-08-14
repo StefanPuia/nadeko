@@ -6,7 +6,7 @@ using NadekoBot.Services.Database.Models;
 
 namespace NadekoBot.Modules.Permissions.Services;
 
-public sealed class FilterService : IEarlyBehavior
+public sealed class FilterService : IExecOnMessage
 {
     public ConcurrentHashSet<ulong> InviteFilteringChannels { get; }
     public ConcurrentHashSet<ulong> InviteFilteringServers { get; }
@@ -52,7 +52,7 @@ public sealed class FilterService : IEarlyBehavior
                 new(configs.SelectMany(gc => gc.FilterLinksChannelIds.Select(fci => fci.ChannelId)));
 
             var dict = configs.ToDictionary(gc => gc.GuildId,
-                gc => new ConcurrentHashSet<string>(gc.FilteredWords.Select(fw => fw.Word)));
+                gc => new ConcurrentHashSet<string>(gc.FilteredWords.Select(fw => fw.Word).Distinct()));
 
             ServerFilteredWords = new(dict);
 
@@ -71,7 +71,7 @@ public sealed class FilterService : IEarlyBehavior
                 if (guild is null || newMsg is not IUserMessage usrMsg)
                     return Task.CompletedTask;
 
-                return RunBehavior(guild, usrMsg);
+                return ExecOnMessageAsync(guild, usrMsg);
             });
             return Task.CompletedTask;
         };
@@ -112,7 +112,7 @@ public sealed class FilterService : IEarlyBehavior
         return words;
     }
 
-    public async Task<bool> RunBehavior(IGuild guild, IUserMessage msg)
+    public async Task<bool> ExecOnMessageAsync(IGuild guild, IUserMessage msg)
     {
         if (msg.Author is not IGuildUser gu || gu.GuildPermissions.Administrator)
             return false;

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Nadeko.Common;
 using NadekoBot.Common.ModuleBehaviors;
 using NadekoBot.Db;
 using NadekoBot.Modules.Administration.Services;
@@ -26,6 +27,7 @@ public sealed class LogCommandService : ILogCommandService, IReadyExecutor
     private readonly IMemoryCache _memoryCache;
 
     private readonly ConcurrentHashSet<ulong> _ignoreMessageIds = new();
+    private readonly UserPunishService _punishService;
 
     public LogCommandService(
         DiscordSocketClient client,
@@ -35,7 +37,8 @@ public sealed class LogCommandService : ILogCommandService, IReadyExecutor
         ProtectionService prot,
         GuildTimezoneService tz,
         IMemoryCache memoryCache,
-        IEmbedBuilderService eb)
+        IEmbedBuilderService eb,
+        UserPunishService punishService)
     {
         _client = client;
         _memoryCache = memoryCache;
@@ -45,6 +48,8 @@ public sealed class LogCommandService : ILogCommandService, IReadyExecutor
         _mute = mute;
         _prot = prot;
         _tz = tz;
+        _punishService = punishService;
+        
         using (var uow = db.GetDbContext())
         {
             var guildIds = client.Guilds.Select(x => x.Id).ToList();
@@ -78,6 +83,8 @@ public sealed class LogCommandService : ILogCommandService, IReadyExecutor
         _mute.UserUnmuted += MuteCommands_UserUnmuted;
 
         _prot.OnAntiProtectionTriggered += TriggeredAntiProtection;
+        
+        _punishService.OnUserWarned += PunishServiceOnOnUserWarned;
     }
 
     public async Task OnReadyAsync()
@@ -183,6 +190,30 @@ public sealed class LogCommandService : ILogCommandService, IReadyExecutor
         GuildLogSettings.AddOrUpdate(guildId, _ => logSetting, (_, _) => logSetting);
     }
 
+    
+
+    private async Task PunishServiceOnOnUserWarned(Warning arg)
+    {
+        if (!GuildLogSettings.TryGetValue(arg.GuildId, out var logSetting) || logSetting.LogWarnsId is null)
+            return;
+        
+        var g = _client.GetGuild(arg.GuildId);
+        
+        ITextChannel? logChannel;
+        if ((logChannel = await TryGetLogChannel(g, logSetting, LogType.UserWarned)) is null)
+            return;
+
+        var embed = _eb.Create()
+                       .WithOkColor()
+                       .WithTitle($"⚠️ User Warned")
+                       .WithDescription($"<@{arg.UserId}> | {arg.UserId}")
+                       .AddField("Mod", arg.Moderator)
+                       .AddField("Reason", string.IsNullOrWhiteSpace(arg.Reason) ? "-" : arg.Reason, true)
+                       .WithFooter(CurrentTime(g));
+
+        await logChannel.EmbedAsync(embed);
+    }
+    
     private Task _client_UserUpdated(SocketUser before, SocketUser uAfter)
     {
         _ = Task.Run(async () =>
@@ -295,6 +326,9 @@ public sealed class LogCommandService : ILogCommandService, IReadyExecutor
                 case LogType.VoicePresenceTts:
                     channelId = logSetting.LogVoicePresenceTTSId =
                         logSetting.LogVoicePresenceTTSId is null ? cid : default;
+                    break;
+                case LogType.UserWarned:
+                    channelId = logSetting.LogWarnsId = logSetting.LogWarnsId is null ? cid : default;
                     break;
             }
 
@@ -913,7 +947,7 @@ public sealed class LogCommandService : ILogCommandService, IReadyExecutor
                 var embed = _eb.Create()
                                .WithOkColor()
                                .WithTitle("♻️ " + GetText(logChannel.Guild, strs.user_unbanned))
-                               .WithDescription(usr.ToString())
+                               .WithDescription(usr.ToString()!)
                                .AddField("Id", usr.Id.ToString())
                                .WithFooter(CurrentTime(guild));
 
@@ -945,11 +979,25 @@ public sealed class LogCommandService : ILogCommandService, IReadyExecutor
                 ITextChannel? logChannel;
                 if ((logChannel = await TryGetLogChannel(guild, logSetting, LogType.UserBanned)) == null)
                     return;
+
+
+                string? reason = null;
+                try
+                {
+                    var ban = await guild.GetBanAsync(usr);
+                    reason = ban?.Reason;
+                }
+                catch
+                {
+                    
+                }
+                
                 var embed = _eb.Create()
                                .WithOkColor()
                                .WithTitle("🚫 " + GetText(logChannel.Guild, strs.user_banned))
-                               .WithDescription(usr.ToString())
+                               .WithDescription(usr.ToString()!)
                                .AddField("Id", usr.Id.ToString())
+                               .AddField("Reason", string.IsNullOrWhiteSpace(reason) ? "-" : reason)
                                .WithFooter(CurrentTime(guild));
 
                 var avatarUrl = usr.GetAvatarUrl();
@@ -999,7 +1047,7 @@ public sealed class LogCommandService : ILogCommandService, IReadyExecutor
                                .WithOkColor()
                                .WithTitle("🗑 "
                                           + GetText(logChannel.Guild, strs.msg_del(((ITextChannel)msg.Channel).Name)))
-                               .WithDescription(msg.Author.ToString())
+                               .WithDescription(msg.Author.ToString()!)
                                .AddField(GetText(logChannel.Guild, strs.content),
                                    string.IsNullOrWhiteSpace(resolvedMessage) ? "-" : resolvedMessage)
                                .AddField("Id", msg.Id.ToString())
@@ -1060,7 +1108,7 @@ public sealed class LogCommandService : ILogCommandService, IReadyExecutor
                                .WithTitle("📝 "
                                           + GetText(logChannel.Guild,
                                               strs.msg_update(((ITextChannel)after.Channel).Name)))
-                               .WithDescription(after.Author.ToString())
+                               .WithDescription(after.Author.ToString()!)
                                .AddField(GetText(logChannel.Guild, strs.old_msg),
                                    string.IsNullOrWhiteSpace(before.Content)
                                        ? "-"
@@ -1129,6 +1177,9 @@ public sealed class LogCommandService : ILogCommandService, IReadyExecutor
                 break;
             case LogType.UserMuted:
                 id = logSetting.UserMutedId;
+                break;
+            case LogType.UserWarned:
+                id = logSetting.LogWarnsId;
                 break;
         }
 
@@ -1199,6 +1250,9 @@ public sealed class LogCommandService : ILogCommandService, IReadyExecutor
                 break;
             case LogType.VoicePresenceTts:
                 newLogSetting.LogVoicePresenceTTSId = null;
+                break;
+            case LogType.UserWarned:
+                newLogSetting.LogWarnsId = null;
                 break;
         }
 

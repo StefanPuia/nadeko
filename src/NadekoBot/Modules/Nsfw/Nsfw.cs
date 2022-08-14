@@ -1,9 +1,11 @@
 ﻿#nullable disable
+using Nadeko.Common;
 using NadekoBot.Modules.Searches.Common;
 using Newtonsoft.Json.Linq;
 
 namespace NadekoBot.Modules.Nsfw;
 
+#if !GLOBAL_NADEKO
 [NoPublicBot]
 public partial class NSFW : NadekoModule<ISearchImagesService>
 {
@@ -59,7 +61,7 @@ public partial class NSFW : NadekoModule<ISearchImagesService>
     [RequireNsfw]
     [RequireContext(ContextType.Guild)]
     [UserPerm(ChannelPerm.ManageMessages)]
-    public async partial Task AutoHentai(int interval = 0, [Leftover] string tags = null)
+    public async Task AutoHentai(int interval = 0, [Leftover] string tags = null)
     {
         Timer t;
 
@@ -106,14 +108,14 @@ public partial class NSFW : NadekoModule<ISearchImagesService>
                 return t;
             });
 
-        await ReplyConfirmLocalizedAsync(strs.autohentai_started(interval, string.Join(", ", tags)));
+        await SendConfirmAsync($"Autohentai started. Interval: {interval}, Tags: {string.Join(", ", tags)}");
     }
 
     [Cmd]
     [RequireNsfw]
     [RequireContext(ContextType.Guild)]
     [UserPerm(ChannelPerm.ManageMessages)]
-    public async partial Task AutoBoobs(int interval = 0)
+    public async Task AutoBoobs(int interval = 0)
     {
         Timer t;
 
@@ -160,7 +162,7 @@ public partial class NSFW : NadekoModule<ISearchImagesService>
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
     [UserPerm(ChannelPerm.ManageMessages)]
-    public async partial Task AutoButts(int interval = 0)
+    public async Task AutoButts(int interval = 0)
     {
         Timer t;
 
@@ -206,13 +208,13 @@ public partial class NSFW : NadekoModule<ISearchImagesService>
     [Cmd]
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
-    public partial Task Hentai(params string[] tags)
+    public Task Hentai(params string[] tags)
         => InternalDapiCommand(tags, true, _service.Hentai);
 
     [Cmd]
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
-    public async partial Task HentaiBomb(params string[] tags)
+    public async Task HentaiBomb(params string[] tags)
     {
         if (!_hentaiBombBlacklist.Add(ctx.Guild?.Id ?? ctx.User.Id))
             return;
@@ -241,61 +243,61 @@ public partial class NSFW : NadekoModule<ISearchImagesService>
     [Cmd]
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
-    public partial Task Yandere(params string[] tags)
+    public Task Yandere(params string[] tags)
         => InternalDapiCommand(tags, false, _service.Yandere);
 
     [Cmd]
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
-    public partial Task Konachan(params string[] tags)
+    public Task Konachan(params string[] tags)
         => InternalDapiCommand(tags, false, _service.Konachan);
 
     [Cmd]
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
-    public partial Task Sankaku(params string[] tags)
+    public Task Sankaku(params string[] tags)
         => InternalDapiCommand(tags, false, _service.Sankaku);
 
     [Cmd]
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
-    public partial Task E621(params string[] tags)
+    public Task E621(params string[] tags)
         => InternalDapiCommand(tags, false, _service.E621);
 
     [Cmd]
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
-    public partial Task Rule34(params string[] tags)
+    public Task Rule34(params string[] tags)
         => InternalDapiCommand(tags, false, _service.Rule34);
 
     [Cmd]
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
-    public partial Task Danbooru(params string[] tags)
+    public Task Danbooru(params string[] tags)
         => InternalDapiCommand(tags, false, _service.Danbooru);
 
     [Cmd]
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
-    public partial Task Gelbooru(params string[] tags)
+    public Task Gelbooru(params string[] tags)
         => InternalDapiCommand(tags, false, _service.Gelbooru);
 
     [Cmd]
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
-    public partial Task Derpibooru(params string[] tags)
+    public Task Derpibooru(params string[] tags)
         => InternalDapiCommand(tags, false, _service.DerpiBooru);
 
     [Cmd]
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
-    public partial Task Safebooru(params string[] tags)
+    public Task Safebooru(params string[] tags)
         => InternalDapiCommand(tags, false, _service.SafeBooru);
 
     [Cmd]
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
-    public async partial Task Boobs()
+    public async Task Boobs()
     {
         try
         {
@@ -317,7 +319,7 @@ public partial class NSFW : NadekoModule<ISearchImagesService>
     [Cmd]
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
-    public async partial Task Butts()
+    public async Task Butts()
     {
         try
         {
@@ -339,7 +341,7 @@ public partial class NSFW : NadekoModule<ISearchImagesService>
     [Cmd]
     [RequireContext(ContextType.Guild)]
     [UserPerm(GuildPerm.ManageMessages)]
-    public async partial Task NsfwTagBlacklist([Leftover] string tag = null)
+    public async Task NsfwTagBlacklist([Leftover] string tag = null)
     {
         if (string.IsNullOrWhiteSpace(tag))
         {
@@ -363,7 +365,7 @@ public partial class NSFW : NadekoModule<ISearchImagesService>
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
     [Priority(1)]
-    public async partial Task Nhentai(uint id)
+    public async Task Nhentai(uint id)
     {
         var g = await _service.GetNhentaiByIdAsync(id);
 
@@ -381,7 +383,7 @@ public partial class NSFW : NadekoModule<ISearchImagesService>
     [RequireNsfw(Group = "nsfw_or_dm")]
     [RequireContext(ContextType.DM, Group = "nsfw_or_dm")]
     [Priority(0)]
-    public async partial Task Nhentai([Leftover] string query)
+    public async Task Nhentai([Leftover] string query)
     {
         var g = await _service.GetNhentaiBySearchAsync(query);
 
@@ -403,15 +405,19 @@ public partial class NSFW : NadekoModule<ISearchImagesService>
                          .Join(" ");
 
         var embed = _eb.Create()
-                       .WithTitle(g.Title)
-                       .WithDescription(g.FullTitle)
-                       .WithImageUrl(g.Thumbnail)
-                       .WithUrl(g.Url)
-                       .AddField(GetText(strs.favorites), g.Likes, true)
-                       .AddField(GetText(strs.pages), g.PageCount, true)
-                       .AddField(GetText(strs.tags), tagString, true)
-                       .WithFooter(g.UploadedAt.ToString("f"))
-                       .WithOkColor();
+            .WithTitle(g.Title)
+            .WithDescription(g.FullTitle)
+            .WithImageUrl(g.Thumbnail)
+            .WithUrl(g.Url)
+            .AddField(GetText(strs.favorites), g.Likes, true)
+            .AddField(GetText(strs.pages), g.PageCount, true)
+            .AddField(GetText(strs.tags),
+                string.IsNullOrWhiteSpace(tagString)
+                    ? "?"
+                    : tagString,
+                true)
+            .WithFooter(g.UploadedAt.ToString("f"))
+            .WithOkColor();
 
         await ctx.Channel.EmbedAsync(embed);
     }
@@ -437,3 +443,4 @@ public partial class NSFW : NadekoModule<ISearchImagesService>
                                             $"{data.Rating} ({data.Provider}) | {string.Join(" | ", data.Tags.Where(x => !string.IsNullOrWhiteSpace(x)).Take(5))}"));
     }
 }
+#endif

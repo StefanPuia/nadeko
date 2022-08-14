@@ -1,7 +1,5 @@
 #nullable disable
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Logging;
 using NadekoBot.Db.Models;
 using NadekoBot.Services.Database.Models;
@@ -10,23 +8,7 @@ using NadekoBot.Services.Database.Models;
 
 namespace NadekoBot.Services.Database;
 
-public class NadekoContextFactory : IDesignTimeDbContextFactory<NadekoContext>
-{
-    public NadekoContext CreateDbContext(string[] args)
-    {
-        LogSetup.SetupLogger(-2);
-        var optionsBuilder = new DbContextOptionsBuilder<NadekoContext>();
-        var creds = new BotCredsProvider().GetCreds();
-        var builder = new SqliteConnectionStringBuilder(creds.Db.ConnectionString);
-        builder.DataSource = Path.Combine(AppContext.BaseDirectory, builder.DataSource);
-        optionsBuilder.UseSqlite(builder.ToString());
-        var ctx = new NadekoContext(optionsBuilder.Options);
-        ctx.Database.SetCommandTimeout(60);
-        return ctx;
-    }
-}
-
-public class NadekoContext : DbContext
+public abstract class NadekoContext : DbContext
 {
     public DbSet<GuildConfig> GuildConfigs { get; set; }
 
@@ -43,7 +25,7 @@ public class NadekoContext : DbContext
     public DbSet<ClubInfo> Clubs { get; set; }
     public DbSet<ClubBans> ClubBans { get; set; }
     public DbSet<ClubApplicants> ClubApplicants { get; set; }
-    
+
 
     //logging
     public DbSet<LogSetting> LogSettings { get; set; }
@@ -69,10 +51,22 @@ public class NadekoContext : DbContext
 
     public DbSet<Permissionv2> Permissions { get; set; }
 
-    public NadekoContext(DbContextOptions<NadekoContext> options)
-        : base(options)
-    {
-    }
+    public DbSet<BankUser> BankUsers { get; set; }
+
+    public DbSet<ReactionRoleV2> ReactionRoles { get; set; }
+
+    public DbSet<PatronUser> Patrons { get; set; }
+
+    public DbSet<PatronQuota> PatronQuotas { get; set; }
+    
+    public DbSet<StreamOnlineMessage> StreamOnlineMessages { get; set; }
+
+
+    #region Mandatory Provider-Specific Values
+
+    protected abstract string CurrencyTransactionOtherIdDefaultValue { get; }
+
+    #endregion
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -87,7 +81,11 @@ public class NadekoContext : DbContext
         #region GuildConfig
 
         var configEntity = modelBuilder.Entity<GuildConfig>();
-        configEntity.HasIndex(c => c.GuildId).IsUnique();
+        configEntity.HasIndex(c => c.GuildId)
+                    .IsUnique();
+
+        configEntity.Property(x => x.VerboseErrors)
+                    .HasDefaultValue(true);
 
         modelBuilder.Entity<AntiSpamSetting>().HasOne(x => x.GuildConfig).WithOne(x => x.AntiSpamSetting);
 
@@ -166,12 +164,6 @@ public class NadekoContext : DbContext
             du.Property(x => x.NotifyOnLevelUp)
               .HasDefaultValue(XpNotificationLocation.None);
 
-            du.Property(x => x.LastXpGain)
-              .HasDefaultValueSql("datetime('now', '-1 years')");
-
-            du.Property(x => x.LastLevelUp)
-              .HasDefaultValueSql("datetime('now')");
-
             du.Property(x => x.TotalXp)
               .HasDefaultValue(0);
 
@@ -179,7 +171,10 @@ public class NadekoContext : DbContext
               .HasDefaultValue(0);
 
             du.HasAlternateKey(w => w.UserId);
-            du.HasOne(x => x.Club).WithMany(x => x.Users).IsRequired(false);
+            du.HasOne(x => x.Club)
+              .WithMany(x => x.Members)
+              .IsRequired(false)
+              .OnDelete(DeleteBehavior.NoAction);
 
             du.HasIndex(x => x.TotalXp);
             du.HasIndex(x => x.CurrencyAmount);
@@ -200,13 +195,6 @@ public class NadekoContext : DbContext
 
         #endregion
 
-        #region PatreonRewards
-
-        var pr = modelBuilder.Entity<RewardedUser>();
-        pr.HasIndex(x => x.PatreonUserId).IsUnique();
-
-        #endregion
-
         #region XpStats
 
         var xps = modelBuilder.Entity<UserXpStats>();
@@ -216,9 +204,6 @@ public class NadekoContext : DbContext
                x.GuildId
            })
            .IsUnique();
-
-        xps.Property(x => x.LastLevelUp)
-           .HasDefaultValue(new DateTime(2017, 9, 21, 20, 53, 13, 307, DateTimeKind.Local));
 
         xps.HasIndex(x => x.UserId);
         xps.HasIndex(x => x.GuildId);
@@ -248,13 +233,14 @@ public class NadekoContext : DbContext
         #region Club
 
         var ci = modelBuilder.Entity<ClubInfo>();
-        ci.HasOne(x => x.Owner).WithOne().HasForeignKey<ClubInfo>(x => x.OwnerId);
-
+        ci.HasOne(x => x.Owner)
+          .WithOne()
+          .HasForeignKey<ClubInfo>(x => x.OwnerId)
+          .OnDelete(DeleteBehavior.SetNull);
 
         ci.HasAlternateKey(x => new
         {
-            x.Name,
-            x.Discrim
+            x.Name
         });
 
         #endregion
@@ -268,9 +254,13 @@ public class NadekoContext : DbContext
                         t.UserId
                     });
 
-        modelBuilder.Entity<ClubApplicants>().HasOne(pt => pt.User).WithMany();
+        modelBuilder.Entity<ClubApplicants>()
+                    .HasOne(pt => pt.User)
+                    .WithMany();
 
-        modelBuilder.Entity<ClubApplicants>().HasOne(pt => pt.Club).WithMany(x => x.Applicants);
+        modelBuilder.Entity<ClubApplicants>()
+                    .HasOne(pt => pt.Club)
+                    .WithMany(x => x.Applicants);
 
         modelBuilder.Entity<ClubBans>()
                     .HasKey(t => new
@@ -279,9 +269,13 @@ public class NadekoContext : DbContext
                         t.UserId
                     });
 
-        modelBuilder.Entity<ClubBans>().HasOne(pt => pt.User).WithMany();
+        modelBuilder.Entity<ClubBans>()
+                    .HasOne(pt => pt.User)
+                    .WithMany();
 
-        modelBuilder.Entity<ClubBans>().HasOne(pt => pt.Club).WithMany(x => x.Bans);
+        modelBuilder.Entity<ClubBans>()
+                    .HasOne(pt => pt.Club)
+                    .WithMany(x => x.Bans);
 
         #endregion
 
@@ -299,7 +293,7 @@ public class NadekoContext : DbContext
              .IsUnique(false);
 
             e.Property(x => x.OtherId)
-             .HasDefaultValueSql("NULL");
+             .HasDefaultValueSql(CurrencyTransactionOtherIdDefaultValue);
 
             e.Property(x => x.Type)
              .IsRequired();
@@ -361,10 +355,18 @@ public class NadekoContext : DbContext
 
         #region Reaction roles
 
-        modelBuilder.Entity<ReactionRoleMessage>(rrm => rrm
-                                                        .HasMany(x => x.ReactionRoles)
-                                                        .WithOne()
-                                                        .OnDelete(DeleteBehavior.Cascade));
+        modelBuilder.Entity<ReactionRoleV2>(rr2 =>
+        {
+            rr2.HasIndex(x => x.GuildId)
+               .IsUnique(false);
+
+            rr2.HasIndex(x => new
+               {
+                   x.MessageId,
+                   x.Emote
+               })
+               .IsUnique();
+        });
 
         #endregion
 
@@ -404,6 +406,60 @@ public class NadekoContext : DbContext
             x.ChannelId,
             x.UserId
         }));
+
+        #region BANK
+
+        modelBuilder.Entity<BankUser>(bu => bu.HasIndex(x => x.UserId).IsUnique());
+
+        #endregion
+
+
+        #region Patron
+
+        // currency rewards
+        var pr = modelBuilder.Entity<RewardedUser>();
+        pr.HasIndex(x => x.PlatformUserId).IsUnique();
+
+        // patrons
+        // patrons are not identified by their user id, but by their platform user id
+        // as multiple accounts (even maybe on different platforms) could have
+        // the same account connected to them
+        modelBuilder.Entity<PatronUser>(pu =>
+        {
+            pu.HasIndex(x => x.UniquePlatformUserId).IsUnique();
+            pu.HasKey(x => x.UserId);
+        });
+
+        // quotes are per user id
+        modelBuilder.Entity<PatronQuota>(pq =>
+        {
+            pq.HasIndex(x => x.UserId).IsUnique(false);
+            pq.HasKey(x => new
+            {
+                x.UserId,
+                x.FeatureType,
+                x.Feature
+            });
+        });
+
+        #endregion
+ 
+        #region Xp Item Shop
+
+        modelBuilder.Entity<XpShopOwnedItem>(
+            x =>
+            {
+                // user can own only one of each item
+                x.HasIndex(model => new
+                    {
+                        model.UserId,
+                        model.ItemType,
+                        model.ItemKey
+                    })
+                    .IsUnique();
+            });
+
+        #endregion
     }
 
 #if DEBUG

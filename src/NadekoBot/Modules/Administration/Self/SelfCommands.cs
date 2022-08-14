@@ -1,4 +1,5 @@
 #nullable disable
+using Nadeko.Medusa;
 using NadekoBot.Modules.Administration.Services;
 using NadekoBot.Services.Database.Models;
 
@@ -19,20 +20,26 @@ public partial class Administration
 
         private readonly DiscordSocketClient _client;
         private readonly IBotStrings _strings;
+        private readonly IMedusaLoaderService _medusaLoader;
         private readonly ICoordinator _coord;
 
-        public SelfCommands(DiscordSocketClient client, IBotStrings strings, ICoordinator coord)
+        public SelfCommands(
+            DiscordSocketClient client,
+            IBotStrings strings,
+            ICoordinator coord,
+            IMedusaLoaderService medusaLoader)
         {
             _client = client;
             _strings = strings;
             _coord = coord;
+            _medusaLoader = medusaLoader;
         }
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
         [OwnerOnly]
-        public async partial Task StartupCommandAdd([Leftover] string cmdText)
+        public async Task StartupCommandAdd([Leftover] string cmdText)
         {
             if (cmdText.StartsWith(prefix + "die", StringComparison.InvariantCulture))
                 return;
@@ -65,7 +72,7 @@ public partial class Administration
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
         [OwnerOnly]
-        public async partial Task AutoCommandAdd(int interval, [Leftover] string cmdText)
+        public async Task AutoCommandAdd(int interval, [Leftover] string cmdText)
         {
             if (cmdText.StartsWith(prefix + "die", StringComparison.InvariantCulture))
                 return;
@@ -93,7 +100,7 @@ public partial class Administration
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [OwnerOnly]
-        public async partial Task StartupCommandsList(int page = 1)
+        public async Task StartupCommandsList(int page = 1)
         {
             if (page-- < 1)
                 return;
@@ -119,7 +126,7 @@ public partial class Administration
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [OwnerOnly]
-        public async partial Task AutoCommandsList(int page = 1)
+        public async Task AutoCommandsList(int page = 1)
         {
             if (page-- < 1)
                 return;
@@ -147,7 +154,7 @@ public partial class Administration
 
         [Cmd]
         [OwnerOnly]
-        public async partial Task Wait(int miliseconds)
+        public async Task Wait(int miliseconds)
         {
             if (miliseconds <= 0)
                 return;
@@ -166,7 +173,7 @@ public partial class Administration
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
         [OwnerOnly]
-        public async partial Task AutoCommandRemove([Leftover] int index)
+        public async Task AutoCommandRemove([Leftover] int index)
         {
             if (!_service.RemoveAutoCommand(--index, out _))
             {
@@ -180,7 +187,7 @@ public partial class Administration
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [OwnerOnly]
-        public async partial Task StartupCommandRemove([Leftover] int index)
+        public async Task StartupCommandRemove([Leftover] int index)
         {
             if (!_service.RemoveStartupCommand(--index, out _))
                 await ReplyErrorLocalizedAsync(strs.scrm_fail);
@@ -192,7 +199,7 @@ public partial class Administration
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
         [OwnerOnly]
-        public async partial Task StartupCommandsClear()
+        public async Task StartupCommandsClear()
         {
             _service.ClearStartupCommands();
 
@@ -201,7 +208,7 @@ public partial class Administration
 
         [Cmd]
         [OwnerOnly]
-        public async partial Task ForwardMessages()
+        public async Task ForwardMessages()
         {
             var enabled = _service.ForwardMessages();
 
@@ -213,7 +220,7 @@ public partial class Administration
 
         [Cmd]
         [OwnerOnly]
-        public async partial Task ForwardToAll()
+        public async Task ForwardToAll()
         {
             var enabled = _service.ForwardToAll();
 
@@ -224,7 +231,7 @@ public partial class Administration
         }
 
         [Cmd]
-        public async partial Task ShardStats(int page = 1)
+        public async Task ShardStats(int page = 1)
         {
             if (--page < 0)
                 return;
@@ -277,7 +284,7 @@ public partial class Administration
 
         [Cmd]
         [OwnerOnly]
-        public async partial Task RestartShard(int shardId)
+        public async Task RestartShard(int shardId)
         {
             var success = _coord.RestartShard(shardId);
             if (success)
@@ -288,12 +295,12 @@ public partial class Administration
 
         [Cmd]
         [OwnerOnly]
-        public partial Task Leave([Leftover] string guildStr)
+        public Task Leave([Leftover] string guildStr)
             => _service.LeaveGuild(guildStr);
 
         [Cmd]
         [OwnerOnly]
-        public async partial Task DeleteEmptyServers()
+        public async Task DeleteEmptyServers()
         {
             await ctx.Channel.TriggerTypingAsync();
 
@@ -324,10 +331,12 @@ public partial class Administration
 
         [Cmd]
         [OwnerOnly]
-        public async partial Task Die(bool graceful = false)
+        public async Task Die(bool graceful = false)
         {
             try
             {
+                await _client.SetStatusAsync(UserStatus.Invisible);
+                _ =  _client.StopAsync();
                 await ReplyConfirmLocalizedAsync(strs.shutting_down);
             }
             catch
@@ -341,7 +350,7 @@ public partial class Administration
 
         [Cmd]
         [OwnerOnly]
-        public async partial Task Restart()
+        public async Task Restart()
         {
             var success = _coord.RestartBot();
             if (!success)
@@ -356,7 +365,7 @@ public partial class Administration
 
         [Cmd]
         [OwnerOnly]
-        public async partial Task SetName([Leftover] string newName)
+        public async Task SetName([Leftover] string newName)
         {
             if (string.IsNullOrWhiteSpace(newName))
                 return;
@@ -377,7 +386,7 @@ public partial class Administration
         [UserPerm(GuildPerm.ManageNicknames)]
         [BotPerm(GuildPerm.ChangeNickname)]
         [Priority(0)]
-        public async partial Task SetNick([Leftover] string newNick = null)
+        public async Task SetNick([Leftover] string newNick = null)
         {
             if (string.IsNullOrWhiteSpace(newNick))
                 return;
@@ -391,7 +400,7 @@ public partial class Administration
         [BotPerm(GuildPerm.ManageNicknames)]
         [UserPerm(GuildPerm.ManageNicknames)]
         [Priority(1)]
-        public async partial Task SetNick(IGuildUser gu, [Leftover] string newNick = null)
+        public async Task SetNick(IGuildUser gu, [Leftover] string newNick = null)
         {
             var sg = (SocketGuild)ctx.Guild;
             if (sg.OwnerId == gu.Id
@@ -408,7 +417,7 @@ public partial class Administration
 
         [Cmd]
         [OwnerOnly]
-        public async partial Task SetStatus([Leftover] SettableUserStatus status)
+        public async Task SetStatus([Leftover] SettableUserStatus status)
         {
             await _client.SetStatusAsync(SettableUserStatusToUserStatus(status));
 
@@ -417,7 +426,7 @@ public partial class Administration
 
         [Cmd]
         [OwnerOnly]
-        public async partial Task SetAvatar([Leftover] string img = null)
+        public async Task SetAvatar([Leftover] string img = null)
         {
             var success = await _service.SetAvatar(img);
 
@@ -427,7 +436,7 @@ public partial class Administration
 
         [Cmd]
         [OwnerOnly]
-        public async partial Task SetGame(ActivityType type, [Leftover] string game = null)
+        public async Task SetGame(ActivityType type, [Leftover] string game = null)
         {
             var rep = new ReplacementBuilder().WithDefault(Context).Build();
 
@@ -438,7 +447,7 @@ public partial class Administration
 
         [Cmd]
         [OwnerOnly]
-        public async partial Task SetStream(string url, [Leftover] string name = null)
+        public async Task SetStream(string url, [Leftover] string name = null)
         {
             name ??= "";
 
@@ -449,7 +458,7 @@ public partial class Administration
 
         [Cmd]
         [OwnerOnly]
-        public async partial Task Send(string where, [Leftover] SmartText text = null)
+        public async Task Send(string where, [Leftover] SmartText text = null)
         {
             var ids = where.Split('|');
             if (ids.Length != 2)
@@ -495,23 +504,16 @@ public partial class Administration
 
         [Cmd]
         [OwnerOnly]
-        public async partial Task ImagesReload()
-        {
-            await _service.ReloadImagesAsync();
-            await ReplyConfirmLocalizedAsync(strs.images_loading);
-        }
-
-        [Cmd]
-        [OwnerOnly]
-        public async partial Task StringsReload()
+        public async Task StringsReload()
         {
             _strings.Reload();
+            await _medusaLoader.ReloadStrings();
             await ReplyConfirmLocalizedAsync(strs.bot_strings_reloaded);
         }
 
         [Cmd]
         [OwnerOnly]
-        public async partial Task CoordReload()
+        public async Task CoordReload()
         {
             await _coord.Reload();
             await ctx.OkAsync();

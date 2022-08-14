@@ -1,5 +1,6 @@
 ﻿#nullable disable
 using Microsoft.EntityFrameworkCore;
+using NadekoBot.Common.ModuleBehaviors;
 using NadekoBot.Db;
 using NadekoBot.Services.Database.Models;
 using SixLabors.Fonts;
@@ -12,10 +13,10 @@ using Image = SixLabors.ImageSharp.Image;
 
 namespace NadekoBot.Modules.Gambling.Services;
 
-public class PlantPickService : INService
+public class PlantPickService : INService, IExecNoCommand
 {
     //channelId/last generation
-    public ConcurrentDictionary<ulong, DateTime> LastGenerations { get; } = new();
+    public ConcurrentDictionary<ulong, long> LastGenerations { get; } = new();
     private readonly DbService _db;
     private readonly IBotStrings _strings;
     private readonly IImageCache _images;
@@ -33,7 +34,7 @@ public class PlantPickService : INService
         DbService db,
         CommandHandler cmd,
         IBotStrings strings,
-        IDataCache cache,
+        IImageCache images,
         FontProvider fonts,
         ICurrencyService cs,
         CommandHandler cmdHandler,
@@ -42,15 +43,14 @@ public class PlantPickService : INService
     {
         _db = db;
         _strings = strings;
-        _images = cache.LocalImages;
+        _images = images;
         _fonts = fonts;
         _cs = cs;
         _cmdHandler = cmdHandler;
         _rng = new();
         _client = client;
         _gss = gss;
-
-        cmd.OnMessageNoTrigger += PotentialFlowerGeneration;
+        
         using var uow = db.GetDbContext();
         var guildIds = client.Guilds.Select(x => x.Id).ToList();
         var configs = uow.Set<GuildConfig>()
@@ -61,6 +61,9 @@ public class PlantPickService : INService
 
         _generationChannels = new(configs.SelectMany(c => c.GenerateCurrencyChannelIds.Select(obj => obj.ChannelId)));
     }
+
+    public Task ExecOnNoCommandAsync(IGuild guild, IUserMessage msg)
+        => PotentialFlowerGeneration(msg);
 
     private string GetText(ulong gid, LocStr str)
         => _strings.GetText(str, gid);
@@ -107,30 +110,21 @@ public class PlantPickService : INService
     /// <param name="pass">Optional password to add to top left corner.</param>
     /// <param name="extension">Extension of the file, defaults to png</param>
     /// <returns>Stream of the currency image</returns>
-    public Stream GetRandomCurrencyImage(string pass, out string extension)
+    public async Task<(Stream, string)> GetRandomCurrencyImageAsync(string pass)
     {
-        // get a random currency image bytes
-        var rng = new NadekoRandom();
-        var curImg = _images.Currency[rng.Next(0, _images.Currency.Count)];
+        var curImg = await _images.GetCurrencyImageAsync();
 
         if (string.IsNullOrWhiteSpace(pass))
         {
             // determine the extension
-            using (_ = Image.Load(curImg, out var format))
-            {
-                extension = format.FileExtensions.FirstOrDefault() ?? "png";
-            }
+            using var load = _ = Image.Load(curImg, out var format);
 
             // return the image
-            return curImg.ToStream();
+            return (curImg.ToStream(), format.FileExtensions.FirstOrDefault() ?? "png");
         }
 
         // get the image stream and extension
-        var (s, ext) = AddPassword(curImg, pass);
-        // set the out extension parameter to the extension we've got
-        extension = ext;
-        // return the image
-        return s;
+        return AddPassword(curImg, pass);
     }
 
     /// <summary>
@@ -149,7 +143,10 @@ public class PlantPickService : INService
         img.Mutate(x =>
         {
             // measure the size of the text to be drawing
-            var size = TextMeasurer.Measure(pass, new(font, new PointF(0, 0)));
+            var size = TextMeasurer.Measure(pass, new TextOptions(font)
+            {
+                Origin = new PointF(0, 0)
+            });
 
             // fill the background with black, add 5 pixels on each side to make it look better
             x.FillPolygon(Color.ParseHex("00000080"),
@@ -181,15 +178,15 @@ public class PlantPickService : INService
             try
             {
                 var config = _gss.Data;
-                var lastGeneration = LastGenerations.GetOrAdd(channel.Id, DateTime.MinValue);
+                var lastGeneration = LastGenerations.GetOrAdd(channel.Id, DateTime.MinValue.ToBinary());
                 var rng = new NadekoRandom();
 
                 if (DateTime.UtcNow - TimeSpan.FromSeconds(config.Generation.GenCooldown)
-                    < lastGeneration) //recently generated in this channel, don't generate again
+                    < DateTime.FromBinary(lastGeneration)) //recently generated in this channel, don't generate again
                     return;
 
                 var num = rng.Next(1, 101) + (config.Generation.Chance * 100);
-                if (num > 100 && LastGenerations.TryUpdate(channel.Id, DateTime.UtcNow, lastGeneration))
+                if (num > 100 && LastGenerations.TryUpdate(channel.Id, DateTime.UtcNow.ToBinary(), lastGeneration))
                 {
                     var dropAmount = config.Generation.MinAmount;
                     var dropAmountMax = config.Generation.MaxAmount;
@@ -211,10 +208,10 @@ public class PlantPickService : INService
                         var pw = config.Generation.HasPassword ? GenerateCurrencyPassword().ToUpperInvariant() : null;
 
                         IUserMessage sent;
-                        await using (var stream = GetRandomCurrencyImage(pw, out var ext))
-                        {
+                        var (stream, ext) = await GetRandomCurrencyImageAsync(pw);
+
+                        await using (stream)
                             sent = await channel.SendFileAsync(stream, $"currency_image.{ext}", toSend);
-                        }
 
                         await AddPlantToDatabase(channel.GuildId,
                             channel.Id,
@@ -275,7 +272,7 @@ public class PlantPickService : INService
                 if (amount > 0)
                     // give the picked currency to the user
                     await _cs.AddAsync(uid, amount, new("currency", "collect"));
-                uow.SaveChanges();
+                await uow.SaveChangesAsync();
             }
 
             try
@@ -313,15 +310,19 @@ public class PlantPickService : INService
                 msgToSend += " " + GetText(gid, strs.pick_sn(prefix));
 
             //get the image
-            await using var stream = GetRandomCurrencyImage(pass, out var ext);
+            var (stream, ext) = await GetRandomCurrencyImageAsync(pass);
             // send it
-            var msg = await ch.SendFileAsync(stream, $"img.{ext}", msgToSend);
-            // return sent message's id (in order to be able to delete it when it's picked)
-            return msg.Id;
+            await using (stream)
+            {
+                var msg = await ch.SendFileAsync(stream, $"img.{ext}", msgToSend);
+                // return sent message's id (in order to be able to delete it when it's picked)
+                return msg.Id;
+            }
         }
-        catch
+        catch (Exception ex)
         {
             // if sending fails, return null as message id
+            Log.Warning(ex, "Sending plant message failed: {Message}", ex.Message);
             return null;
         }
     }

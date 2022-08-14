@@ -1,5 +1,7 @@
 #nullable disable
+using NadekoBot.Modules.Utility.Patronage;
 using System.Text;
+using Nadeko.Common;
 
 namespace NadekoBot.Modules.Utility;
 
@@ -10,21 +12,23 @@ public partial class Utility
     {
         private readonly DiscordSocketClient _client;
         private readonly IStatsService _stats;
+        private readonly IPatronageService _ps;
 
-        public InfoCommands(DiscordSocketClient client, IStatsService stats)
+        public InfoCommands(DiscordSocketClient client, IStatsService stats, IPatronageService ps)
         {
             _client = client;
             _stats = stats;
+            _ps = ps;
         }
 
         [Cmd]
         [OwnerOnly]
-        public partial Task ServerInfo([Leftover] string guildName)
+        public Task ServerInfo([Leftover] string guildName)
             => InternalServerInfo(guildName);
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
-        public partial Task ServerInfo()
+        public Task ServerInfo()
             => InternalServerInfo();
 
         private async Task InternalServerInfo(string guildName = null)
@@ -77,7 +81,7 @@ public partial class Utility
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
-        public async partial Task ChannelInfo(ITextChannel channel = null)
+        public async Task ChannelInfo(ITextChannel channel = null)
         {
             var ch = channel ?? (ITextChannel)ctx.Channel;
             if (ch is null)
@@ -93,10 +97,37 @@ public partial class Utility
                            .WithOkColor();
             await ctx.Channel.EmbedAsync(embed);
         }
+        
+        [Cmd]
+        [RequireUserPermission(GuildPermission.ManageRoles)]
+        public async Task RoleInfo([Leftover] SocketRole role)
+        {
+            if (role.IsEveryone)
+                return;
+            
+            var createdAt = new DateTime(2015, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                .AddMilliseconds(role.Id >> 22);
+            var usercount = role.Members.LongCount();
+            var embed = _eb.Create()
+                .WithTitle(role.Name.TrimTo(128))
+                .WithDescription(role.Permissions.ToList().Join(" | "))
+                .AddField(GetText(strs.id), role.Id.ToString(), true)
+                .AddField(GetText(strs.created_at), $"{createdAt:dd.MM.yyyy HH:mm}", true)
+                .AddField(GetText(strs.users), usercount.ToString(), true)
+                .AddField(GetText(strs.color), $"#{role.Color.R:X2}{role.Color.G:X2}{role.Color.B:X2}", true)
+                .AddField(GetText(strs.mentionable), role.IsMentionable.ToString(), true)
+                .AddField(GetText(strs.hoisted), role.IsHoisted.ToString(), true)
+                .WithOkColor();
+
+            if (!string.IsNullOrWhiteSpace(role.GetIconUrl()))
+                embed = embed.WithThumbnailUrl(role.GetIconUrl());
+            
+            await ctx.Channel.EmbedAsync(embed);
+        }
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
-        public async partial Task UserInfo(IGuildUser usr = null)
+        public async Task UserInfo(IGuildUser usr = null)
         {
             var user = usr ?? ctx.User as IGuildUser;
 
@@ -106,6 +137,7 @@ public partial class Utility
             var embed = _eb.Create().AddField(GetText(strs.name), $"**{user.Username}**#{user.Discriminator}", true);
             if (!string.IsNullOrWhiteSpace(user.Nickname))
                 embed.AddField(GetText(strs.nickname), user.Nickname, true);
+            
             embed.AddField(GetText(strs.id), user.Id.ToString(), true)
                  .AddField(GetText(strs.joined_server), $"{user.JoinedAt?.ToString("dd.MM.yyyy HH:mm") ?? "?"}", true)
                  .AddField(GetText(strs.joined_discord), $"{user.CreatedAt:dd.MM.yyyy HH:mm}", true)
@@ -114,16 +146,31 @@ public partial class Utility
                      true)
                  .WithOkColor();
 
+            var patron = await _ps.GetPatronAsync(user.Id);
+            
+            if (patron.Tier != PatronTier.None)
+            {
+                embed.WithFooter(patron.Tier switch
+                {
+                    PatronTier.V => "❤️❤️",
+                    PatronTier.X => "❤️❤️❤️",
+                    PatronTier.XX => "❤️❤️❤️❤️",
+                    PatronTier.L => "❤️❤️❤️❤️❤️",
+                    _ => "❤️",
+                });
+            }
+            
             var av = user.RealAvatarUrl();
             if (av.IsAbsoluteUri)
                 embed.WithThumbnailUrl(av.ToString());
+            
             await ctx.Channel.EmbedAsync(embed);
         }
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [OwnerOnly]
-        public async partial Task Activity(int page = 1)
+        public async Task Activity(int page = 1)
         {
             const int activityPerPage = 10;
             page -= 1;

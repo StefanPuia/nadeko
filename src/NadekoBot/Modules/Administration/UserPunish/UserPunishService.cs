@@ -18,6 +18,8 @@ public class UserPunishService : INService, IReadyExecutor
     private readonly BotConfigService _bcs;
     private readonly DiscordSocketClient _client;
 
+    public event Func<Warning, Task> OnUserWarned = static delegate { return Task.CompletedTask; };
+
     public UserPunishService(
         MuteService mute,
         DbService db,
@@ -92,6 +94,8 @@ public class UserPunishService : INService, IReadyExecutor
 
             await uow.SaveChangesAsync();
         }
+
+        _ = OnUserWarned(warn);
 
         var totalCount = previousCount + weight;
         
@@ -186,6 +190,12 @@ public class UserPunishService : INService, IReadyExecutor
                 }
 
                 break;
+            case PunishmentAction.Warn:
+                await Warn(guild, user.Id, mod, 1, reason);
+                break;
+            case PunishmentAction.TimeOut:
+                await user.SetTimeOutAsync(TimeSpan.FromMinutes(minutes));
+                break;
         }
     }
 
@@ -217,6 +227,8 @@ public class UserPunishService : INService, IReadyExecutor
                 return botUser.GuildPermissions.MuteMembers;
             case PunishmentAction.AddRole:
                 return botUser.GuildPermissions.ManageRoles;
+            case PunishmentAction.TimeOut:
+                return botUser.GuildPermissions.ModerateMembers;
             default:
                 return true;
         }
@@ -344,7 +356,7 @@ public class UserPunishService : INService, IReadyExecutor
             await uow.Warnings.ForgiveAll(guildId, userId, moderator);
         else
             toReturn = uow.Warnings.Forgive(guildId, userId, moderator, index - 1);
-        uow.SaveChanges();
+        await uow.SaveChangesAsync();
         return toReturn;
     }
 
@@ -363,6 +375,9 @@ public class UserPunishService : INService, IReadyExecutor
             return false;
 
         if (punish is PunishmentAction.AddRole && role is null)
+            return false;
+
+        if (punish is PunishmentAction.TimeOut && time is null)
             return false;
 
         using var uow = _db.GetDbContext();
@@ -530,7 +545,7 @@ public class UserPunishService : INService, IReadyExecutor
             return default;
         // if template is an embed, send that embed with replacements
         // otherwise, treat template as a regular string with replacements
-        else if (!SmartText.CreateFrom(template).IsEmbed)
+        else if (SmartText.CreateFrom(template) is not { IsEmbed: true } or { IsEmbedArray: true })
         {
             template = JsonConvert.SerializeObject(new
             {

@@ -12,32 +12,6 @@ namespace NadekoBot.Extensions;
 
 public static class ImagesharpExtensions
 {
-    /// <summary>
-    ///     Adds fallback fonts to <see cref="TextOptions" />
-    /// </summary>
-    /// <param name="opts"><see cref="TextOptions" /> to which fallback fonts will be added to</param>
-    /// <param name="fallback">List of fallback Font Families to add</param>
-    /// <returns>The same <see cref="TextOptions" /> to allow chaining</returns>
-    public static TextOptions WithFallbackFonts(this TextOptions opts, List<FontFamily> fallback)
-    {
-        foreach (var ff in fallback)
-            opts.FallbackFonts.Add(ff);
-
-        return opts;
-    }
-
-    /// <summary>
-    ///     Adds fallback fonts to <see cref="TextGraphicsOptions" />
-    /// </summary>
-    /// <param name="opts"><see cref="TextGraphicsOptions" /> to which fallback fonts will be added to</param>
-    /// <param name="fallback">List of fallback Font Families to add</param>
-    /// <returns>The same <see cref="TextGraphicsOptions" /> to allow chaining</returns>
-    public static TextGraphicsOptions WithFallbackFonts(this TextGraphicsOptions opts, List<FontFamily> fallback)
-    {
-        opts.TextOptions.WithFallbackFonts(fallback);
-        return opts;
-    }
-
     // https://github.com/SixLabors/Samples/blob/master/ImageSharp/AvatarWithRoundedCorner/Program.cs
     public static IImageProcessingContext ApplyRoundedCorners(this IImageProcessingContext ctx, float cornerRadius)
     {
@@ -93,7 +67,28 @@ public static class ImagesharpExtensions
                 new()
                 {
                     ColorType = PngColorType.RgbWithAlpha,
-                    CompressionLevel = PngCompressionLevel.BestCompression
+                    CompressionLevel = PngCompressionLevel.DefaultCompression
+                });
+        }
+
+        imageStream.Position = 0;
+        return imageStream;
+    }
+
+    public static async Task<MemoryStream> ToStreamAsync(this Image<Rgba32> img, IImageFormat? format = null)
+    {
+        var imageStream = new MemoryStream();
+        if (format?.Name == "GIF")
+        {
+            await img.SaveAsGifAsync(imageStream);
+        }
+        else
+        {
+            await img.SaveAsPngAsync(imageStream,
+                new PngEncoder()
+                {
+                    ColorType = PngColorType.RgbWithAlpha,
+                    CompressionLevel = PngCompressionLevel.DefaultCompression
                 });
         }
 

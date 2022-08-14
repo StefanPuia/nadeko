@@ -1,7 +1,10 @@
-#nullable disable
+#nullable disable warnings
 using NadekoBot.Modules.Gambling.Services;
 using NadekoBot.Modules.Xp.Services;
 using NadekoBot.Services.Database.Models;
+using System.Globalization;
+using NadekoBot.Db.Models;
+using NadekoBot.Modules.Utility.Patronage;
 
 namespace NadekoBot.Modules.Xp;
 
@@ -31,7 +34,7 @@ public partial class Xp : NadekoModule<XpService>
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task Experience([Leftover] IUser user = null)
+    public async Task Experience([Leftover] IUser user = null)
     {
         user ??= ctx.User;
         await ctx.Channel.TriggerTypingAsync();
@@ -44,7 +47,7 @@ public partial class Xp : NadekoModule<XpService>
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task XpNotify()
+    public async Task XpNotify()
     {
         var globalSetting = _service.GetNotificationType(ctx.User);
         var serverSetting = _service.GetNotificationType(ctx.User.Id, ctx.Guild.Id);
@@ -59,7 +62,7 @@ public partial class Xp : NadekoModule<XpService>
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task XpNotify(NotifyPlace place, XpNotificationLocation type)
+    public async Task XpNotify(NotifyPlace place, XpNotificationLocation type)
     {
         if (place == NotifyPlace.Guild)
             await _service.ChangeNotificationType(ctx.User.Id, ctx.Guild.Id, type);
@@ -72,7 +75,7 @@ public partial class Xp : NadekoModule<XpService>
     [Cmd]
     [RequireContext(ContextType.Guild)]
     [UserPerm(GuildPerm.Administrator)]
-    public async partial Task XpExclude(Server _)
+    public async Task XpExclude(Server _)
     {
         var ex = _service.ToggleExcludeServer(ctx.Guild.Id);
 
@@ -85,7 +88,7 @@ public partial class Xp : NadekoModule<XpService>
     [Cmd]
     [UserPerm(GuildPerm.ManageRoles)]
     [RequireContext(ContextType.Guild)]
-    public async partial Task XpExclude(Role _, [Leftover] IRole role)
+    public async Task XpExclude(Role _, [Leftover] IRole role)
     {
         var ex = _service.ToggleExcludeRole(ctx.Guild.Id, role.Id);
 
@@ -98,7 +101,7 @@ public partial class Xp : NadekoModule<XpService>
     [Cmd]
     [UserPerm(GuildPerm.ManageChannels)]
     [RequireContext(ContextType.Guild)]
-    public async partial Task XpExclude(Channel _, [Leftover] IChannel channel = null)
+    public async Task XpExclude(Channel _, [Leftover] IChannel channel = null)
     {
         if (channel is null)
             channel = ctx.Channel;
@@ -113,7 +116,7 @@ public partial class Xp : NadekoModule<XpService>
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task XpExclusionList()
+    public async Task XpExclusionList()
     {
         var serverExcluded = _service.IsServerExcluded(ctx.Guild.Id);
         var roles = _service.GetExcludedRoles(ctx.Guild.Id)
@@ -155,14 +158,14 @@ public partial class Xp : NadekoModule<XpService>
     [NadekoOptions(typeof(LbOpts))]
     [Priority(0)]
     [RequireContext(ContextType.Guild)]
-    public partial Task XpLeaderboard(params string[] args)
+    public Task XpLeaderboard(params string[] args)
         => XpLeaderboard(1, args);
 
     [Cmd]
     [NadekoOptions(typeof(LbOpts))]
     [Priority(1)]
     [RequireContext(ContextType.Guild)]
-    public async partial Task XpLeaderboard(int page = 1, params string[] args)
+    public async Task XpLeaderboard(int page = 1, params string[] args)
     {
         if (--page < 0 || page > 100)
             return;
@@ -223,7 +226,7 @@ public partial class Xp : NadekoModule<XpService>
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task XpGlobalLeaderboard(int page = 1)
+    public async Task XpGlobalLeaderboard(int page = 1)
     {
         if (--page < 0 || page > 99)
             return;
@@ -249,7 +252,24 @@ public partial class Xp : NadekoModule<XpService>
     [Cmd]
     [RequireContext(ContextType.Guild)]
     [UserPerm(GuildPerm.Administrator)]
-    public async partial Task XpAdd(int amount, ulong userId)
+    [Priority(2)]
+    public async Task XpAdd(long amount, [Remainder] SocketRole role)
+    {
+        if (amount == 0)
+            return;
+
+        if (role.IsManaged)
+            return;
+
+        var count = await _service.AddXpToUsersAsync(ctx.Guild.Id, amount, role.Members.Select(x => x.Id).ToArray());
+        await ReplyConfirmLocalizedAsync(strs.xpadd_users(Format.Bold(amount.ToString()), Format.Bold(count.ToString())));
+    }
+    
+    [Cmd]
+    [RequireContext(ContextType.Guild)]
+    [UserPerm(GuildPerm.Administrator)]
+    [Priority(3)]
+    public async Task XpAdd(int amount, ulong userId)
     {
         if (amount == 0)
             return;
@@ -262,13 +282,14 @@ public partial class Xp : NadekoModule<XpService>
     [Cmd]
     [RequireContext(ContextType.Guild)]
     [UserPerm(GuildPerm.Administrator)]
-    public partial Task XpAdd(int amount, [Leftover] IGuildUser user)
+    [Priority(4)]
+    public Task XpAdd(int amount, [Leftover] IGuildUser user)
         => XpAdd(amount, user.Id);
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
     [OwnerOnly]
-    public async partial Task XpTemplateReload()
+    public async Task XpTemplateReload()
     {
         _service.ReloadXpTemplate();
         await Task.Delay(1000);
@@ -278,13 +299,13 @@ public partial class Xp : NadekoModule<XpService>
     [Cmd]
     [RequireContext(ContextType.Guild)]
     [UserPerm(GuildPerm.Administrator)]
-    public partial Task XpReset(IGuildUser user)
+    public Task XpReset(IGuildUser user)
         => XpReset(user.Id);
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
     [UserPerm(GuildPerm.Administrator)]
-    public async partial Task XpReset(ulong userId)
+    public async Task XpReset(ulong userId)
     {
         var embed = _eb.Create().WithTitle(GetText(strs.reset)).WithDescription(GetText(strs.reset_user_confirm));
 
@@ -299,7 +320,7 @@ public partial class Xp : NadekoModule<XpService>
     [Cmd]
     [RequireContext(ContextType.Guild)]
     [UserPerm(GuildPerm.Administrator)]
-    public async partial Task XpReset()
+    public async Task XpReset()
     {
         var embed = _eb.Create().WithTitle(GetText(strs.reset)).WithDescription(GetText(strs.reset_server_confirm));
 
@@ -309,6 +330,214 @@ public partial class Xp : NadekoModule<XpService>
         _service.XpReset(ctx.Guild.Id);
 
         await ReplyConfirmLocalizedAsync(strs.reset_server);
+    }
+
+    public enum XpShopInputType
+    {
+        Backgrounds = 1,
+        B = 1,
+        Bg = 1,
+        Bgs = 1,
+        Frames = 0,
+        F = 0,
+        Fr = 0,
+        Frs = 0,
+        Fs = 0,
+    }
+
+    [Cmd]
+    public async Task XpShop()
+    {
+        if (!_service.IsShopEnabled())
+        {
+            await ReplyErrorLocalizedAsync(strs.xp_shop_disabled);
+            return;
+        }
+
+        await SendConfirmAsync(GetText(strs.available_commands),
+            $@"`{prefix}xpshop bgs`
+`{prefix}xpshop frames`
+
+*{GetText(strs.xpshop_website)}*");
+    }
+    
+    [Cmd]
+    public async Task XpShop(XpShopInputType type, int page = 1)
+    {
+        --page;
+
+        if (page < 0)
+            return;
+        
+        var items = type == XpShopInputType.Backgrounds
+            ? await _service.GetShopBgs()
+            : await _service.GetShopFrames();
+
+        if (items is null)
+        {
+            await ReplyErrorLocalizedAsync(strs.xp_shop_disabled);
+            return;
+        }
+
+        if (items.Count == 0)
+        {
+            await ReplyErrorLocalizedAsync(strs.not_found);
+            return;
+        }
+        
+        var culture = (CultureInfo)Culture.Clone();
+        culture.NumberFormat.CurrencySymbol = _gss.Data.Currency.Sign;
+        culture.NumberFormat.CurrencyNegativePattern = 5;
+
+        await ctx.SendPaginatedConfirmAsync<(string, XpShopItemType)?>(page,
+            current =>
+            {
+                var (key, item) = items.Skip(current).First();
+
+                var eb = _eb.Create(ctx)
+                    .WithOkColor()
+                    .WithTitle(item.Name)
+                    .AddField(GetText(strs.price), Gambling.Gambling.N(item.Price, culture), true)
+                    .WithImageUrl(string.IsNullOrWhiteSpace(item.Preview)
+                        ? item.Url
+                        : item.Preview);
+
+                if (!string.IsNullOrWhiteSpace(item.Desc))
+                    eb.AddField(GetText(strs.desc), item.Desc);
+
+                if (key == "default")
+                    eb.WithDescription(GetText(strs.xpshop_website));
+
+
+                var tier = _service.GetXpShopTierRequirement(type);
+                if (tier != PatronTier.None)
+                {
+                    eb.WithFooter(GetText(strs.xp_shop_buy_required_tier(tier.ToString())));
+                }
+
+                return Task.FromResult(eb);
+            },
+            async current =>
+            {
+
+                var (key, _) = items.Skip(current).First();
+
+                var itemType = type == XpShopInputType.Backgrounds
+                    ? XpShopItemType.Background
+                    : XpShopItemType.Frame;
+
+                var ownedItem = await _service.GetUserItemAsync(ctx.User.Id, itemType, key);
+                if (ownedItem is not null)
+                {
+                    var button = new ButtonBuilder(ownedItem.IsUsing
+                            ? GetText(strs.in_use)
+                            : GetText(strs.use),
+                        "xpshop:use",
+                        emote: Emoji.Parse("👐"),
+                        isDisabled: ownedItem.IsUsing);
+
+                    var inter = new SimpleInteraction<(string key, XpShopItemType type)?>(
+                        button,
+                        OnShopUse,
+                        (key, itemType));
+
+                    return inter;
+                }
+                else
+                {
+                    var button = new ButtonBuilder(GetText(strs.buy),
+                        "xpshop:buy",
+                        emote: Emoji.Parse("💰"));
+
+                    var inter = new SimpleInteraction<(string key, XpShopItemType type)?>(
+                        button,
+                        OnShopBuy,
+                        (key, itemType));
+
+                    return inter;
+                }
+            },
+            items.Count,
+            1,
+            addPaginatedFooter: false);
+    }
+
+    [Cmd]
+    public async Task XpShopBuy(XpShopInputType type, string key)
+    {
+        var result = await _service.BuyShopItemAsync(ctx.User.Id, (XpShopItemType)type, key);
+
+        NadekoInteraction GetUseInteraction()
+        {
+            return _inter.Create(ctx.User.Id,
+                new SimpleInteraction<object>(
+                    new ButtonBuilder(label: "Use", customId: "xpshop:use_item", emote: Emoji.Parse("👐")),
+                    async (smc, _) => await XpShopUse(type, key)
+                ));
+        }
+        
+        if (result != BuyResult.Success)
+        {
+            var _ = result switch
+            {
+                BuyResult.XpShopDisabled => await ReplyErrorLocalizedAsync(strs.xp_shop_disabled),
+                BuyResult.InsufficientFunds => await ReplyErrorLocalizedAsync(strs.not_enough(_gss.Data.Currency.Sign)),
+                BuyResult.AlreadyOwned => await ReplyErrorLocalizedAsync(strs.xpshop_already_owned, GetUseInteraction()),
+                BuyResult.UnknownItem => await ReplyErrorLocalizedAsync(strs.xpshop_item_not_found),
+                BuyResult.InsufficientPatronTier => await ReplyErrorLocalizedAsync(strs.patron_insuff_tier),
+                _ => throw new ArgumentOutOfRangeException()
+            };
+            return;
+        }
+
+        await ReplyConfirmLocalizedAsync(strs.xpshop_buy_success(type.ToString().ToLowerInvariant(),
+                key.ToLowerInvariant()),
+            GetUseInteraction());
+    }
+    
+    [Cmd]
+    public async Task XpShopUse(XpShopInputType type, string key)
+    {
+        var result = await _service.UseShopItemAsync(ctx.User.Id, (XpShopItemType)type, key);
+
+        if (!result)
+        {
+            await ReplyConfirmLocalizedAsync(strs.xp_shop_item_cant_use);
+            return;
+        }
+
+        await ctx.OkAsync();
+    }
+    
+    private async Task OnShopUse(SocketMessageComponent smc, (string? key, XpShopItemType type)? maybeState)
+    {
+        if (maybeState is not { } state)
+            return;
+        
+        var (key, type) = state;
+        
+        var result = await _service.UseShopItemAsync(ctx.User.Id, type, key);
+
+
+        if (!result)
+        {
+            await ReplyConfirmLocalizedAsync(strs.xp_shop_item_cant_use);
+        }
+    }
+    
+    private async Task OnShopBuy(SocketMessageComponent smc, (string? key, XpShopItemType type)? maybeState)
+    {
+        if (maybeState is not { } state)
+            return;
+        
+        var (key, type) = state;
+        
+        var result = await _service.BuyShopItemAsync(ctx.User.Id, type, key);
+
+        if (result == BuyResult.InsufficientFunds)
+        {
+            await ReplyErrorLocalizedAsync(strs.not_enough(_gss.Data.Currency.Sign));
+        }
     }
 
     private string GetNotifLocationString(XpNotificationLocation loc)

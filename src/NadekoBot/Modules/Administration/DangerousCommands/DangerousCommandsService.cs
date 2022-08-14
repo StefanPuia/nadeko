@@ -19,10 +19,12 @@ public class DangerousCommandsService : INService
         await using var ctx = _db.GetDbContext();
         await ctx.DiscordUser.UpdateAsync(_ => new DiscordUser()
         {
-            Club = null,
-            IsClubAdmin = false,
+            ClubId = null,
+            // IsClubAdmin = false,
             TotalXp = 0
         });
+
+        await ctx.UserXpStats.DeleteAsync();
         await ctx.ClubApplicants.DeleteAsync();
         await ctx.ClubBans.DeleteAsync();
         await ctx.Clubs.DeleteAsync();
@@ -97,6 +99,7 @@ public class DangerousCommandsService : INService
 
         using var uow = _db.GetDbContext();
         var conn = uow.Database.GetDbConnection();
+        conn.Open();
         using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
         using var reader = cmd.ExecuteReader();

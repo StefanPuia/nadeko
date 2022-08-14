@@ -1,11 +1,13 @@
 #nullable disable
 using Amazon.S3;
+using Nadeko.Medusa;
 using NadekoBot.Modules.Help.Common;
 using NadekoBot.Modules.Help.Services;
 using NadekoBot.Modules.Permissions.Services;
 using Newtonsoft.Json;
 using System.Text;
 using System.Text.Json;
+using Nadeko.Common;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace NadekoBot.Modules.Help;
@@ -23,6 +25,7 @@ public partial class Help : NadekoModule<HelpService>
     private readonly IBotStrings _strings;
 
     private readonly AsyncLazy<ulong> _lazyClientId;
+    private readonly IMedusaLoaderService _medusae;
 
     public Help(
         GlobalPermissionService perms,
@@ -30,7 +33,8 @@ public partial class Help : NadekoModule<HelpService>
         BotConfigService bss,
         IServiceProvider services,
         DiscordSocketClient client,
-        IBotStrings strings)
+        IBotStrings strings,
+        IMedusaLoaderService medusae)
     {
         _cmds = cmds;
         _bss = bss;
@@ -38,6 +42,7 @@ public partial class Help : NadekoModule<HelpService>
         _services = services;
         _client = client;
         _strings = strings;
+        _medusae = medusae;
 
         _lazyClientId = new(async () => (await _client.GetApplicationInfoAsync()).Id);
     }
@@ -61,7 +66,7 @@ public partial class Help : NadekoModule<HelpService>
     }
 
     [Cmd]
-    public async partial Task Modules(int page = 1)
+    public async Task Modules(int page = 1)
     {
         if (--page < 0)
             return;
@@ -125,6 +130,8 @@ public partial class Help : NadekoModule<HelpService>
                 return strs.module_description_permissions;
             case "xp":
                 return strs.module_description_xp;
+            case "medusa":
+                return strs.module_description_medusa;
             default:
                 return strs.module_description_missing;
         }
@@ -139,7 +146,7 @@ public partial class Help : NadekoModule<HelpService>
                 return "❓";
             case "administration":
                 return "🛠️";
-            case "customreactions":
+            case "expressions":
                 return "🗣️";
             case "searches":
                 return "🔍";
@@ -164,7 +171,7 @@ public partial class Help : NadekoModule<HelpService>
 
     [Cmd]
     [NadekoOptions(typeof(CommandsOptions))]
-    public async partial Task Commands(string module = null, params string[] args)
+    public async Task Commands(string module = null, params string[] args)
     {
         module = module?.Trim().ToUpperInvariant();
         if (string.IsNullOrWhiteSpace(module))
@@ -206,7 +213,7 @@ public partial class Help : NadekoModule<HelpService>
                 cmds = cmds.Where(x => succ.Contains(x)).ToList();
         }
 
-        var cmdsWithGroup = cmds.GroupBy(c => c.Module.Name.Replace("Commands", "", StringComparison.InvariantCulture))
+        var cmdsWithGroup = cmds.GroupBy(c => c.Module.GetGroupName())
                                 .OrderBy(x => x.Key == x.First().Module.Name ? int.MaxValue : x.Count())
                                 .ToList();
 
@@ -260,9 +267,23 @@ public partial class Help : NadekoModule<HelpService>
         await ctx.Channel.EmbedAsync(embed);
     }
 
+    private async Task Group(ModuleInfo group)
+    {
+        var eb = _eb.Create(ctx)
+                    .WithTitle(GetText(strs.cmd_group_commands(group.Name)))
+                    .WithOkColor();
+
+        foreach (var cmd in group.Commands)
+        {
+            eb.AddField(prefix + cmd.Aliases.First(), cmd.RealSummary(_strings, _medusae, Culture, prefix));
+        }
+
+        await ctx.Channel.EmbedAsync(eb);
+    }
+
     [Cmd]
     [Priority(0)]
-    public async partial Task H([Leftover] string fail)
+    public async Task H([Leftover] string fail)
     {
         var prefixless =
             _cmds.Commands.FirstOrDefault(x => x.Aliases.Any(cmdName => cmdName.ToLowerInvariant() == fail));
@@ -272,12 +293,26 @@ public partial class Help : NadekoModule<HelpService>
             return;
         }
 
+        if (fail.StartsWith(prefix))
+            fail = fail.Substring(prefix.Length);
+
+        var group = _cmds.Modules
+                         .SelectMany(x => x.Submodules)
+                         .Where(x => !string.IsNullOrWhiteSpace(x.Group))
+                         .FirstOrDefault(x => x.Group.Equals(fail, StringComparison.InvariantCultureIgnoreCase));
+
+        if (group is not null)
+        {
+            await Group(group);
+            return;
+        }
+
         await ReplyErrorLocalizedAsync(strs.command_not_found);
     }
 
     [Cmd]
     [Priority(1)]
-    public async partial Task H([Leftover] CommandInfo com = null)
+    public async Task H([Leftover] CommandInfo com = null)
     {
         var channel = ctx.Channel;
 
@@ -307,7 +342,7 @@ public partial class Help : NadekoModule<HelpService>
 
     [Cmd]
     [OwnerOnly]
-    public async partial Task GenCmdList()
+    public async Task GenCmdList()
     {
         _ = ctx.Channel.TriggerTypingAsync();
 
@@ -329,8 +364,8 @@ public partial class Help : NadekoModule<HelpService>
                                          return new CommandJsonObject
                                          {
                                              Aliases = com.Aliases.Select(alias => prefix + alias).ToArray(),
-                                             Description = com.RealSummary(_strings, ctx.Guild?.Id, prefix),
-                                             Usage = com.RealRemarksArr(_strings, ctx.Guild?.Id, prefix),
+                                             Description = com.RealSummary(_strings, _medusae, Culture, prefix),
+                                             Usage = com.RealRemarksArr(_strings, _medusae, Culture, prefix),
                                              Submodule = com.Module.Name,
                                              Module = com.Module.GetTopLevelModule().Name,
                                              Options = optHelpStr,
@@ -359,11 +394,6 @@ public partial class Help : NadekoModule<HelpService>
             };
 
             using var dlClient = new AmazonS3Client(accessKey, secretAcccessKey, config);
-            using var oldVersionObject = await dlClient.GetObjectAsync(new()
-            {
-                BucketName = "nadeko-pictures",
-                Key = "cmds/versions.json"
-            });
 
             using (var client = new AmazonS3Client(accessKey, secretAcccessKey, config))
             {
@@ -378,9 +408,24 @@ public partial class Help : NadekoModule<HelpService>
                 });
             }
 
-            await using var ms = new MemoryStream();
-            await oldVersionObject.ResponseStream.CopyToAsync(ms);
-            var versionListString = Encoding.UTF8.GetString(ms.ToArray());
+
+            var versionListString = "[]";
+            try
+            {
+                using var oldVersionObject = await dlClient.GetObjectAsync(new()
+                {
+                    BucketName = "nadeko-pictures",
+                    Key = "cmds/versions.json"
+                });
+
+                await using var ms = new MemoryStream();
+                await oldVersionObject.ResponseStream.CopyToAsync(ms);
+                versionListString = Encoding.UTF8.GetString(ms.ToArray());
+            }
+            catch (Exception)
+            {
+                Log.Information("No old version list found. Creating a new one");
+            }
 
             var versionList = JsonSerializer.Deserialize<List<string>>(versionListString);
             if (versionList is not null && !versionList.Contains(StatsService.BOT_VERSION))
@@ -419,11 +464,79 @@ public partial class Help : NadekoModule<HelpService>
     }
 
     [Cmd]
-    public async partial Task Guide()
+    public async Task Guide()
         => await ConfirmLocalizedAsync(strs.guide("https://nadeko.bot/commands",
-            "http://nadekobot.readthedocs.io/en/latest/"));
+            "https://nadekobot.readthedocs.io/en/latest/"));
+
+
+    private Task SelfhostAction(SocketMessageComponent smc, object _)
+        => smc.RespondConfirmAsync(_eb,
+            @"- In case you don't want or cannot Donate to NadekoBot project, but you 
+- NadekoBot is a completely free and fully [open source](https://gitlab.com/kwoth/nadekobot) project which means you can run your own ""selfhosted"" instance on your computer or server for free.
+
+*Keep in mind that running the bot on your computer means that the bot will be offline when you turn off your computer*
+
+- You can find the selfhosting guides by using the `.guide` command and clicking on the second link that pops up.
+- If you decide to selfhost the bot, still consider [supporting the project](https://patreon.com/join/nadekobot) to keep the development going :)",
+            true);
 
     [Cmd]
-    public async partial Task Donate()
-        => await ReplyConfirmLocalizedAsync(strs.donate(PATREON_URL, PAYPAL_URL));
+    [OnlyPublicBot]
+    public async Task Donate()
+    {
+        // => new NadekoInteractionData(new Emoji("🖥️"), "donate:selfhosting", "Selfhosting");
+        var selfhostInter = _inter.Create(ctx.User.Id,
+            new SimpleInteraction<object>(new ButtonBuilder(
+                    emote: new Emoji("🖥️"),
+                    customId: "donate:selfhosting",
+                    label: "Selfhosting"),
+                SelfhostAction));
+        
+        var eb = _eb.Create(ctx)
+                    .WithOkColor()
+                    .WithTitle("Thank you for considering to donate to the NadekoBot project!");
+
+        eb
+            .WithDescription("NadekoBot relies on donations to keep the servers, services and APIs running.\n"
+                             + "Donating will give you access to some exclusive features. You can read about them on the [patreon page](https://patreon.com/join/nadekobot)")
+            .AddField("Donation Instructions",
+                $@"
+🗒️ Before pledging it is recommended to open your DMs as Nadeko will send you a welcome message with instructions after you pledge has been processed and confirmed.
+
+**Step 1:** ❤️ Pledge on Patreon ❤️
+
+`1.` Go to <https://patreon.com/join/nadekobot> and choose a tier.
+`2.` Make sure your payment is processed and accepted.
+
+**Step 2** 🤝 Connect your Discord account 🤝
+
+`1.` Go to your profile settings on Patreon and connect your Discord account to it.
+*please make sure you're logged into the correct Discord account*
+
+If you do not know how to do it, you may follow instructions in this link:
+<https://support.patreon.com/hc/en-us/articles/212052266-How-do-I-connect-Discord-to-Patreon-Patron->
+
+**Step 3** ⏰ Wait a short while (usually 1-3 minutes) ⏰
+  
+Nadeko will DM you the welcome instructions, and you may start using the patron-only commands and features!
+🎉 **Enjoy!** 🎉
+")
+            .AddField("Troubleshooting",
+                @"
+*In case you didn't receive the rewards within 5 minutes:*
+`1.` Make sure your DMs are open to everyone. Maybe your pledge was processed successfully but the bot was unable to DM you. Use the `.patron` command to check your status.
+`2.` Make sure you've connected the CORRECT Discord account. Quite often users log in to different Discord accounts in their browser. You may also try disconnecting and reconnecting your account.
+`3.` Make sure your payment has been processed and not declined by Patreon.
+`4.` If any of the previous steps don't help, you can join the nadeko support server <https://discord.nadeko.bot> and ask for help in the #help channel");
+
+        try
+        {
+            await (await ctx.User.CreateDMChannelAsync()).EmbedAsync(eb, inter: selfhostInter);
+            _ = ctx.OkAsync();
+        }
+        catch
+        {
+            await ReplyErrorLocalizedAsync(strs.cant_dm);
+        }
+    }
 }

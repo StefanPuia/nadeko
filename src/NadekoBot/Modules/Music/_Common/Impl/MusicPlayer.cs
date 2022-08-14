@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Nadeko.Common;
 
 namespace NadekoBot.Modules.Music;
 
@@ -233,7 +234,7 @@ public sealed class MusicPlayer : IMusicPlayer
                                 errorCount = 0;
                             }
 
-                            // todo future windows multimedia api
+                            // FUTURE windows multimedia api
 
                             // wait for slightly less than the latency
                             Thread.Sleep(delay);

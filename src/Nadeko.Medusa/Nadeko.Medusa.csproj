@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
+        <EnablePreviewFeatures>true</EnablePreviewFeatures>
+        <RootNamespace>Nadeko.Snake</RootNamespace>
+        
+        <Authors>The NadekoBot Team</Authors>
+        <AssemblyVersion>4.3.4</AssemblyVersion>
+        <PackageVersion>4.3.4</PackageVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Discord.Net.Core" Version="3.103.0" />
+      <PackageReference Include="Serilog" Version="2.11.0" />
+      <PackageReference Include="YamlDotNet" Version="11.2.1" />
+    </ItemGroup>
+
+</Project>

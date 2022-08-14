@@ -1,6 +1,7 @@
 using Humanizer.Localisation;
+using Nadeko.Medusa;
+using System.Diagnostics;
 using System.Globalization;
-using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -12,15 +13,20 @@ public static class Extensions
         new(@"^(https?|ftp)://(?<path>[^\s/$.?#].[^\s]*)$", RegexOptions.Compiled);
 
     public static IEmbedBuilder WithAuthor(this IEmbedBuilder eb, IUser author)
-        => eb.WithAuthor(author.ToString(), author.RealAvatarUrl().ToString());
+        => eb.WithAuthor(author.ToString()!, author.RealAvatarUrl().ToString());
 
     public static Task EditAsync(this IUserMessage msg, SmartText text)
         => text switch
         {
             SmartEmbedText set => msg.ModifyAsync(x =>
             {
-                x.Embed = set.GetEmbed().Build();
+                x.Embed = set.IsValid ? set.GetEmbed().Build() : null;
                 x.Content = set.PlainText?.SanitizeMentions() ?? "";
+            }),
+            SmartEmbedTextArray set => msg.ModifyAsync(x =>
+            {
+                x.Embeds = set.GetEmbedBuilders().Map(eb => eb.Build());
+                x.Content = set.Content?.SanitizeMentions() ?? "";
             }),
             SmartPlainText spt => msg.ModifyAsync(x =>
             {
@@ -30,8 +36,9 @@ public static class Extensions
             _ => throw new ArgumentOutOfRangeException(nameof(text))
         };
 
-    public static List<ulong> GetGuildIds(this DiscordSocketClient client)
-        => client.Guilds.Select(x => x.Id).ToList();
+    public static ulong[] GetGuildIds(this DiscordSocketClient client)
+        => client.Guilds
+                 .Map(x => x.Id);
 
     /// <summary>
     ///     Generates a string in the format HHH:mm if timespan is &gt;= 2m.
@@ -71,17 +78,52 @@ public static class Extensions
     public static string RealSummary(
         this CommandInfo cmd,
         IBotStrings strings,
-        ulong? guildId,
+        IMedusaLoaderService medusae,
+        CultureInfo culture,
         string prefix)
-        => string.Format(strings.GetCommandStrings(cmd.Summary, guildId).Desc, prefix);
+    {
+        string description;
+        if (cmd.Remarks?.StartsWith("medusa///") ?? false)
+        {
+            // command method name is kept in Summary
+            // medusa///<medusa-name-here> is kept in remarks
+            // this way I can find the name of the medusa, and then name of the command for which
+            // the description should be loaded
+            var medusaName = cmd.Remarks.Split("///")[1];
+            description = medusae.GetCommandDescription(medusaName, cmd.Summary, culture);
+        }
+        else
+        {
+            description = strings.GetCommandStrings(cmd.Summary, culture).Desc;
+        }
+        
+        return string.Format(description, prefix);
+    }
 
     public static string[] RealRemarksArr(
         this CommandInfo cmd,
         IBotStrings strings,
-        ulong? guildId,
+        IMedusaLoaderService medusae,
+        CultureInfo culture,
         string prefix)
-        => Array.ConvertAll(strings.GetCommandStrings(cmd.Summary, guildId).Args,
-            arg => GetFullUsage(cmd.Name, arg, prefix));
+    {
+        string[] args;
+        if (cmd.Remarks?.StartsWith("medusa///") ?? false)
+        {
+            // command method name is kept in Summary
+            // medusa///<medusa-name-here> is kept in remarks
+            // this way I can find the name of the medusa,
+            // and command for which data should be loaded
+            var medusaName = cmd.Remarks.Split("///")[1];
+            args = medusae.GetCommandExampleArgs(medusaName, cmd.Summary, culture);
+        }
+        else
+        {
+            args = strings.GetCommandStrings(cmd.Summary, culture).Args;
+        }
+        
+        return args.Map(arg => GetFullUsage(cmd.Aliases.First(), arg, prefix));
+    }
 
     private static string GetFullUsage(string commandName, string args, string prefix)
         => $"{prefix}{commandName} {string.Format(args, prefix)}".TrimEnd();
@@ -101,41 +143,6 @@ public static class Extensions
 
     public static IEmbedBuilder WithErrorColor(this IEmbedBuilder eb)
         => eb.WithColor(EmbedColor.Error);
-
-    public static ReactionEventWrapper OnReaction(
-        this IUserMessage msg,
-        DiscordSocketClient client,
-        Func<SocketReaction, Task> reactionAdded,
-        Func<SocketReaction, Task>? reactionRemoved = null)
-    {
-        if (reactionRemoved is null)
-            reactionRemoved = _ => Task.CompletedTask;
-
-        var wrap = new ReactionEventWrapper(client, msg);
-        wrap.OnReactionAdded += r =>
-        {
-            _ = Task.Run(() => reactionAdded(r));
-        };
-        wrap.OnReactionRemoved += r =>
-        {
-            _ = Task.Run(() => reactionRemoved(r));
-        };
-        return wrap;
-    }
-
-    public static HttpClient AddFakeHeaders(this HttpClient http)
-    {
-        AddFakeHeaders(http.DefaultRequestHeaders);
-        return http;
-    }
-
-    public static void AddFakeHeaders(this HttpHeaders dict)
-    {
-        dict.Clear();
-        dict.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-        dict.Add("User-Agent",
-            "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/535.1 (KHTML, like Gecko) Chrome/14.0.835.202 Safari/535.1");
-    }
 
     public static IMessage DeleteAfter(this IUserMessage msg, int seconds, ILogCommandService? logService = null)
     {
@@ -159,6 +166,9 @@ public static class Extensions
         return module;
     }
 
+    public static string GetGroupName(this ModuleInfo module)
+        => module.Name.Replace("Commands", "", StringComparison.InvariantCulture);
+
     public static async Task<IEnumerable<IGuildUser>> GetMembersAsync(this IRole role)
     {
         var users = await role.Guild.GetUsersAsync(CacheMode.CacheOnly);
@@ -178,29 +188,9 @@ public static class Extensions
     public static IEnumerable<IRole> GetRoles(this IGuildUser user)
         => user.RoleIds.Select(r => user.Guild.GetRole(r)).Where(r => r is not null);
 
-    public static bool IsImage(this HttpResponseMessage msg)
-        => IsImage(msg, out _);
-
-    public static bool IsImage(this HttpResponseMessage msg, out string? mimeType)
+    public static void Lap(this Stopwatch sw, string checkpoint)
     {
-        mimeType = msg.Content.Headers.ContentType?.MediaType;
-        if (mimeType is "image/png" or "image/jpeg" or "image/gif")
-            return true;
-
-        return false;
+        Log.Information("Checkpoint {CheckPoint}: {Time}ms", checkpoint, sw.Elapsed.TotalMilliseconds);
+        sw.Restart();
     }
-
-    public static long? GetImageSize(this HttpResponseMessage msg)
-    {
-        if (msg.Content.Headers.ContentLength is null)
-            return null;
-
-        return msg.Content.Headers.ContentLength.Value / 1.Mb();
-    }
-
-    public static string GetText(this IBotStrings strings, in LocStr str, ulong? guildId = null)
-        => strings.GetText(str.Key, guildId, str.Params);
-
-    public static string GetText(this IBotStrings strings, in LocStr str, CultureInfo culture)
-        => strings.GetText(str.Key, culture, str.Params);
 }

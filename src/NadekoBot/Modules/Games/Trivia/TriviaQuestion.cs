@@ -17,29 +17,30 @@ public class TriviaQuestion
         new(22, 3)
     };
 
-    public string Category { get; set; }
-    public string Question { get; set; }
-    public string ImageUrl { get; set; }
-    public string AnswerImageUrl { get; set; }
-    public string Answer { get; set; }
+    public string Category
+        => _qModel.Category;
+
+    public string Question
+        => _qModel.Question;
+
+    public string ImageUrl
+        => _qModel.ImageUrl;
+
+    public string AnswerImageUrl
+        => _qModel.AnswerImageUrl ?? ImageUrl;
+
+    public string Answer
+        => _qModel.Answer;
 
     public string CleanAnswer
         => cleanAnswer ?? (cleanAnswer = Clean(Answer));
 
     private string cleanAnswer;
+    private readonly TriviaQuestionModel _qModel;
 
-    public TriviaQuestion(
-        string q,
-        string a,
-        string c,
-        string img = null,
-        string answerImage = null)
+    public TriviaQuestion(TriviaQuestionModel qModel)
     {
-        Question = q;
-        Answer = a;
-        Category = c;
-        ImageUrl = img;
-        AnswerImageUrl = answerImage ?? img;
+        _qModel = qModel;
     }
 
     public string GetHint()

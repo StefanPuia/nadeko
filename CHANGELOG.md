@@ -1,22 +1,467 @@
 # Changelog
 
 Experimental changelog. Mostly based on [keepachangelog](https://keepachangelog.com/en/1.0.0/) except date format. a-c-f-r-o
-#todo .trans fix
 
 ## Unreleased
 
-- More cool stuff coming soon
+## [4.3.4] - 07.08.2022
+
+### Fixed
+
+- Fixed users getting XP out of nowhere while voice xp is enabled
+
+## [4.3.3] - 06.08.2022
+
+### Added
+
+- Added `betroll` option to `.bettest` command
+- Added `.xpshopbuy` and `.xpshopuse` convenience commands
+- Added an optional preview url to teh xp shop item config model which will be shown instead of the real Url
+
+### Changed
+
+- Updated position of Username and Club name on the .xp card
+- Improved text visibility on the .xp card 
+
+### Fixed
+
+- Possibly fixed .trivia not stopping bug
+- Fixed very low payout rate on `.betroll`
+- Fixed an issue with youtube song resolver which caused invalid data to be cached
+- Added client id to the cache key as a potential fix for VoiceXp 'bug'. The solution may be to use different redis instances for each bot, or to switch from botCache: from 'redis' to 'memory' in creds.yml
+- Bot owner should now be able to buy items from the xpshop when patron requirement is set
+- Fixed youtube-dl caching invalid data. Please use yt-dlp instead
+
+## [4.3.2] - 28.07.2022
+
+### Fixed
+
+- Fixed Reaction Roles not working properly with animated emojis
+- Fixed `.slot` alignment
+- Fixed `mysql` and `postgresql` reactionrole migration
+- Fixed repeat loop with `postgresql` db provider
+- Fixed `.bank withdraw <expression>` will now correctly use bank amount for calculation
+- [dev] Fixed medusa Reply*LocalizedAsync not working with placeholders
+
+## [4.3.1] - 27.07.2022
+
+### Changed
+
+- Check for updates will run once per hour as it was supposed to
+
+## [4.3.0] - 27.07.2022
+
+### Added
+
+- Added `.bettest` command which lets you test many gambling commands
+  - Better than .slottest
+  - Counts win/loss streaks too
+  - Doesn't count 1x returns as neither wins nor losses
+  - multipliers < 1 are considered losses, > 1 considered wins
+- Added `.betdraw` command which lets you guess red/black and/or high/low for a random card
+  - They payouts are very good, but seven always loses
+- Added `.lula` command. Plays the same as `.wof` but looks much nicer, and is easily customizable from gambling.yml without any changes to the sourcecode needed.
+- Added `.repeatskip` command which makes the next repeat trigger not post anything
+- Added `.linkonly` which will make the bot only allow link posts in the channel. Exclusive with `.imageonly`
+- Added release notifications. Bot owners will now receive new release notifications in dms if they have `checkForUpdates` set to `true` in data/bot.yml
+  - You can also configure it via `.conf bot checkfor
+  - updates <true/false>`
+- Added `.xpshop` which lets bot owners add xp backgrounds and xp frames for sale by configuring `data/xp.yml`
+  - You can also toggle xpshop feature via `.conf xp shop.is_enabled`
+
+### Changed
+
+- `.t` Trivia code cleaned up, added ALL pokemon generations
+
+- `.xpadd` will now work on roles too. It will add the specified xp to each user (visible to the bot) in the role
+- Improved / cleaned up / modernized how most gambling commands look
+  - `.roll`
+  - `.rolluo`
+  - `.draw`
+  - `.flip`
+  - `.slot`
+  - `.betroll`
+  - `.betflip`
+  - Try them out!
+- `.draw`, `.betdraw` and some other card commands (not all) will use the new, rewritten deck system
+- Error will be printed to the console if there's a problem in `.plant`
+- [dev] Split Nadeko.Common into a separate project
+  - [dev] It will contain classes/utilities which can be shared across different nadeko related projects
+- [dev] Split Nadeko.Econ into a separate project
+  - [dev] It should be home for the backend any gambling/currency/economy feature
+  - [dev] It will contain most gambling games and any shared logic
+- [dev] Compliation should take less time and RAM
+  - [dev] No longer using generator and partial methods for commands
+
+### Fixed
+ 
+- `.slot` will now show correct multipliers if they've been modified
+- Fix patron errors showing up even with permissions disabling the command
+- Fixed an issue with voice xp breaking xp gain.
+
+### Removed
+
+- Removed `.slottest`, replaced by `.bettest`
+- Removed `.wof`, replaced by `.lula`
+- [dev] Removed a lot of unused methods
+- [dev] Removed several unused response strings
+
+## [4.2.15] - 12.07.2022
+
+### Fixed
+
+- Fixed `.nh*ntai` nsfw command
+- Xp Freezes may have been fixed
+- `data/images.yml` should once again support local file paths
+- Fixed multiword aliases
+
+## [4.2.14] - 03.07.2022
+
+### Added
+
+- Added `.log userwarned` (Logging user warnings)
+- Claiming `.timely` will now show a button which you can click to set a reminder
+- Added `%server.icon%` placeholder
+- Added `warn` punishment action for protection commands (it won't work with `.warnp`)
+
+### Changed
+
+- `.log userbanned` will now have a ban reason
+- When `.die` is used, bot will try to update it's status to `Invisible`
+
+### Fixed
+
+- Fixed elipsis character issue with aliases/quotes. You should now be able to set an elipsis to be an alias of `.quoteprint`
+
+## [4.2.13] - 30.06.2022
+
+### Fixed
+
+- Fixed `.cash` bank interaction not being ephemeral anymore
+
+## [4.2.12] - 30.06.2022
+
+### Fixed
+
+- Fixed `.trivia --pokemon` showing incorrect pokemons
+
+## [4.2.11] - 29.06.2022
+
+### Fixed
+
+- Fixed `.draw` command 
+
+## [4.2.10] - 29.06.2022
+
+- Fixed currency generation working only once
+
+## [4.2.9] - 25.06.2022
+  
+### Fixed
+
+- Fixed `creds_example.yml` misssing from output directory
+
+## [4.2.8] - 24.06.2022
+
+### Fixed
+
+- `.timely` should be fixed
+
+## [4.2.7] - 24.06.2022
+
+### Changed
+
+- New cache abstraction added
+  - 2 implemenations: redis and memory
+  - All current bots will stay on redis cache, all new bots will use **in-process memory cache by default**
+  - This change removes bot's hard dependency on redis
+  - Configurable in `creds.yml` (please read the comments)
+  - You **MUST** use 'redis' if your bot runs on more than 1 shard (2000+ servers)
+- [dev] Using new non-locking ConcurrentDictionary
+
+### Fixed
+
+- `.xp` will now show default user avatars too
+
+### Removed
+
+- Removed `.imagesreload` as images are now lazily loaded on request and then cached
+
+## [4.2.6] - 22.06.2022
+
+### Fixed
+
+- Patron system should now properly by disabled on selfhosts by default.
+
+## [4.2.5] - 18.06.2022
+
+### Fixed
+
+- Fixed `.crypto`, you will still need coinmarketcapApiKey in `creds.yml` in order to make it run consistently as the key is shared
+
+## [4.2.3] - 17.06.2022
+
+### Fixed
+
+- Fixed `.timely` nullref bug and made it nicer
+- Fixed `.streamrole` not updating in real time!
+- Disabling specific Global Expressions should now work with `.sc` (and other permission commands)
+
+## [4.2.2] - 15.06.2022
+
+### Fixed
+
+- Added missing Patron Tiers and fixed Patron pledge update bugs
+- Prevented creds_example.yml error in docker containers from crashing it
+
+### Changed
+
+- Rss feeds will now show error counter before deletion
+
+## [4.2.1] - 14.06.2022
+
+### Added
+
+- Localized strings updated
+
+### Fixed
+
+- Fixed `.exexport`, `.savechat`, and `.quoteexport`
+- Fixed plaintext-only embeds
+- Fixed greet message footer not showing origin server
+
+## [4.2.0] - 14.06.2022
+
+### Added
+
+- Added `data/searches.yml` file which configures some of the new search functionality
+  The file comments explaining what each property does.
+  Explained briefly here:
+  ```yml
+  # what will be used for .google command. Either google (official api) or searx
+  webSearchEngine: Google
+  # what will be used for .img command. Either google (official api) or searx
+  imgSearchEngine: Google
+  # how will yt results be retrieved: ytdataapi or ytdl or ytdlp
+  ytProvider: YtDataApiv3
+  # in case web or img search is set to searx, the following instances will be used:
+  searxInstances: []
+  # in case ytProvider is set to invidious, the following instances will be used
+  invidiousInstances: []
+  ```
+- Added new properties to `creds.yml`. google -> searchId and google -> searchImageId.
+- These properties are used as `cx` (google api query parameter) in case you've setup your `data/searches.yml` to use the official google api.
+  `searchId` is used for web search
+  `searchimageId` is used for image search
+  ```yml
+  google:
+      searchId: ""
+      searchImageId: ""
+  ```
+- Check `creds_example.yml` for comments explaining how to obtain them.
+
+#### Patronage system added
+- Added `data/patron.yml` for configuration
+- Implemented only for patreon so far
+- Patreon subscription code completely rewritten
+- Users who pledge on patreon get benefits based on the amount they pledged
+- Public nadeko only. But selfhosters can adapt it to their own patreon pages by configuring their patreon credentials in `creds.yml` and enabling the system in `data/patron.yml` file.
+  - Most of the patronage system strings are hardcoded atm, so if you wish to use this system on selfhosts, you will have to modify the source
+- Pledge amounts are split into tiers. This is not configurable atm.
+  - Tier I - 1$ - 4.99$ a month
+  - Tier V - 5$ - 9.99$ a month
+  - Tier X - 10$ - 19.99$ a month
+  - Tier XX - 20$ - 49.99$ a month
+  - Tier L - 50$ - 99.99$ a month
+  - Tier C - 100$+ a month
+- Rewards and command quotas for each of the tiers are configurable
+- Limitations to certain features are also configurable. ex:
+```yml
+quotas:
+    features:
+        "rero:max_count":
+            x: 50
+```
+- ^ this setting would set the maximum number of reaction roles to be 50 for a user who is in Patron Tier X
+- Read the comments in the .yml file for (much) more info
+- Quota system allows the owner to set up hourly, daily and monthly quota usage for each tier
+- Quota system applies to entire server owner by a patron
+  - Patron spends own quota by using the commands on any server
+  - Any user on *any* server owned by a patron spends that patron's quota
+- When users subscribe to patreon they will receive a welcome message
+  - If you're enabling patron system for a selfhost, you will want to edit it
+
+Added `.patron` and `.patronmessage` commands
+- `.patron` checks your patronage status, and quotas. Requires patron system to be enabled.
+- `.patronmessage` (owner only) sends message to all patrons with the specified tier or higher. Supports embeds
+
+- Added a fake `.cmdcd` command `cleverbot:response` which can be used to limit how often users can talk to the cleverbot.
+
+### Changed
+
+- CurrencyReward now support adding additional flowers to patrons.
+- `.donate` command completely reworked.
+  - Works only on public bot (OnlyPublicBotAttribute)
+  - Guides user on how to donate to support the project
+  - Added interaction explaining selfhosting
+
+- `.google` reimplemented. It now has 2 modes configurable in `data/searches.yml` under the `webSearchengine` property
+  - If set to `google`, official custom search api will be used. You will need to set googleapikey and google.searchId in `creds.yml`
+  - if set to `searx` one of the instances specified in the `searxInstances:` property will be randomly chosen for each request
+    - instances must have `format=json` allowed (public ones usually don't allow it)
+    - instances are specified as a fully qualified url, example: `https://my.cool.searx.instance.io`
+- `.image` reimplemented. Same as `.google` - it uses either `google` official api (in which case it uses `google.searchImageId` from `creds.yml`) or `searx`
+
+- `.youtube` reimplemented. It will use a `ytProvider:` property from `data/searches.yml` to determine how to retrieve results
+  - `ytdataapi` will use the official google api (requires `GoogleApiKey` specified in `creds.yml`) and YoutubeDataApi enabled in the dev console
+  - `ytdl` will use `youtube-dl` program from the host machine. It must be downloaded and it's location must be added to path env variable.
+  - `ytdlp` will use `yt-dlp` program from the host machine. Same as `youtube-dl` - must be in path env variable.
+  - `invidious` will use one of invidious instances specified in the `invidiousInstances` property. Very good. 
+
+- `.google`, `.youtube` and `.image` moved to the new Search group
+
+Note: Results of each `.youtube` query will be cached for 1 hour to improve perfomance
+- Removed 30 second `.ping` ratelimit on public nadeko
+
+- xp image generation changes
+  - In case you have default settings, your xp image will look slightly different
+  - If you've modified xp_template.json, your xp image might look broken. Your old template will be saved in xp_template.json.old
+  - Xp number outline is now slightly thicker
+  - Xp number will now have Center vertical and horizontal alignment
+  - LastLevelUp no longer supported
+
+- Some commands will now use timestamp tags for better user experience
+- `.prune` was slightly slowed down to avoid ratelimits
+- `.wof` moved from it's own group to the default Gambling group
+- `.feed` urls which error for more than 100 times will be automatically removed.
+- `.ve` is now enabled by default
+
+- [dev] nadeko interaction slightly improved to make it less nonsense (they still don't make sense)  
+- [dev] RewardedUsers table slightly changed to make it more general  
+- [dev] renamed `// todo`s which aren't planned soon to `// FUTURE`  
+- [dev] currency rewards have been reimplemented and moved to a separate service  
+
+### Fixed
+ 
+- `.rh` no longer needs quotes for multi word roles
+- `.deletexp` will now properly delete server xp too
+- Fixed `.crypto` sparklines
+- [dev] added support for configs to properly parse enums without case sensitivity (ConfigParsers.InsensitiveEnum)
+- [dev] Fixed a bug in .gencmdlist  
+- [dev] small fixes to creds provider  
+
+### Removed
+
+- `.ddg` removed.
+- [dev] removed some dead code and comments
+
+## [4.1.6] - 14.05.2022
+
+### Fixed
+
+- Fixed windows release and updated packages
+
+## [4.1.5] - 11.05.2022
+
+### Changed
+
+- `.clubdesc <msg>` will now have a nicer response
+
+### Fixed
+
+- `.give` DM will once again show an amount
+- Fixed an issue with filters not working and with custom reactions no longer being able to override commands.
+- Fixed `.stock` command
+
+## [4.1.4] - 06.05.2022
+
+### Fixed
+
+- Fixed `.yun`
+
+## [4.1.3] - 06.05.2022
+
+### Added 
+
+- Added support for embed arrays in commands such as .say, .greet, .bye, etc...
+  - Website to create them is live at eb.nadeko.bot (old one is moved to oldeb.nadeko.bot)
+  - Embed arrays don't have a plainText property (it's renamed to 'content')
+  - Embed arrays use color hex values instead of an integer
+  - Old embed format will still work
+  - There shouldn't be any breaking changes
+- Added `.stondel` command which, when toggled, will make the bot delete online stream messages on the server when the stream goes offline
+- Added a simple bank system.
+  - Users can deposit, withdraw and check the balance of their currency in the bank.
+  - Users can't check other user's bank balances.
+- Added a button on a .$ command which, when clicked, sends you a message with your bank balance that only you can see.
+- Added `.h <command group>`  
+  - Using this command will list all commands in the specified group
+  - Atm only .bank is a proper group (`.h bank`)
+- Added "Bank Accounts" entry to `.economy`
+
+### Changed
+
+- Reaction roles rewritten completely 
+  - Supports multiple exclusivity groups per message 
+  - Supports level requirements
+  - However they can only be added one by one
+  - Use the following commands for more information 
+    - `.h .reroa`
+    - `.h .reroli`
+    - `.h .rerot`
+    - `.h .rerorm`
+    - `.h .rerodela`
+- Pagination is now using buttons instead of reactions
+- Bot will now support much higher XP values for global and server levels
+- [dev] Small change and generation perf improvement for the localized response strings
+
+
+### Fixed
+
+- Fixed `.deletexp` command
+- `.give` command should send DMs again
+- `.modules` command now has a medusa module description
+
+## [4.1.2] - 16.04.2022
+
+### Fixed
+
+- Fixed an issue with missing `.dll` files in release versions
+
+## [4.1.0] - 16.04.2022
+
+### Added
+
+- NadekoBot now supports mysql, postgresql and sqlite
+  - To change the db nadeko will use, simply change the `db type` in `creds.yml`
+  - There is no migration code right now, which means that if you want to switch to another system you'll either have to manually export/import your database or start fresh
+- Medusa system
+  - A massive new feature which allows developers to create custom modules/plugins/cogs 
+  - They can be load/unloaded/updated at runtime without restarting the bot
+
+### Changed
+
+- Minor club rework
+  - Clubs names are now case sensitive (owo and OwO can be 2 different clubs)
+  - Removed discriminators
+    - Current discriminators which are greater than 1 are appended to clubnames to avoid duplicates, you can rename your club with `.clubrename` to remove it
+    - Most of the clubs with #1 discriminator no longer have it (For example MyClub#1 will now just be MyClub)
+- [dev] A lot of refactoring and slight functionality changes within Nadeko's behavior system and command handler which were required in order to support the medusa system
+
+### Removed
+
+  - Removed `.clublevelreq` command as it doesn't serve much purpose
 
 ## [4.0.6] - 21.03.2022
 
-### Fixes
+### Fixed
 
 - Fixed voice presence logging
 - Fixed .clubaccept, .clubban, .clubkick and .clubunban commands
 
 ## [4.0.5] - 21.03.2022
 
-### Fixes
+### Fixed
 
 - Fixed several bugs in the currency code
 - Fixed some potential memory leaks

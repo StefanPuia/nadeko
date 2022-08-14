@@ -18,8 +18,11 @@ public sealed class Creds : IBotCredentials
     [Comment("Keep this on 'true' unless you're sure your bot shouldn't use privileged intents or you're waiting to be accepted")]
     public bool UsePrivilegedIntents { get; set; }
 
-    [Comment(@"The number of shards that the bot will running on.
-Leave at 1 if you don't know what you're doing.")]
+    [Comment(@"The number of shards that the bot will be running on.
+Leave at 1 if you don't know what you're doing.
+
+note: If you are planning to have more than one shard, then you must change botCache to 'redis'.
+      Also, in that case you should be using NadekoBot.Coordinator to start the bot, and it will correctly override this value.")]
     public int TotalShards { get; set; }
 
     [Comment(   
@@ -27,6 +30,16 @@ Leave at 1 if you don't know what you're doing.")]
 Then, go to APIs and Services -> Credentials and click Create credentials -> API key.
 Used only for Youtube Data Api (at the moment).")]
     public string GoogleApiKey { get; set; }
+    
+    [Comment(   
+        @"Create a new custom search here https://programmablesearchengine.google.com/cse/create/new
+Enable SafeSearch
+Remove all Sites to Search
+Enable Search the entire web
+Copy the 'Search Engine ID' to the SearchId field
+
+Do all steps again but enable image search for the ImageSearchId")]
+    public GoogleApiConfig Google { get; set; }
 
     [Comment(@"Settings for voting system for discordbots. Meant for use on global Nadeko.")]
     public VotesSettings Votes { get; set; }
@@ -40,8 +53,14 @@ go to https://www.patreon.com/portal -> my clients -> create client")]
 
     [Comment(@"Official cleverbot api key.")]
     public string CleverbotApiKey { get; set; }
-
-    [Comment(@"Redis connection string. Don't change if you don't know what you're doing.")]
+    
+    [Comment(@"Which cache implementation should bot use.
+'memory' - Cache will be in memory of the bot's process itself. Only use this on bots with a single shard. When the bot is restarted the cache is reset. 
+'redis' - Uses redis (which needs to be separately downloaded and installed). The cache will persist through bot restarts. You can configure connection string in creds.yml")]
+    public BotCacheImplemenation BotCache { get; set; }
+    
+    [Comment(@"Redis connection string. Don't change if you don't know what you're doing.
+Only used if botCache is set to 'redis'")]
     public string RedisOptions { get; set; }
 
     [Comment(@"Database options. Don't change if you don't know what you're doing. Leave null for default values")]
@@ -84,9 +103,6 @@ You should use this if Trovo stream notifications stopped working or you're gett
     [Comment(@"Obtain by creating an application at https://dev.twitch.tv/console/apps")]
     public string TwitchClientSecret { get; set; }
 
-    [Comment(@"Netstat image URL")]
-    public string NetStatUrl { get; set; }
-
     [Comment(@"Command and args which will be used to restart the bot.
 Only used if bot is executed directly (NOT through the coordinator)
 placeholders: 
@@ -97,15 +113,12 @@ Linux default
     args: ""NadekoBot.dll -- {0}""
 Windows default
     cmd: NadekoBot.exe
-    args: {0}")]
+    args: ""{0}""")]
     public RestartConfig RestartCommand { get; set; }
-    
-    [Comment(@"Configuration for RaidComp integration")]
-    public RaidCompConfig RaidComp { get; set; }
 
     public Creds()
     {
-        Version = 4;
+        Version = 6;
         Token = string.Empty;
         UsePrivilegedIntents = true;
         OwnerIds = new List<ulong>();
@@ -115,6 +128,7 @@ Windows default
         Patreon = new(string.Empty, string.Empty, string.Empty, string.Empty);
         BotListToken = string.Empty;
         CleverbotApiKey = string.Empty;
+        BotCache = BotCacheImplemenation.Memory;
         RedisOptions = "localhost:6379,syncTimeout=30000,responseTimeout=30000,allowAdmin=true,password=";
         Db = new()
         {
@@ -125,16 +139,21 @@ Windows default
         CoordinatorUrl = "http://localhost:3442";
 
         RestartCommand = new();
-        RaidComp = new RaidCompConfig();
+        Google = new();
     }
 
 
     public class DbOptions
     {
-        [Comment(@"Database type. Only sqlite supported atm")]
+        [Comment(@"Database type. ""sqlite"", ""mysql"" and ""postgresql"" are supported.
+Default is ""sqlite""")]
         public string Type { get; set; }
 
-        [Comment(@"Connection string. Will default to ""Data Source=data/NadekoBot.db""")]
+        [Comment(@"Database connection string.
+You MUST change this if you're not using ""sqlite"" type.
+Default is ""Data Source=data/NadekoBot.db""
+Example for mysql: ""Server=localhost;Port=3306;Uid=root;Pwd=my_super_secret_mysql_password;Database=nadeko""
+Example for postgresql: ""Server=localhost;Port=5432;User Id=postgres;Password=my_super_secret_postgres_password;Database=nadeko;""")]
         public string ConnectionString { get; set; }
     }
 
@@ -202,4 +221,16 @@ This should be equivalent to the DiscordsKey in your NadekoBot.Votes api appsett
             DiscordsKey = discordsKey;
         }
     }
+}
+
+public class GoogleApiConfig
+{
+    public string SearchId { get; init; }
+    public string ImageSearchId { get; init; }
+}
+
+public enum BotCacheImplemenation
+{
+    Memory,
+    Redis
 }

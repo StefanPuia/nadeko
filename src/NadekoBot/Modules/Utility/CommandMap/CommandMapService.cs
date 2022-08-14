@@ -27,7 +27,8 @@ public class CommandMapService : IInputTransformer, INService
 
         AliasMaps = new(configs.ToDictionary(x => x.GuildId,
             x => new ConcurrentDictionary<string, string>(x.CommandAliases.DistinctBy(ca => ca.Trigger)
-                                                           .ToDictionary(ca => ca.Trigger, ca => ca.Mapping))));
+                                                           .ToDictionary(ca => ca.Trigger, ca => ca.Mapping),
+                StringComparer.OrdinalIgnoreCase)));
 
         _db = db;
     }
@@ -52,40 +53,75 @@ public class CommandMapService : IInputTransformer, INService
         string input)
     {
         if (guild is null || string.IsNullOrWhiteSpace(input))
-            return input;
-
+            return null;
+        
         if (AliasMaps.TryGetValue(guild.Id, out var maps))
         {
-            var keys = maps.Keys.OrderByDescending(x => x.Length);
-
-            foreach (var k in keys)
+            string newInput = null;
+            foreach (var (k, v) in maps)
             {
-                string newInput;
-                if (input.StartsWith(k + " ", StringComparison.InvariantCultureIgnoreCase))
-                    newInput = maps[k] + input.Substring(k.Length, input.Length - k.Length);
-                else if (input.Equals(k, StringComparison.InvariantCultureIgnoreCase))
-                    newInput = maps[k];
-                else
-                    continue;
-
-                try
+                if (string.Equals(input, k, StringComparison.OrdinalIgnoreCase))
                 {
-                    var toDelete = await channel.SendConfirmAsync(_eb, $"{input} => {newInput}");
-                    _ = Task.Run(async () =>
-                    {
-                        await Task.Delay(1500);
-                        await toDelete.DeleteAsync(new()
-                        {
-                            RetryMode = RetryMode.AlwaysRetry
-                        });
-                    });
+                    newInput = v;
                 }
-                catch { }
+                else if (input.StartsWith(k + ' ', StringComparison.OrdinalIgnoreCase))
+                {
+                    newInput = v + ' ' + input[k.Length..];
+                }
 
-                return newInput;
+                if (newInput is not null)
+                {
+                    try
+                    {
+                        var toDelete = await channel.SendConfirmAsync(_eb, $"{input} => {newInput}");
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(1500);
+                            await toDelete.DeleteAsync(new()
+                            {
+                                RetryMode = RetryMode.AlwaysRetry
+                            });
+                        });
+                    }
+                    catch
+                    {
+                    }
+
+                    return newInput;
+                }
             }
+
+            return null;
+
+            // var keys = maps.Keys.OrderByDescending(x => x.Length);
+            // foreach (var k in keys)
+            // {
+            //     string newInput;
+            //     if (input.StartsWith(k + " ", StringComparison.InvariantCultureIgnoreCase))
+            //         newInput = maps[k] + input.Substring(k.Length, input.Length - k.Length);
+            //     else if (input.Equals(k, StringComparison.InvariantCultureIgnoreCase))
+            //         newInput = maps[k];
+            //     else
+            //         continue;
+            //
+            //     try
+            //     {
+            //         var toDelete = await channel.SendConfirmAsync(_eb, $"{input} => {newInput}");
+            //         _ = Task.Run(async () =>
+            //         {
+            //             await Task.Delay(1500);
+            //             await toDelete.DeleteAsync(new()
+            //             {
+            //                 RetryMode = RetryMode.AlwaysRetry
+            //             });
+            //         });
+            //     }
+            //     catch { }
+            //
+            //     return newInput;
+            // }
         }
 
-        return input;
+        return null;
     }
 }

@@ -14,11 +14,10 @@ public partial class Games
         public ChatterBotCommands(DbService db)
             => _db = db;
 
-        [NoPublicBot]
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.ManageMessages)]
-        public async partial Task Cleverbot()
+        public async Task Cleverbot()
         {
             var channel = (ITextChannel)ctx.Channel;
 

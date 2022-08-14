@@ -7,7 +7,7 @@ namespace NadekoBot.Services;
 
 public sealed class StatsService : IStatsService, IReadyExecutor, INService
 {
-    public const string BOT_VERSION = "4.0.6";
+    public const string BOT_VERSION = "4.3.4";
 
     public string Author
         => "Kwoth#2452";
@@ -183,9 +183,9 @@ public sealed class StatsService : IStatsService, IReadyExecutor, INService
         return time.Humanize(3, maxUnit: TimeUnit.Day, minUnit: TimeUnit.Minute);
     }
 
-    public double GetPrivateMemory()
+    public double GetPrivateMemoryMegabytes()
     {
         _currentProcess.Refresh();
-        return _currentProcess.PrivateMemorySize64 / (double)1.MiB();
+        return _currentProcess.PrivateMemorySize64 / 1.Megabytes().Bytes;
     }
 }

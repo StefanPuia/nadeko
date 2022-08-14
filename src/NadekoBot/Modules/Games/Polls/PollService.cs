@@ -1,5 +1,4 @@
 ﻿#nullable disable
-using NadekoBot.Common.Collections;
 using NadekoBot.Common.ModuleBehaviors;
 using NadekoBot.Db;
 using NadekoBot.Modules.Games.Common;
@@ -7,7 +6,7 @@ using NadekoBot.Services.Database.Models;
 
 namespace NadekoBot.Modules.Games.Services;
 
-public class PollService : IEarlyBehavior
+public class PollService : IExecOnMessage
 {
     public ConcurrentDictionary<ulong, PollRunner> ActivePolls { get; } = new();
 
@@ -105,7 +104,7 @@ public class PollService : IEarlyBehavior
         catch { }
     }
 
-    public async Task<bool> RunBehavior(IGuild guild, IUserMessage msg)
+    public async Task<bool> ExecOnMessageAsync(IGuild guild, IUserMessage msg)
     {
         if (guild is null)
             return false;

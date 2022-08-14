@@ -2,15 +2,20 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
+using Nadeko.Common;
 
 namespace NadekoBot.Services;
 
 public class YtdlOperation
 {
     private readonly string _baseArgString;
+    private readonly bool _isYtDlp;
 
-    public YtdlOperation(string baseArgString)
-        => _baseArgString = baseArgString;
+    public YtdlOperation(string baseArgString, bool isYtDlp = false)
+    {
+        _baseArgString = baseArgString;
+        _isYtDlp = isYtDlp;
+    }
 
     private Process CreateProcess(string[] args)
     {
@@ -19,7 +24,7 @@ public class YtdlOperation
         {
             StartInfo = new()
             {
-                FileName = "youtube-dl",
+                FileName = _isYtDlp ? "yt-dlp" : "youtube-dl",
                 Arguments = string.Format(_baseArgString, newArgs),
                 UseShellExecute = false,
                 RedirectStandardError = true,

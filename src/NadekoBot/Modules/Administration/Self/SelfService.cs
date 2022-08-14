@@ -3,10 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using NadekoBot.Common.ModuleBehaviors;
 using NadekoBot.Services.Database.Models;
 using System.Collections.Immutable;
+using Nadeko.Common;
 
 namespace NadekoBot.Modules.Administration.Services;
 
-public sealed class SelfService : ILateExecutor, IReadyExecutor, INService
+public sealed class SelfService : IExecNoCommand, IReadyExecutor, INService
 {
     private readonly CommandHandler _cmdHandler;
     private readonly DbService _db;
@@ -20,7 +21,6 @@ public sealed class SelfService : ILateExecutor, IReadyExecutor, INService
 
     private ConcurrentDictionary<ulong?, ConcurrentDictionary<int, Timer>> autoCommands = new();
 
-    private readonly IImageCache _imgs;
     private readonly IHttpClientFactory _httpFactory;
     private readonly BotConfigService _bss;
     private readonly IPubSub _pubSub;
@@ -28,7 +28,6 @@ public sealed class SelfService : ILateExecutor, IReadyExecutor, INService
 
     //keys
     private readonly TypedKey<ActivityPubData> _activitySetKey;
-    private readonly TypedKey<bool> _imagesReloadKey;
     private readonly TypedKey<string> _guildLeaveKey;
 
     public SelfService(
@@ -37,7 +36,6 @@ public sealed class SelfService : ILateExecutor, IReadyExecutor, INService
         DbService db,
         IBotStrings strings,
         IBotCredentials creds,
-        IDataCache cache,
         IHttpClientFactory factory,
         BotConfigService bss,
         IPubSub pubSub,
@@ -48,19 +46,14 @@ public sealed class SelfService : ILateExecutor, IReadyExecutor, INService
         _strings = strings;
         _client = client;
         _creds = creds;
-        _imgs = cache.LocalImages;
         _httpFactory = factory;
         _bss = bss;
         _pubSub = pubSub;
         _eb = eb;
         _activitySetKey = new("activity.set");
-        _imagesReloadKey = new("images.reload");
         _guildLeaveKey = new("guild.leave");
 
         HandleStatusChanges();
-
-        if (_client.ShardId == 0)
-            _pubSub.Sub(_imagesReloadKey, async _ => await _imgs.Reload());
 
         _pubSub.Sub(_guildLeaveKey,
             async input =>
@@ -206,7 +199,7 @@ public sealed class SelfService : ILateExecutor, IReadyExecutor, INService
         => _pubSub.Pub(_guildLeaveKey, guildStr);
 
     // forwards dms
-    public async Task LateExecute(IGuild guild, IUserMessage msg)
+    public async Task ExecOnNoCommandAsync(IGuild guild, IUserMessage msg)
     {
         var bs = _bss.Data;
         if (msg.Channel is IDMChannel && bs.ForwardMessages && ownerChannels.Any())
@@ -324,9 +317,6 @@ public sealed class SelfService : ILateExecutor, IReadyExecutor, INService
         uow.AutoCommands.RemoveRange(toRemove);
         uow.SaveChanges();
     }
-
-    public Task ReloadImagesAsync()
-        => _pubSub.Pub(_imagesReloadKey, true);
 
     public bool ForwardMessages()
     {

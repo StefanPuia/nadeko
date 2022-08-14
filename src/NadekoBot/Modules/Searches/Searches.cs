@@ -1,6 +1,4 @@
 ﻿#nullable disable
-using AngleSharp;
-using AngleSharp.Html.Dom;
 using Microsoft.Extensions.Caching.Memory;
 using NadekoBot.Modules.Administration.Services;
 using NadekoBot.Modules.Searches.Common;
@@ -11,9 +9,10 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
+using Nadeko.Common;
 using Color = SixLabors.ImageSharp.Color;
-using Configuration = AngleSharp.Configuration;
 
 namespace NadekoBot.Modules.Searches;
 
@@ -41,7 +40,7 @@ public partial class Searches : NadekoModule<SearchesService>
     }
 
     [Cmd]
-    public async partial Task Rip([Leftover] IGuildUser usr)
+    public async Task Rip([Leftover] IGuildUser usr)
     {
         var av = usr.RealAvatarUrl();
         await using var picStream = await _service.GetRipPictureAsync(usr.Nickname ?? usr.Username, av);
@@ -51,7 +50,7 @@ public partial class Searches : NadekoModule<SearchesService>
     }
 
     [Cmd]
-    public async partial Task Weather([Leftover] string query)
+    public async Task Weather([Leftover] string query)
     {
         if (!await ValidateQuery(query))
             return;
@@ -92,14 +91,14 @@ public partial class Searches : NadekoModule<SearchesService>
                 .AddField("🌇 " + Format.Bold(GetText(strs.sunset)), $"{sunset:HH:mm} {timezone}", true)
                 .WithOkColor()
                 .WithFooter("Powered by openweathermap.org",
-                    $"http://openweathermap.org/img/w/{data.Weather[0].Icon}.png");
+                    $"https://openweathermap.org/img/w/{data.Weather[0].Icon}.png");
         }
 
         await ctx.Channel.EmbedAsync(embed);
     }
 
     [Cmd]
-    public async partial Task Time([Leftover] string query)
+    public async Task Time([Leftover] string query)
     {
         if (!await ValidateQuery(query))
             return;
@@ -147,23 +146,7 @@ public partial class Searches : NadekoModule<SearchesService>
     }
 
     [Cmd]
-    public async partial Task Youtube([Leftover] string query = null)
-    {
-        if (!await ValidateQuery(query))
-            return;
-
-        var result = (await _google.GetVideoLinksByKeywordAsync(query)).FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(result))
-        {
-            await ReplyErrorLocalizedAsync(strs.no_results);
-            return;
-        }
-
-        await ctx.Channel.SendMessageAsync(result);
-    }
-
-    [Cmd]
-    public async partial Task Movie([Leftover] string query = null)
+    public async Task Movie([Leftover] string query = null)
     {
         if (!await ValidateQuery(query))
             return;
@@ -180,7 +163,7 @@ public partial class Searches : NadekoModule<SearchesService>
         await ctx.Channel.EmbedAsync(_eb.Create()
                                         .WithOkColor()
                                         .WithTitle(movie.Title)
-                                        .WithUrl($"http://www.imdb.com/title/{movie.ImdbId}/")
+                                        .WithUrl($"https://www.imdb.com/title/{movie.ImdbId}/")
                                         .WithDescription(movie.Plot.TrimTo(1000))
                                         .AddField("Rating", movie.ImdbRating, true)
                                         .AddField("Genre", movie.Genre, true)
@@ -189,19 +172,19 @@ public partial class Searches : NadekoModule<SearchesService>
     }
 
     [Cmd]
-    public partial Task RandomCat()
+    public Task RandomCat()
         => InternalRandomImage(SearchesService.ImageTag.Cats);
 
     [Cmd]
-    public partial Task RandomDog()
+    public Task RandomDog()
         => InternalRandomImage(SearchesService.ImageTag.Dogs);
 
     [Cmd]
-    public partial Task RandomFood()
+    public Task RandomFood()
         => InternalRandomImage(SearchesService.ImageTag.Food);
 
     [Cmd]
-    public partial Task RandomBird()
+    public Task RandomBird()
         => InternalRandomImage(SearchesService.ImageTag.Birds);
 
     private Task InternalRandomImage(SearchesService.ImageTag tag)
@@ -211,71 +194,17 @@ public partial class Searches : NadekoModule<SearchesService>
     }
 
     [Cmd]
-    public async partial Task Image([Leftover] string query = null)
-    {
-        var oterms = query?.Trim();
-        if (!await ValidateQuery(query))
-            return;
-
-        query = WebUtility.UrlEncode(oterms)?.Replace(' ', '+');
-        try
-        {
-            var res = await _google.GetImageAsync(oterms);
-            var embed = _eb.Create()
-                           .WithOkColor()
-                           .WithAuthor(GetText(strs.image_search_for) + " " + oterms.TrimTo(50),
-                               "http://i.imgur.com/G46fm8J.png",
-                               $"https://www.google.rs/search?q={query}&source=lnms&tbm=isch")
-                           .WithDescription(res.Link)
-                           .WithImageUrl(res.Link)
-                           .WithTitle(ctx.User.ToString());
-            await ctx.Channel.EmbedAsync(embed);
-        }
-        catch
-        {
-            Log.Warning("Falling back to Imgur");
-
-            var fullQueryLink = $"http://imgur.com/search?q={query}";
-            var config = Configuration.Default.WithDefaultLoader();
-            using var document = await BrowsingContext.New(config).OpenAsync(fullQueryLink);
-            var elems = document.QuerySelectorAll("a.image-list-link").ToList();
-
-            if (!elems.Any())
-                return;
-
-            var img =
-                elems.ElementAtOrDefault(new NadekoRandom().Next(0, elems.Count))?.Children?.FirstOrDefault() as
-                    IHtmlImageElement;
-
-            if (img?.Source is null)
-                return;
-
-            var source = img.Source.Replace("b.", ".", StringComparison.InvariantCulture);
-
-            var embed = _eb.Create()
-                           .WithOkColor()
-                           .WithAuthor(GetText(strs.image_search_for) + " " + oterms.TrimTo(50),
-                               "http://s.imgur.com/images/logo-1200-630.jpg?",
-                               fullQueryLink)
-                           .WithDescription(source)
-                           .WithImageUrl(source)
-                           .WithTitle(ctx.User.ToString());
-            await ctx.Channel.EmbedAsync(embed);
-        }
-    }
-
-    [Cmd]
-    public async partial Task Lmgtfy([Leftover] string ffs = null)
+    public async Task Lmgtfy([Leftover] string ffs = null)
     {
         if (!await ValidateQuery(ffs))
             return;
 
-        var shortenedUrl = await _google.ShortenUrl($"http://lmgtfy.com/?q={Uri.EscapeDataString(ffs)}");
+        var shortenedUrl = await _google.ShortenUrl($"https://lmgtfy.com/?q={Uri.EscapeDataString(ffs)}");
         await SendConfirmAsync($"<{shortenedUrl}>");
     }
 
     [Cmd]
-    public async partial Task Shorten([Leftover] string query)
+    public async Task Shorten([Leftover] string query)
     {
         if (!await ValidateQuery(query))
             return;
@@ -318,70 +247,7 @@ public partial class Searches : NadekoModule<SearchesService>
     }
 
     [Cmd]
-    public async partial Task Google([Leftover] string query = null)
-    {
-        query = query?.Trim();
-        if (!await ValidateQuery(query))
-            return;
-
-        _ = ctx.Channel.TriggerTypingAsync();
-
-        var data = await _service.GoogleSearchAsync(query);
-        if (data is null)
-        {
-            await ReplyErrorLocalizedAsync(strs.no_results);
-            return;
-        }
-
-        var desc = data.Results.Take(5)
-                       .Select(res => $@"[**{res.Title}**]({res.Link})
-{res.Text.TrimTo(400 - res.Title.Length - res.Link.Length)}");
-
-        var descStr = string.Join("\n\n", desc);
-
-        var embed = _eb.Create()
-                       .WithAuthor(ctx.User.ToString(), "http://i.imgur.com/G46fm8J.png")
-                       .WithTitle(ctx.User.ToString())
-                       .WithFooter(data.TotalResults)
-                       .WithDescription($"{GetText(strs.search_for)} **{query}**\n\n" + descStr)
-                       .WithOkColor();
-
-        await ctx.Channel.EmbedAsync(embed);
-    }
-
-    [Cmd]
-    public async partial Task DuckDuckGo([Leftover] string query = null)
-    {
-        query = query?.Trim();
-        if (!await ValidateQuery(query))
-            return;
-
-        _ = ctx.Channel.TriggerTypingAsync();
-
-        var data = await _service.DuckDuckGoSearchAsync(query);
-        if (data is null)
-        {
-            await ReplyErrorLocalizedAsync(strs.no_results);
-            return;
-        }
-
-        var desc = data.Results.Take(5)
-                       .Select(res => $@"[**{res.Title}**]({res.Link})
-{res.Text.TrimTo(380 - res.Title.Length - res.Link.Length)}");
-
-        var descStr = string.Join("\n\n", desc);
-
-        var embed = _eb.Create()
-                       .WithAuthor(ctx.User.ToString(),
-                           "https://upload.wikimedia.org/wikipedia/en/9/90/The_DuckDuckGo_Duck.png")
-                       .WithDescription($"{GetText(strs.search_for)} **{query}**\n\n" + descStr)
-                       .WithOkColor();
-
-        await ctx.Channel.EmbedAsync(embed);
-    }
-
-    [Cmd]
-    public async partial Task MagicTheGathering([Leftover] string search)
+    public async Task MagicTheGathering([Leftover] string search)
     {
         if (!await ValidateQuery(search))
             return;
@@ -408,7 +274,7 @@ public partial class Searches : NadekoModule<SearchesService>
     }
 
     [Cmd]
-    public async partial Task Hearthstone([Leftover] string name)
+    public async Task Hearthstone([Leftover] string name)
     {
         if (!await ValidateQuery(name))
             return;
@@ -437,7 +303,7 @@ public partial class Searches : NadekoModule<SearchesService>
     }
 
     [Cmd]
-    public async partial Task UrbanDict([Leftover] string query = null)
+    public async Task UrbanDict([Leftover] string query = null)
     {
         if (!await ValidateQuery(query))
             return;
@@ -446,7 +312,7 @@ public partial class Searches : NadekoModule<SearchesService>
         using (var http = _httpFactory.CreateClient())
         {
             var res = await http.GetStringAsync(
-                $"http://api.urbandictionary.com/v0/define?term={Uri.EscapeDataString(query)}");
+                $"https://api.urbandictionary.com/v0/define?term={Uri.EscapeDataString(query)}");
             try
             {
                 var items = JsonConvert.DeserializeObject<UrbanResponse>(res).List;
@@ -476,7 +342,7 @@ public partial class Searches : NadekoModule<SearchesService>
     }
 
     [Cmd]
-    public async partial Task Define([Leftover] string word)
+    public async Task Define([Leftover] string word)
     {
         if (!await ValidateQuery(word))
             return;
@@ -547,7 +413,7 @@ public partial class Searches : NadekoModule<SearchesService>
     }
 
     [Cmd]
-    public async partial Task Catfact()
+    public async Task Catfact()
     {
         using var http = _httpFactory.CreateClient();
         var response = await http.GetStringAsync("https://catfact.ninja/fact");
@@ -559,7 +425,7 @@ public partial class Searches : NadekoModule<SearchesService>
     //done in 3.0
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task Revav([Leftover] IGuildUser usr = null)
+    public async Task Revav([Leftover] IGuildUser usr = null)
     {
         if (usr is null)
             usr = (IGuildUser)ctx.User;
@@ -570,7 +436,7 @@ public partial class Searches : NadekoModule<SearchesService>
 
     //done in 3.0
     [Cmd]
-    public async partial Task Revimg([Leftover] string imageLink = null)
+    public async Task Revimg([Leftover] string imageLink = null)
     {
         imageLink = imageLink?.Trim() ?? "";
 
@@ -581,7 +447,7 @@ public partial class Searches : NadekoModule<SearchesService>
     }
 
     [Cmd]
-    public async partial Task Wiki([Leftover] string query = null)
+    public async Task Wiki([Leftover] string query = null)
     {
         query = query?.Trim();
 
@@ -600,7 +466,7 @@ public partial class Searches : NadekoModule<SearchesService>
     }
 
     [Cmd]
-    public async partial Task Color(params Color[] colors)
+    public async Task Color(params Color[] colors)
     {
         if (!colors.Any())
             return;
@@ -620,7 +486,7 @@ public partial class Searches : NadekoModule<SearchesService>
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task Avatar([Leftover] IGuildUser usr = null)
+    public async Task Avatar([Leftover] IGuildUser usr = null)
     {
         if (usr is null)
             usr = (IGuildUser)ctx.User;
@@ -637,7 +503,7 @@ public partial class Searches : NadekoModule<SearchesService>
     }
 
     [Cmd]
-    public async partial Task Wikia(string target, [Leftover] string query)
+    public async Task Wikia(string target, [Leftover] string query)
     {
         if (string.IsNullOrWhiteSpace(target) || string.IsNullOrWhiteSpace(query))
         {
@@ -678,7 +544,7 @@ public partial class Searches : NadekoModule<SearchesService>
 
     [Cmd]
     [RequireContext(ContextType.Guild)]
-    public async partial Task Bible(string book, string chapterAndVerse)
+    public async Task Bible(string book, string chapterAndVerse)
     {
         var obj = new BibleVerses();
         try
@@ -705,7 +571,7 @@ public partial class Searches : NadekoModule<SearchesService>
     }
 
     [Cmd]
-    public async partial Task Steam([Leftover] string query)
+    public async Task Steam([Leftover] string query)
     {
         if (string.IsNullOrWhiteSpace(query))
             return;
@@ -732,7 +598,7 @@ public partial class Searches : NadekoModule<SearchesService>
         await ctx.Channel.SendMessageAsync($"https://store.steampowered.com/app/{appId}");
     }
 
-    private async Task<bool> ValidateQuery(string query)
+    private async Task<bool> ValidateQuery([MaybeNullWhen(false)] string query)
     {
         if (!string.IsNullOrWhiteSpace(query))
             return true;

@@ -7,7 +7,7 @@ namespace NadekoBot.Modules.Xp;
 public partial class Xp
 {
     [Group]
-    public partial class Club : NadekoModule<ClubService>
+    public partial class Club : NadekoModule<IClubService>
     {
         private readonly XpService _xps;
 
@@ -15,41 +15,39 @@ public partial class Xp
             => _xps = xps;
 
         [Cmd]
-        public async partial Task ClubTransfer([Leftover] IUser newOwner)
+        public async Task ClubTransfer([Leftover] IUser newOwner)
         {
             var club = _service.TransferClub(ctx.User, newOwner);
 
-            if (club is not null)
+            if (club is null)
             {
-                await ReplyConfirmLocalizedAsync(strs.club_transfered(Format.Bold(club.Name),
-                    Format.Bold(newOwner.ToString())));
+                await ReplyErrorLocalizedAsync(strs.club_transfer_failed);
             }
             else
-                await ReplyErrorLocalizedAsync(strs.club_transfer_failed);
+            {
+                await ReplyConfirmLocalizedAsync(
+                    strs.club_transfered(
+                        Format.Bold(club.Name),
+                        Format.Bold(newOwner.ToString())
+                    )
+                );
+            }
         }
 
         [Cmd]
-        public async partial Task ClubAdmin([Leftover] IUser toAdmin)
+        public async Task ClubAdmin([Leftover] IUser toAdmin)
         {
-            bool admin;
-            try
-            {
-                admin = _service.ToggleAdmin(ctx.User, toAdmin);
-            }
-            catch (InvalidOperationException)
-            {
+            var admin = await _service.ToggleAdminAsync(ctx.User, toAdmin);
+        
+            if (admin is null)
                 await ReplyErrorLocalizedAsync(strs.club_admin_error);
-                return;
-            }
-
-            if (admin)
+            else if (admin is true)
                 await ReplyConfirmLocalizedAsync(strs.club_admin_add(Format.Bold(toAdmin.ToString())));
             else
                 await ReplyConfirmLocalizedAsync(strs.club_admin_remove(Format.Bold(toAdmin.ToString())));
         }
-
         [Cmd]
-        public async partial Task ClubCreate([Leftover] string clubName)
+        public async Task ClubCreate([Leftover] string clubName)
         {
             if (string.IsNullOrWhiteSpace(clubName) || clubName.Length > 20)
             {
@@ -57,20 +55,28 @@ public partial class Xp
                 return;
             }
 
-            if (!_service.CreateClub(ctx.User, clubName, out var club))
+            var succ = await _service.CreateClubAsync(ctx.User, clubName);
+
+            if (succ is null)
+            {
+                await ReplyErrorLocalizedAsync(strs.club_create_error_name);
+                return;
+            }
+            
+            if (succ is false)
             {
                 await ReplyErrorLocalizedAsync(strs.club_create_error);
                 return;
             }
 
-            await ReplyConfirmLocalizedAsync(strs.club_created(Format.Bold(club.ToString())));
+            await ReplyConfirmLocalizedAsync(strs.club_created(Format.Bold(clubName)));
         }
 
         [Cmd]
-        public async partial Task ClubIcon([Leftover] string url = null)
+        public async Task ClubIcon([Leftover] string url = null)
         {
             if ((!Uri.IsWellFormedUriString(url, UriKind.Absolute) && url is not null)
-                || !await _service.SetClubIcon(ctx.User.Id, url is null ? null : new Uri(url)))
+                || !await _service.SetClubIconAsync(ctx.User.Id, url))
             {
                 await ReplyErrorLocalizedAsync(strs.club_icon_error);
                 return;
@@ -82,7 +88,7 @@ public partial class Xp
         private async Task InternalClubInfoAsync(ClubInfo club)
         {
             var lvl = new LevelStats(club.Xp);
-            var users = club.Users.OrderByDescending(x =>
+            var users = club.Members.OrderByDescending(x =>
             {
                 var l = new LevelStats(x.TotalXp).Level;
                 if (club.OwnerId == x.Id)
@@ -102,7 +108,7 @@ public partial class Xp
                                    .AddField(GetText(strs.desc),
                                        string.IsNullOrWhiteSpace(club.Description) ? "-" : club.Description)
                                    .AddField(GetText(strs.owner), club.Owner.ToString(), true)
-                                   .AddField(GetText(strs.level_req), club.MinimumLevelReq.ToString(), true)
+                                   // .AddField(GetText(strs.level_req), club.MinimumLevelReq.ToString(), true)
                                    .AddField(GetText(strs.members),
                                        string.Join("\n",
                                            users.Skip(page * 10)
@@ -123,13 +129,13 @@ public partial class Xp
 
                     return embed;
                 },
-                club.Users.Count,
+                club.Members.Count,
                 10);
         }
 
         [Cmd]
         [Priority(1)]
-        public async partial Task ClubInformation(IUser user = null)
+        public async Task ClubInformation(IUser user = null)
         {
             user ??= ctx.User;
             var club = _service.GetClubByMember(user);
@@ -144,7 +150,7 @@ public partial class Xp
 
         [Cmd]
         [Priority(0)]
-        public async partial Task ClubInformation([Leftover] string clubName = null)
+        public async Task ClubInformation([Leftover] string clubName = null)
         {
             if (string.IsNullOrWhiteSpace(clubName))
             {
@@ -162,7 +168,7 @@ public partial class Xp
         }
 
         [Cmd]
-        public partial Task ClubBans(int page = 1)
+        public Task ClubBans(int page = 1)
         {
             if (--page < 0)
                 return Task.CompletedTask;
@@ -187,9 +193,8 @@ public partial class Xp
                 10);
         }
 
-
         [Cmd]
-        public partial Task ClubApps(int page = 1)
+        public Task ClubApps(int page = 1)
         {
             if (--page < 0)
                 return Task.CompletedTask;
@@ -215,7 +220,7 @@ public partial class Xp
         }
 
         [Cmd]
-        public async partial Task ClubApply([Leftover] string clubName)
+        public async Task ClubApply([Leftover] string clubName)
         {
             if (string.IsNullOrWhiteSpace(clubName))
                 return;
@@ -234,12 +239,12 @@ public partial class Xp
 
         [Cmd]
         [Priority(1)]
-        public partial Task ClubAccept(IUser user)
-            => ClubAccept($"{user.Username}#{user.Discriminator}");
+        public Task ClubAccept(IUser user)
+            => ClubAccept(user.ToString());
 
         [Cmd]
         [Priority(0)]
-        public async partial Task ClubAccept([Leftover] string userName)
+        public async Task ClubAccept([Leftover] string userName)
         {
             if (_service.AcceptApplication(ctx.User.Id, userName, out var discordUser))
                 await ReplyConfirmLocalizedAsync(strs.club_accepted(Format.Bold(discordUser.ToString())));
@@ -248,7 +253,7 @@ public partial class Xp
         }
 
         [Cmd]
-        public async partial Task Clubleave()
+        public async Task Clubleave()
         {
             if (_service.LeaveClub(ctx.User))
                 await ReplyConfirmLocalizedAsync(strs.club_left);
@@ -258,12 +263,12 @@ public partial class Xp
 
         [Cmd]
         [Priority(1)]
-        public partial Task ClubKick([Leftover] IUser user)
+        public Task ClubKick([Leftover] IUser user)
             => ClubKick(user.ToString());
 
         [Cmd]
         [Priority(0)]
-        public partial Task ClubKick([Leftover] string userName)
+        public Task ClubKick([Leftover] string userName)
         {
             if (_service.Kick(ctx.User.Id, userName, out var club))
             {
@@ -276,12 +281,12 @@ public partial class Xp
 
         [Cmd]
         [Priority(1)]
-        public partial Task ClubBan([Leftover] IUser user)
-            => ClubBan($"{user.Username}#{user.Discriminator}");
+        public Task ClubBan([Leftover] IUser user)
+            => ClubBan(user.ToString());
 
         [Cmd]
         [Priority(0)]
-        public partial Task ClubBan([Leftover] string userName)
+        public Task ClubBan([Leftover] string userName)
         {
             if (_service.Ban(ctx.User.Id, userName, out var club))
             {
@@ -294,12 +299,12 @@ public partial class Xp
 
         [Cmd]
         [Priority(1)]
-        public partial Task ClubUnBan([Leftover] IUser user)
-            => ClubUnBan($"{user.Username}#{user.Discriminator}");
+        public Task ClubUnBan([Leftover] IUser user)
+            => ClubUnBan(user.ToString());
 
         [Cmd]
         [Priority(0)]
-        public partial Task ClubUnBan([Leftover] string userName)
+        public Task ClubUnBan([Leftover] string userName)
         {
             if (_service.UnBan(ctx.User.Id, userName, out var club))
             {
@@ -311,34 +316,39 @@ public partial class Xp
         }
 
         [Cmd]
-        public async partial Task ClubLevelReq(int level)
+        public async Task ClubDescription([Leftover] string desc = null)
         {
-            if (_service.ChangeClubLevelReq(ctx.User.Id, level))
-                await ReplyConfirmLocalizedAsync(strs.club_level_req_changed(Format.Bold(level.ToString())));
-            else
-                await ReplyErrorLocalizedAsync(strs.club_level_req_change_error);
-        }
+            if (_service.SetDescription(ctx.User.Id, desc))
+            {
+                desc = string.IsNullOrWhiteSpace(desc)
+                    ? "-"
+                    : desc;
+                
+                var eb = _eb.Create(ctx)
+                            .WithAuthor(ctx.User)
+                            .WithTitle(GetText(strs.club_desc_update))
+                            .WithOkColor()
+                            .WithDescription(desc);
 
-        [Cmd]
-        public async partial Task ClubDescription([Leftover] string desc = null)
-        {
-            if (_service.ChangeClubDescription(ctx.User.Id, desc))
-                await ReplyConfirmLocalizedAsync(strs.club_desc_updated(Format.Bold(desc ?? "-")));
+                await ctx.Channel.EmbedAsync(eb);
+            }
             else
+            {
                 await ReplyErrorLocalizedAsync(strs.club_desc_update_failed);
+            }
         }
 
         [Cmd]
-        public async partial Task ClubDisband()
+        public async Task ClubDisband()
         {
             if (_service.Disband(ctx.User.Id, out var club))
-                await ReplyConfirmLocalizedAsync(strs.club_disbanded(Format.Bold(club.ToString())));
+                await ReplyConfirmLocalizedAsync(strs.club_disbanded(Format.Bold(club.Name)));
             else
                 await ReplyErrorLocalizedAsync(strs.club_disband_error);
         }
 
         [Cmd]
-        public partial Task ClubLeaderboard(int page = 1)
+        public Task ClubLeaderboard(int page = 1)
         {
             if (--page < 0)
                 return Task.CompletedTask;
