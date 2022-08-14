@@ -13,29 +13,29 @@ RUN dotnet restore src/NadekoBot/
 
 COPY . .
 WORKDIR /source/src/NadekoBot
-RUN set -xe; \
-    dotnet --version; \
-    dotnet publish -c Release -o /app --no-restore; \
-    mv /app/data /app/data_init; \
-    rm -Rf libopus* libsodium* opus.* runtimes/win* runtimes/osx* runtimes/linux-arm* runtimes/linux-mips*; \
-    find /app -type f -exec chmod -x {} \; ;\
-    chmod +x /app/NadekoBot
+RUN set -xe
+RUN dotnet --version
+RUN dotnet publish -c Release -o /app --no-restore
+RUN mv /app/data /app/data_init
+RUN rm -Rf libopus* libsodium* opus.* runtimes/win* runtimes/osx* runtimes/linux-arm* runtimes/linux-mips*
+RUN find /app -type f -exec chmod -x {} \;
+RUN chmod +x /app/NadekoBot
 
 # final stage/image
 FROM mcr.microsoft.com/dotnet/runtime:6.0
 WORKDIR /app
 
-RUN set -xe; \
-    useradd -m nadeko; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends libopus0 libsodium23 libsqlite3-0 curl ffmpeg python3 python3-pip sudo; \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3.9 1; \
-    echo 'Defaults>nadeko env_keep+="ASPNETCORE_* DOTNET_* NadekoBot_* shard_id total_shards TZ"' > /etc/sudoers.d/nadeko; \
-    pip3 install --no-cache-dir --upgrade youtube-dl; \
-    apt-get purge -y python3-pip; \
-    chmod +x /usr/local/bin/youtube-dl; \
-    apt-get autoremove -y; \
-    apt-get autoclean -y
+RUN set -xe
+RUN useradd -m nadeko
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends libopus0 libsodium23 libsqlite3-0 curl ffmpeg python3 python3-pip sudo
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+RUN echo 'Defaults>nadeko env_keep+="ASPNETCORE_* DOTNET_* NadekoBot_* shard_id total_shards TZ"' > /etc/sudoers.d/nadeko
+RUN pip3 install --no-cache-dir --upgrade youtube-dl
+RUN apt-get purge -y python3-pip
+RUN chmod +x /usr/local/bin/youtube-dl
+RUN apt-get autoremove -y
+RUN apt-get autoclean -y
 
 COPY --from=build /app ./
 COPY docker-entrypoint.sh /usr/local/sbin

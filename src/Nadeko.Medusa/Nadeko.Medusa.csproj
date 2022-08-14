@@ -9,6 +9,8 @@
         <RootNamespace>Nadeko.Snake</RootNamespace>
         
         <Authors>The NadekoBot Team</Authors>
+        <AssemblyVersion>4.3.4</AssemblyVersion>
+        <PackageVersion>4.3.4</PackageVersion>
     </PropertyGroup>
 
     <ItemGroup>

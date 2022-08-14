@@ -36,7 +36,7 @@ public class FeedsService : INService
                        .Include(x => x.FeedSubs)
                        .ToList()
                        .SelectMany(x => x.FeedSubs)
-                       .GroupBy(x => x.Url.ToLower())
+                       .GroupBy(x => x.Url)
                        .ToDictionary(x => x.Key, x => x.ToList())
                        .ToConcurrent();
         }
@@ -230,7 +230,7 @@ public class FeedsService : INService
         //adding all, in case bot wasn't on this guild when it started
         foreach (var feed in gc.FeedSubs)
         {
-            _subs.AddOrUpdate(feed.Url.ToLower(),
+            _subs.AddOrUpdate(feed.Url,
                 new List<FeedSub>
                 {
                     feed

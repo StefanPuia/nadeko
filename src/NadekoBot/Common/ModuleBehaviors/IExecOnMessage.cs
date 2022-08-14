@@ -7,6 +7,8 @@ public interface IExecOnMessage
 {
     int Priority { get; }
 
+    bool AllowBots => false;
+
     /// <summary>
     /// Ran after a non-bot message was received
     /// *<see cref="IExecOnMessage"/>* →

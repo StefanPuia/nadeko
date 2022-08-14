@@ -108,6 +108,10 @@ public sealed class BehaviorHandler : IBehaviorHandler, INService
             {
                 try
                 {
+                    if (usrMsg.Author.IsBot && !exec.AllowBots)
+                    {
+                        continue;
+                    }
                     if (await exec.ExecOnMessageAsync(guild, usrMsg))
                     {
                         Log.Information("{TypeName} blocked message g:{GuildId} u:{UserId} c:{ChannelId} msg:{Message}",
