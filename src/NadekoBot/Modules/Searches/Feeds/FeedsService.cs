@@ -50,32 +50,38 @@ public class FeedsService : INService
     private void ClearErrors(string url)
         => _errorCounters.Remove(url);
 
-    private async Task<uint> AddError(string url, List<int> ids)
+    private void AddError(string url, List<FeedSub> subs, string exceptionMessage)
     {
         try
         {
             var newValue = _errorCounters[url] = _errorCounters.GetValueOrDefault(url) + 1;
-
+            var message = $"An error occured while getting rss stream ({newValue} / 100) {url}\n {exceptionMessage}";
+            
             if (newValue >= 100)
             {
-                // remove from db
-                await using var ctx = _db.GetDbContext();
-                await ctx.GetTable<FeedSub>()
-                         .DeleteAsync(x => ids.Contains(x.Id));
-                
-                // remove from the local cache
-                _subs.TryRemove(url, out _);
+                try
+                {
+                    subs.Where(x => x.GuildConfig is not null)
+                        .Select(x => _client.GetGuild(x.GuildConfig.GuildId)
+                                            ?.GetTextChannel(x.ChannelId))
+                        .Where(x => x is not null)
+                        .ToList()
+                        .ForEach(x => x.SendAsync(message));
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Error posting message");
+                }
 
                 // reset the error counter
                 ClearErrors(url);
             }
 
-            return newValue;
+            Log.Error("{Message}", message);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error adding rss errors...");
-            return 0;
         }
     }
 
@@ -185,17 +191,12 @@ public class FeedsService : INService
                 }
                 catch (Exception ex)
                 {
-                    var errorCount = await AddError(rssUrl, kvp.Value.Select(x => x.Id).ToList());
-                    
-                    Log.Warning("An error occured while getting rss stream ({ErrorCount} / 100) {RssFeed}"
-                                + "\n {Message}",
-                        errorCount,
-                        rssUrl,
-                        $"[{ex.GetType().Name}]: {ex.Message}");
+                    var exceptionMessage = $"[{ex.GetType().Name}]: {ex.Message}";
+                    AddError(rssUrl, kvp.Value, exceptionMessage);
                 }
             }
 
-            await Task.WhenAll(Task.WhenAll(allSendTasks), Task.Delay(30000));
+            await Task.WhenAll(Task.WhenAll(allSendTasks), Task.Delay(1000 * 60 * 30));
         }
     }
 
