@@ -38,7 +38,7 @@ public class RaidCompService : IExecOnMessage, INService
             if (attachmentUrl.ToLowerInvariant().EndsWith(".csv"))
             {
                 var buildString = await ConvertCsv(attachmentUrl);
-                await ((ITextChannel) channel).SendConfirmAsync(_eb, buildString);
+                await ((ITextChannel)channel).SendMessageAsync(buildString);
             }
         }
         catch (Exception e)
@@ -69,9 +69,10 @@ public class RaidCompService : IExecOnMessage, INService
             var importUrl = $"{_creds.RaidComp.Api}/build/import/raid-helper";
             var response =
                 await http.PostAsync(importUrl, new StringContent(payload, Encoding.UTF8, "application/json"));
+            var responseContent = await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode)
             {
-                var builds = JsonConvert.DeserializeObject<RaidCompResult>(await response.Content.ReadAsStringAsync());
+                var builds = JsonConvert.DeserializeObject<RaidCompResult>(responseContent);
                 var buildLinks = builds
                                  ?.Builds.Select(build =>
                                      $"{_creds.RaidComp.Web}/build/{build.BuildId}/{build.BuildName}")
@@ -81,7 +82,7 @@ public class RaidCompService : IExecOnMessage, INService
                 return string.Join("\n", buildLinks);
             }
 
-            throw new Exception("There was an error generating the build");
+            throw new Exception("There was an error generating the build: " + responseContent);
         }
         catch (Exception e)
         {

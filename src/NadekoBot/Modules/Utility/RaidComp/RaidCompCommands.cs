@@ -29,7 +29,7 @@ public partial class Utility
             try
             {
                 var buildMessage = await _service.ConvertCsv(csvLink);
-                await ctx.Channel.SendConfirmAsync(_eb, buildMessage);
+                await ctx.Channel.SendMessageAsync(buildMessage);
             }
             catch (Exception e)
             {
