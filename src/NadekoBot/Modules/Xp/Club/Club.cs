@@ -17,11 +17,14 @@ public partial class Xp
         [Cmd]
         public async Task ClubTransfer([Leftover] IUser newOwner)
         {
-            var club = _service.TransferClub(ctx.User, newOwner);
+            var result = _service.TransferClub(ctx.User, newOwner);
 
-            if (club is null)
+            if (!result.TryPickT0(out var club, out var error))
             {
-                await ReplyErrorLocalizedAsync(strs.club_transfer_failed);
+                if(error == ClubTransferError.NotOwner)
+                    await ReplyErrorLocalizedAsync(strs.club_owner_only);
+                else 
+                    await ReplyErrorLocalizedAsync(strs.club_target_not_member);
             }
             else
             {
@@ -37,15 +40,20 @@ public partial class Xp
         [Cmd]
         public async Task ClubAdmin([Leftover] IUser toAdmin)
         {
-            var admin = await _service.ToggleAdminAsync(ctx.User, toAdmin);
-        
-            if (admin is null)
-                await ReplyErrorLocalizedAsync(strs.club_admin_error);
-            else if (admin is true)
+            var result = await _service.ToggleAdminAsync(ctx.User, toAdmin);
+
+            if (result == ToggleAdminResult.AddedAdmin)
                 await ReplyConfirmLocalizedAsync(strs.club_admin_add(Format.Bold(toAdmin.ToString())));
-            else
+            else if (result == ToggleAdminResult.RemovedAdmin)
                 await ReplyConfirmLocalizedAsync(strs.club_admin_remove(Format.Bold(toAdmin.ToString())));
+            else if (result == ToggleAdminResult.NotOwner)
+                await ReplyErrorLocalizedAsync(strs.club_owner_only);
+            else if (result == ToggleAdminResult.CantTargetThyself)
+                await ReplyErrorLocalizedAsync(strs.club_admin_invalid_target);
+            else if (result == ToggleAdminResult.TargetNotMember)
+                await ReplyErrorLocalizedAsync(strs.club_target_not_member);
         }
+
         [Cmd]
         public async Task ClubCreate([Leftover] string clubName)
         {
@@ -55,17 +63,23 @@ public partial class Xp
                 return;
             }
 
-            var succ = await _service.CreateClubAsync(ctx.User, clubName);
+            var result = await _service.CreateClubAsync(ctx.User, clubName);
 
-            if (succ is null)
+            if (result == ClubCreateResult.NameTaken)
             {
                 await ReplyErrorLocalizedAsync(strs.club_create_error_name);
                 return;
             }
-            
-            if (succ is false)
+
+            if (result == ClubCreateResult.InsufficientLevel)
             {
-                await ReplyErrorLocalizedAsync(strs.club_create_error);
+                await ReplyErrorLocalizedAsync(strs.club_create_insuff_lvl);
+                return;
+            }
+
+            if (result == ClubCreateResult.AlreadyInAClub)
+            {
+                await ReplyErrorLocalizedAsync(strs.club_already_in);
                 return;
             }
 
@@ -75,14 +89,21 @@ public partial class Xp
         [Cmd]
         public async Task ClubIcon([Leftover] string url = null)
         {
-            if ((!Uri.IsWellFormedUriString(url, UriKind.Absolute) && url is not null)
-                || !await _service.SetClubIconAsync(ctx.User.Id, url))
+            if ((!Uri.IsWellFormedUriString(url, UriKind.Absolute) && url is not null))
             {
-                await ReplyErrorLocalizedAsync(strs.club_icon_error);
+                await ReplyErrorLocalizedAsync(strs.club_icon_url_format);
                 return;
             }
 
-            await ReplyConfirmLocalizedAsync(strs.club_icon_set);
+            var result = await _service.SetClubIconAsync(ctx.User.Id, url);
+            if(result == SetClubIconResult.Success)
+                await ReplyConfirmLocalizedAsync(strs.club_icon_set);
+            else if (result == SetClubIconResult.NotOwner)
+                await ReplyErrorLocalizedAsync(strs.club_owner_only);
+            else if (result == SetClubIconResult.TooLarge)
+                await ReplyErrorLocalizedAsync(strs.club_icon_too_large);
+            else if (result == SetClubIconResult.InvalidFileType)
+                await ReplyErrorLocalizedAsync(strs.club_icon_invalid_filetype);
         }
 
         private async Task InternalClubInfoAsync(ClubInfo club)
@@ -102,27 +123,27 @@ public partial class Xp
                 page =>
                 {
                     var embed = _eb.Create()
-                                   .WithOkColor()
-                                   .WithTitle($"{club}")
-                                   .WithDescription(GetText(strs.level_x(lvl.Level + $" ({club.Xp} xp)")))
-                                   .AddField(GetText(strs.desc),
-                                       string.IsNullOrWhiteSpace(club.Description) ? "-" : club.Description)
-                                   .AddField(GetText(strs.owner), club.Owner.ToString(), true)
-                                   // .AddField(GetText(strs.level_req), club.MinimumLevelReq.ToString(), true)
-                                   .AddField(GetText(strs.members),
-                                       string.Join("\n",
-                                           users.Skip(page * 10)
-                                                .Take(10)
-                                                .Select(x =>
-                                                {
-                                                    var l = new LevelStats(x.TotalXp);
-                                                    var lvlStr = Format.Bold($" ⟪{l.Level}⟫");
-                                                    if (club.OwnerId == x.Id)
-                                                        return x + "🌟" + lvlStr;
-                                                    if (x.IsClubAdmin)
-                                                        return x + "⭐" + lvlStr;
-                                                    return x + lvlStr;
-                                                })));
+                        .WithOkColor()
+                        .WithTitle($"{club}")
+                        .WithDescription(GetText(strs.level_x(lvl.Level + $" ({club.Xp} xp)")))
+                        .AddField(GetText(strs.desc),
+                            string.IsNullOrWhiteSpace(club.Description) ? "-" : club.Description)
+                        .AddField(GetText(strs.owner), club.Owner.ToString(), true)
+                        // .AddField(GetText(strs.level_req), club.MinimumLevelReq.ToString(), true)
+                        .AddField(GetText(strs.members),
+                            string.Join("\n",
+                                users.Skip(page * 10)
+                                    .Take(10)
+                                    .Select(x =>
+                                    {
+                                        var l = new LevelStats(x.TotalXp);
+                                        var lvlStr = Format.Bold($" ⟪{l.Level}⟫");
+                                        if (club.OwnerId == x.Id)
+                                            return x + "🌟" + lvlStr;
+                                        if (x.IsClubAdmin)
+                                            return x + "⭐" + lvlStr;
+                                        return x + lvlStr;
+                                    })));
 
                     if (Uri.IsWellFormedUriString(club.ImageUrl, UriKind.Absolute))
                         return embed.WithThumbnailUrl(club.ImageUrl);
@@ -175,19 +196,21 @@ public partial class Xp
 
             var club = _service.GetClubWithBansAndApplications(ctx.User.Id);
             if (club is null)
-                return ReplyErrorLocalizedAsync(strs.club_not_exists_owner);
+                return ReplyErrorLocalizedAsync(strs.club_admin_perms);
 
             var bans = club.Bans.Select(x => x.User).ToArray();
 
             return ctx.SendPaginatedConfirmAsync(page,
                 _ =>
                 {
-                    var toShow = string.Join("\n", bans.Skip(page * 10).Take(10).Select(x => x.ToString()));
+                    var toShow = string.Join("\n", bans
+                        .Skip(page * 10).Take(10)
+                        .Select(x => x.ToString()));
 
                     return _eb.Create()
-                              .WithTitle(GetText(strs.club_bans_for(club.ToString())))
-                              .WithDescription(toShow)
-                              .WithOkColor();
+                        .WithTitle(GetText(strs.club_bans_for(club.ToString())))
+                        .WithDescription(toShow)
+                        .WithOkColor();
                 },
                 bans.Length,
                 10);
@@ -201,7 +224,7 @@ public partial class Xp
 
             var club = _service.GetClubWithBansAndApplications(ctx.User.Id);
             if (club is null)
-                return ReplyErrorLocalizedAsync(strs.club_not_exists_owner);
+                return ReplyErrorLocalizedAsync(strs.club_admin_perms);
 
             var apps = club.Applicants.Select(x => x.User).ToArray();
 
@@ -211,9 +234,9 @@ public partial class Xp
                     var toShow = string.Join("\n", apps.Skip(page * 10).Take(10).Select(x => x.ToString()));
 
                     return _eb.Create()
-                              .WithTitle(GetText(strs.club_apps_for(club.ToString())))
-                              .WithDescription(toShow)
-                              .WithOkColor();
+                        .WithTitle(GetText(strs.club_apps_for(club.ToString())))
+                        .WithDescription(toShow)
+                        .WithOkColor();
                 },
                 apps.Length,
                 10);
@@ -231,10 +254,15 @@ public partial class Xp
                 return;
             }
 
-            if (_service.ApplyToClub(ctx.User, club))
+            var result = _service.ApplyToClub(ctx.User, club);
+            if (result == ClubApplyResult.Success)
                 await ReplyConfirmLocalizedAsync(strs.club_applied(Format.Bold(club.ToString())));
-            else
-                await ReplyErrorLocalizedAsync(strs.club_apply_error);
+            else if (result == ClubApplyResult.Banned)
+                await ReplyErrorLocalizedAsync(strs.club_join_banned);
+            else if (result == ClubApplyResult.InsufficientLevel)
+                await ReplyErrorLocalizedAsync(strs.club_insuff_lvl);
+            else if (result == ClubApplyResult.AlreadyInAClub)
+                await ReplyErrorLocalizedAsync(strs.club_already_in);
         }
 
         [Cmd]
@@ -246,19 +274,26 @@ public partial class Xp
         [Priority(0)]
         public async Task ClubAccept([Leftover] string userName)
         {
-            if (_service.AcceptApplication(ctx.User.Id, userName, out var discordUser))
+            var result = _service.AcceptApplication(ctx.User.Id, userName, out var discordUser);
+            if (result == ClubAcceptResult.Accepted)
                 await ReplyConfirmLocalizedAsync(strs.club_accepted(Format.Bold(discordUser.ToString())));
-            else
-                await ReplyErrorLocalizedAsync(strs.club_accept_error);
+            else if(result == ClubAcceptResult.NoSuchApplicant)
+                await ReplyErrorLocalizedAsync(strs.club_accept_invalid_applicant);
+            else if(result == ClubAcceptResult.NotOwnerOrAdmin)
+                await ReplyErrorLocalizedAsync(strs.club_admin_perms);
         }
 
         [Cmd]
-        public async Task Clubleave()
+        public async Task ClubLeave()
         {
-            if (_service.LeaveClub(ctx.User))
+            var res = _service.LeaveClub(ctx.User);
+
+            if (res == ClubLeaveResult.Success)
                 await ReplyConfirmLocalizedAsync(strs.club_left);
+            else if (res == ClubLeaveResult.NotInAClub)
+                await ReplyErrorLocalizedAsync(strs.club_not_in_a_club);
             else
-                await ReplyErrorLocalizedAsync(strs.club_not_in_club);
+                await ReplyErrorLocalizedAsync(strs.club_owner_cant_leave);
         }
 
         [Cmd]
@@ -270,13 +305,20 @@ public partial class Xp
         [Priority(0)]
         public Task ClubKick([Leftover] string userName)
         {
-            if (_service.Kick(ctx.User.Id, userName, out var club))
+            var result = _service.Kick(ctx.User.Id, userName, out var club);
+            if(result == ClubKickResult.Success)
             {
                 return ReplyConfirmLocalizedAsync(strs.club_user_kick(Format.Bold(userName),
                     Format.Bold(club.ToString())));
             }
 
-            return ReplyErrorLocalizedAsync(strs.club_user_kick_fail);
+            if (result == ClubKickResult.Hierarchy)
+                return ReplyErrorLocalizedAsync(strs.club_kick_hierarchy);
+
+            if (result == ClubKickResult.NotOwnerOrAdmin)
+                return ReplyErrorLocalizedAsync(strs.club_admin_perms);
+            
+            return ReplyErrorLocalizedAsync(strs.club_target_not_member);
         }
 
         [Cmd]
@@ -288,13 +330,20 @@ public partial class Xp
         [Priority(0)]
         public Task ClubBan([Leftover] string userName)
         {
-            if (_service.Ban(ctx.User.Id, userName, out var club))
+            var result = _service.Ban(ctx.User.Id, userName, out var club);
+            if (result == ClubBanResult.Success)
             {
                 return ReplyConfirmLocalizedAsync(strs.club_user_banned(Format.Bold(userName),
                     Format.Bold(club.ToString())));
             }
 
-            return ReplyErrorLocalizedAsync(strs.club_user_ban_fail);
+            if (result == ClubBanResult.Unbannable)
+                return ReplyErrorLocalizedAsync(strs.club_ban_fail_unbannable);
+
+            if (result == ClubBanResult.WrongUser)
+                return ReplyErrorLocalizedAsync(strs.club_ban_fail_user_not_found);
+
+            return ReplyErrorLocalizedAsync(strs.club_admin_perms);
         }
 
         [Cmd]
@@ -306,13 +355,20 @@ public partial class Xp
         [Priority(0)]
         public Task ClubUnBan([Leftover] string userName)
         {
-            if (_service.UnBan(ctx.User.Id, userName, out var club))
+            var result = _service.UnBan(ctx.User.Id, userName, out var club);
+
+            if (result == ClubUnbanResult.Success)
             {
                 return ReplyConfirmLocalizedAsync(strs.club_user_unbanned(Format.Bold(userName),
                     Format.Bold(club.ToString())));
             }
 
-            return ReplyErrorLocalizedAsync(strs.club_user_unban_fail);
+            if (result == ClubUnbanResult.WrongUser)
+            {
+                return ReplyErrorLocalizedAsync(strs.club_unban_fail_user_not_found);
+            }
+
+            return ReplyErrorLocalizedAsync(strs.club_admin_perms);
         }
 
         [Cmd]
@@ -323,12 +379,12 @@ public partial class Xp
                 desc = string.IsNullOrWhiteSpace(desc)
                     ? "-"
                     : desc;
-                
+
                 var eb = _eb.Create(ctx)
-                            .WithAuthor(ctx.User)
-                            .WithTitle(GetText(strs.club_desc_update))
-                            .WithOkColor()
-                            .WithDescription(desc);
+                    .WithAuthor(ctx.User)
+                    .WithTitle(GetText(strs.club_desc_update))
+                    .WithOkColor()
+                    .WithDescription(desc);
 
                 await ctx.Channel.EmbedAsync(eb);
             }

@@ -3,14 +3,12 @@ using Microsoft.Extensions.DependencyInjection;
 using NadekoBot.Common.Configs;
 using NadekoBot.Common.ModuleBehaviors;
 using NadekoBot.Db;
-using NadekoBot.Modules.Administration;
 using NadekoBot.Modules.Utility;
 using NadekoBot.Services.Database.Models;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Net;
 using System.Reflection;
-using Nadeko.Common;
 using RunMode = Discord.Commands.RunMode;
 
 namespace NadekoBot;
@@ -118,10 +116,6 @@ public sealed class Bot
                                           // cache
                                           .AddCache(_creds);
         
-        // admin
-#if GLOBAL_NADEKO
-        svcs.AddSingleton<ILogCommandService, DummyLogCommandService>();
-#endif
 
         svcs.AddHttpClient();
         svcs.AddHttpClient("memelist")
@@ -319,8 +313,27 @@ public sealed class Bot
         await _commandService.AddModulesAsync(typeof(Bot).Assembly, Services);
         // await _interactionService.AddModulesAsync(typeof(Bot).Assembly, Services);
         IsReady = true;
+
+        await EnsureBotOwnershipAsync();
         _ = Task.Run(ExecuteReadySubscriptions);
         Log.Information("Shard {ShardId} ready", Client.ShardId);
+    }
+
+    private async ValueTask EnsureBotOwnershipAsync()
+    {
+        try
+        {
+            if (_creds.OwnerIds.Count != 0)
+                return;
+
+            Log.Information("Initializing Owner Id...");
+            var info = await Client.GetApplicationInfoAsync();
+            _credsProvider.ModifyCredsFile(x => x.OwnerIds = new[] { info.Owner.Id });
+        }
+        catch (Exception ex)
+        {
+            Log.Warning("Getting application info failed: {ErrorMessage}", ex.Message);
+        }
     }
 
     private Task ExecuteReadySubscriptions()

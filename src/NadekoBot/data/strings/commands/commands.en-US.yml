@@ -27,7 +27,7 @@ greetdel:
     - "0"
     - "30"
 greet:
-  desc: "Toggles anouncements on the current channel when someone joins the server."
+  desc: "Toggles announcements on the current channel when someone joins the server."
   args:
     - ""
 greetmsg:
@@ -40,7 +40,7 @@ greetmsg:
   args:
     - "Welcome, %user.mention%."
 bye:
-  desc: "Toggles anouncements on the current channel when someone leaves the server."
+  desc: "Toggles announcements on the current channel when someone leaves the server."
   args:
     - ""
 byemsg:
@@ -77,7 +77,7 @@ byetest:
     - ""
     - "@SomeoneElse"
 boost:
-  desc: "Toggles anouncements on the current channel when someone boosts the server."
+  desc: "Toggles announcements on the current channel when someone boosts the server."
   args:
     - ""
 boostmsg:
@@ -197,7 +197,11 @@ iamnot:
   args:
     - "Gamer"
 expradd:
-  desc: "Add an expression with a trigger and a response. Running this command in server requires the Administration permission. Running this command in DM is Bot Owner only and adds a new global expression. Guide here: <https://nadekobot.readthedocs.io/en/latest/custom-reactions/>"
+  desc: "Add an expression with a trigger and a response. Bot will post a response whenever someone types the trigger word.  Running this command in server requires the Administration permission. Running this command in DM is Bot Owner only and adds a new global expression. Guide here: <https://nadekobot.readthedocs.io/en/latest/custom-reactions/>"
+  args:
+    - "\"hello\" Hi there %user.mention%"
+expraddserver:
+  desc: "Add an expression with a trigger and a response in this server. Bot will post a response whenever someone types the trigger word. Guide here: <https://nadekobot.readthedocs.io/en/latest/custom-reactions/>"
   args:
     - "\"hello\" Hi there %user.mention%"
 exprlist:
@@ -213,19 +217,27 @@ exprlist:
     - "1"
     - "all"
 exprshow:
-  desc: "Shows a expression's response on a given ID."
+  desc: "Shows an expression's response on a given ID."
   args:
     - "1"
 exprdelete:
-  desc: "Deletes a expression on a specific index. If ran in DM, it is bot owner only and deletes a global expression. If ran in a server, it requires Administration privileges and removes server expression."
+  desc: "Deletes an expression on a specific index. If ran in DM, it is bot owner only and deletes a global expression. If ran in a server, it requires Administration privileges and removes server expression."
   args:
     - "5"
+exprdeleteserver:
+  desc: "Deletes an expression on a specific index on this server."
+  args:
+    - "5c"
 exprclear:
   desc: "Deletes all expression on this server."
   args:
     - ""
 fwclear:
   desc: "Deletes all filtered words on this server."
+  args:
+    - ""
+filterlist:
+  desc: "Lists invite and link filter channels and status."
   args:
     - ""
 aliasesclear:
@@ -312,6 +324,11 @@ kick:
   args:
     - "@Someone Get out!"
     - "\"Some Guy#1234\" Your behaviour is toxic."
+timeout:
+  desc: "Times the user out for the specified amount of time. You may optionally specify a reason, which will be sent to the user."
+  args:
+    - "@Someone 3h Shut up!"
+    - "@Someone 1h30m"
 mute:
   desc: "Mutes a mentioned user both from speaking and chatting. You can also specify time string for how long the user should be muted. You can optionally specify a reason."
   args:
@@ -358,7 +375,7 @@ setchanlname:
   args:
     - "NewName"
 prune:
-  desc: "`{0}prune` removes all Nadeko's messages in the last 100 messages. `{0}prune X` removes last `X` number of messages from the channel (up to 100). `{0}prune @Someone` removes all Someone's messages in the last 100 messages. `{0}prune @Someone X` removes last `X` number of 'Someone's' messages in the channel. You can use the `-s` / `--safe` parameter at the end to only prune messages that are not pinned."
+  desc: "`{0}prune` removes all Nadeko's messages in the last 100 messages. `{0}prune X` removes last `X` number of messages from the channel (up to 100). `{0}prune @Someone` removes all Someone's messages in the last 100 messages. `{0}prune @Someone X` removes last `X` number of 'Someone's' messages in the channel."
   args:
     - ""
     - "-s"
@@ -401,7 +418,7 @@ savechat:
   args:
     - "150"
 remind:
-  desc: "Sends a message to you or a channel after certain amount of time (max 2 months). First parameter is `me`/`here`/'channelname'. Second parameter is time in a descending order (mo>w>d>h>m) example: 1w5d3h10m. Third parameter is a (multiword) message."
+  desc: "Sends a message to you or a channel after certain amount of time (max 2 months). First parameter is `me`/`here`/'channelname'. Second parameter is time in a descending order (mo>w>d>h>m) example: 1w5d3h10m. Third parameter is a (multiword) message. Requires ManageMessages server permission if you're targeting a different channel."
   args:
     - "me 1d5h Do something"
     - "#general 1m Start now!"
@@ -623,6 +640,10 @@ quotedelete:
   desc: "Deletes a quote with the specified ID. You have to either have the Manage Messages permission or be the creator of the quote to delete it."
   args:
     - "123456"
+quotedeleteauthor:
+  desc: "Deletes all quotes by the specified author. If the author is not you, then ManageMessage server permission is required."
+  args:
+    - "@QuoteSpammer"
 draw:
   desc: "Draws a card from this server's deck. You can draw up to 10 cards by supplying a number of cards to draw."
   args:
@@ -780,10 +801,9 @@ linux:
   args:
     - "Spyware Windows"
 next:
-  desc: "Goes to the next song in the queue. You have to be in the same voice channel as the bot. You can skip multiple songs, but in that case songs will not be requeued if {0}rcs or {0}rpl is enabled."
+  desc: "Goes to the next song in the queue. You have to be in the same voice channel as the bot"
   args:
     - ""
-    - "5"
 play:
   desc: "If no parameters are specified, acts as `{0}next 1` command. If you specify a song number, it will jump to that song. If you specify a search query, acts as a `{0}q` command"
   args:
@@ -894,7 +914,7 @@ playlists:
   args:
     - "1"
 playlistshow:
-  desc: "Lists all songs in a playlist spepcified by its id. Paginated, 20 per page."
+  desc: "Lists all songs in a playlist specified by its id. Paginated, 20 per page."
   args:
     - "1"
 deleteplaylist:
@@ -950,7 +970,7 @@ convertlist:
   args:
     - ""
 wowjoke:
-  desc: "Get one of Kwoth's penultimate WoW jokes."
+  desc: "Get one of penultimate WoW jokes."
   args:
     - ""
 calculate:
@@ -980,7 +1000,7 @@ pokemonability:
   args:
     - "overgrow"
 memelist:
-  desc: "Shows a list of template keys (and their repspective names) used for `{0}memegen`."
+  desc: "Shows a list of template keys (and their respective names) used for `{0}memegen`."
   args:
     - ""
 memegen:
@@ -1085,7 +1105,7 @@ wiki:
   args:
     - "query"
 color:
-  desc: "Shows you pictures of colors which correspond to the inputed hex values. Max 10."
+  desc: "Shows you pictures of colors which correspond to the inputted hex values. Max 10."
   args:
     - "00ff00"
     - "f00 0f0 00f"
@@ -1237,19 +1257,23 @@ forwardtoall:
   desc: "Toggles whether messages will be forwarded to all bot owners or only to the first one specified in the creds.yml file"
   args:
     - ""
+forwardtochannel:
+  desc: "Toggles forwarding of non-command messages sent to bot's DM to the current channel"
+  args:
+    - ""
 resetperms:
   desc: "Resets the bot's permissions module on this server to the default value."
   args:
     - ""
 antiraid:
-  desc: "Sets an anti-raid protection on the server. Provide no parameters to disable. First parameter is number of people which will trigger the protection. Second parameter is a time interval in which that number of people needs to join in order to trigger the protection, and third parameter is punishment for those people. You can specify an additional time argument to do a timed punishment for actions which support it (Ban, Mute, etc) up to 24h. Available punishments: Ban, Kick, Softban, Mute, VoiceMute, ChatMute, RemoveRoles"
+  desc: "Sets an anti-raid protection on the server. Provide no parameters to disable. First parameter is number of people which will trigger the protection. Second parameter is a time interval in which that number of people needs to join in order to trigger the protection, and third parameter is punishment for those people. You can specify an additional time argument to do a timed punishment for actions which support it (Ban, Mute, etc) up to 24h. Available punishments: Ban, Kick, Softban, Mute, VoiceMute, ChatMute, RemoveRoles, AddRole, Warn, TimeOut"
   args:
     - "5 20 Kick"
     - "7 9 Ban"
     - "10 10 Ban 6h30m"
     - ""
 antispam:
-  desc: "Stops people from repeating same message X times in a row. Provide no parameters to disable. You can specify to either mute, kick or ban the offenders. You can specify an additional time argument to do a timed punishment for actions which support it (Ban, Mute, etc) up to 24h. Max message count is 10. Available punishments: Ban, Kick, Softban, Mute, VoiceMute, ChatMute, AddRole, RemoveRoles"
+  desc: "Stops people from repeating same message X times in a row. Provide no parameters to disable. You can specify to either mute, kick or ban the offenders. You can specify an additional time argument to do a timed punishment for actions which support it (Ban, Mute, etc) up to 24h. Max message count is 10. Available punishments: Ban, Kick, Softban, Mute, VoiceMute, ChatMute, AddRole, RemoveRoles, Warn, TimeOut"
   args:
     - "3 Mute"
     - "5 Ban"
@@ -1442,8 +1466,8 @@ eventstart:
   args:
     - "reaction"
     - "reaction -d 1 -a 50 --pot-size 1500"
-slotstats:
-  desc: "Shows the total stats of the slot command for this bot's session."
+betstats:
+  desc: "Shows the total stats of several gambling features. Updates once an hour."
   args:
     - ""
 slottest:
@@ -1557,6 +1581,10 @@ rategirl:
   desc: "Use the universal hot-crazy wife zone matrix to determine the girl's worth. It is everything young men need to know about women. At any moment in time, any woman you have previously located on this chart can vanish from that location and appear anywhere else on the chart."
   args:
     - "@SomeGurl"
+exprtoggleglobal:
+  desc: "Toggles whether global expressions are usable on this server."
+  args:
+    - ""
 exprreact:
   desc: "Sets or resets reactions (up to 3) which will be added to the response message of the Expression with the specified ID. Provide no emojis to reset."
   args:
@@ -1672,8 +1700,15 @@ banmsgreset:
   desc: "Resets ban message to default. If you want to completely disable ban messages, use `{0}banmsg -`"
   args:
     - ""
+banprune:
+  desc: |-
+    Sets how many days of messages will be deleted when a user is banned.
+    Only works if the user is banned via the .ban command or punishment.
+    Allowed values: 0 - 7
+  args:
+    - "3"
 wait:
-  desc: "Used only as a startup command. Waits a certain number of miliseconds before continuing the execution of the following startup commands."
+  desc: "Used only as a startup command. Waits a certain number of milliseconds before continuing the execution of the following startup commands."
   args:
     - "3000"
 warnexpire:
@@ -1719,6 +1754,11 @@ shopremove:
   desc: "Removes an item from the shop by its ID."
   args:
     - "1"
+shopreq:
+  desc: "Sets a role which will be required to buy the item on the specified index. Specify only index to remove the requirement."
+  args:
+    - "2 Gamers"
+    - "2"
 shopchangename:
   desc: "Change the name of a shop entry at the specified index. Only works for non-role items"
   args:
@@ -1951,13 +1991,22 @@ ytuploadnotif:
   desc: |-
     Subscribe to a youtube channel's upload rss feed.
     Shortcut for `.feed https://www.youtube.com/feeds/videos.xml?channel_id=%3Cyoutube_channel_id`
+    You can optionally specify a message which will be posted with an update.
   args:
-    - "https://www.youtube.com/channel/UCSJ4gkVC6NrvII8umztf0Ow"
+    - "https://www.youtube.com/channel/UCSJ4gkVC6NrvII8umztf0Ow" 
+    - "https://www.youtube.com/channel/UCSJ4gkVC6NrvII8umztf0Ow New video is posted"
 feed:
-  desc: "Subscribes to a feed. Bot will post an update up to once every 10 seconds. You can have up to 10 feeds on one server. All feeds must have unique URLs. Set a channel as a second optional parameter to specify where to send the updates."
+  desc: |-
+    Subscribes to a feed.
+    Bot will post an update up to once every 10 seconds.
+    You can have up to 10 feeds on one server.
+    All feeds must have unique URLs.
+    Set a channel as a second optional parameter to specify where to send the updates.
+    You can optionally specify a message after the channel name which will be posted with an update.
   args:
     - "https://blog.playstation.com/feed/"
     - "https://blog.playstation.com/feed/ #updates"
+    - "https://blog.playstation.com/feed/ #updates New playstation rss feed post!"
 feedremove:
   desc: "Stops tracking a feed on the given index. Use `{0}feeds` command to see a list of feeds and their indexes."
   args:
@@ -2302,3 +2351,11 @@ threaddelete:
   desc: "Delete a thread with the specified name in this channel. Case insensitive."
   args:
     - "Q&A"
+autopublish:
+  desc: "Make the bot automatically publish all messages posted in the news channel this command was executed in."
+  args:
+    - ""
+doas:
+  desc: "Execute the command as if you were the target user. Requires bot ownership and server administrator permission."
+  args:
+    - "@Thief .give all @Admin"

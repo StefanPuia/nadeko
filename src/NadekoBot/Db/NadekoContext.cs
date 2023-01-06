@@ -330,6 +330,10 @@ public abstract class NadekoContext : DbContext
         #region BanTemplate
 
         modelBuilder.Entity<BanTemplate>().HasIndex(x => x.GuildId).IsUnique();
+        modelBuilder.Entity<BanTemplate>()
+            .Property(x => x.PruneDays)
+            .HasDefaultValue(null)
+            .IsRequired(false);
 
         #endregion
 
@@ -458,6 +462,22 @@ public abstract class NadekoContext : DbContext
                     })
                     .IsUnique();
             });
+
+        #endregion
+        
+        #region AutoPublish
+
+        modelBuilder.Entity<AutoPublishChannel>(apc => apc
+            .HasIndex(x => x.GuildId)
+            .IsUnique());
+
+        #endregion
+        
+        #region GamblingStats
+
+        modelBuilder.Entity<GamblingStats>(gs => gs
+            .HasIndex(x => x.Feature)
+            .IsUnique());
 
         #endregion
     }

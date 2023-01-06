@@ -1,4 +1,4 @@
-# Setting up NadekoBot on Linux
+w# Setting up NadekoBot on Linux
 
 | Table of Contents                                   |
 | :-------------------------------------------------- |
@@ -15,9 +15,12 @@
 
 It is recommended that you use **Ubuntu 20.04**, as there have been nearly no problems with it. Also, **32-bit systems are incompatible**.
 
+
+### Ubuntu 22.04 is ruled as incompatible so double check which ubuntu version you are using.
+
 ##### Compatible operating systems:
 
-- Ubuntu: 16.04, 18.04, 20.04, 21.04, 21.10 22.04
+- Ubuntu: 16.04, 18.04, 20.04, 21.04, 21.10
 - Mint: 19, 20
 - Debian: 9, 10
 - CentOS: 7
@@ -160,15 +163,30 @@ If you are presented with the installer main menu, exit it by choosing Option `8
 
 The above command will create a new session named **nadeko** *(you can replace “nadeko” with anything you prefer, it's your session name)*.
 
-2. Navigate to the project's root directory
-    - Project root directory location example: `cd /home/user/nadekobot/`
-3. Enter the `output` directory:
-    - `cd output`
-4. Run the bot using:
-    - `dotnet NadekoBot.dll`
-5. Detatch the tmux session:
+2. Run the installer: `bash linuxAIO.sh`
+
+3. There are a few options when it comes to running Nadeko.
+
+    - Run `3` to *Run the bot normally*
+    - Run `4` to *Run the bot with Auto Restart* (This is may or may not work)
+
+4. If option `4` was selected, you have the following options
+```
+1. Run Auto Restart normally without updating NadekoBot.
+2. Run Auto Restart and update NadekoBot.
+3. Exit
+
+Choose:
+[1] to Run NadekoBot with Auto Restart on "die" command without updating.
+[2] to Run with Auto Updating on restart after using "die" command.
+```
+- Run `1` to update the bot upon restart. (This is done using the `.die` command)
+- Run `2` to restart the bot without updating. (This is also done using the `.die` command)
+
+5. That's it! to detatch the tmux session:
     - Press `Ctrl` + `B`
     - Then press `D`
+
 Now check your Discord server, the bot should be online. Nadeko should now be running in the background of your system. 
 
 To re-open the tmux session to either update, restart, or whatever, execute `tmux a -t nadeko`. *(Make sure to replace "nadeko" with your session name. If you didn't change it, leave it as it.)*
@@ -301,6 +319,26 @@ This method is similar to the one above, but requires one extra step, with the a
 
 If you want Nadeko to play music for you 24/7 without having to hosting it on your PC and want to keep it cheap, reliable and convenient as possible, you can try Nadeko on Linux Digital Ocean Droplet using the link [DigitalOcean](http://m.do.co/c/46b4d3d44795/) (by using this link, you will get **$10 credit** and also support Nadeko)
 
+To set up the VPS, please select the options below
+```
+These are the min requirements you must follow:
+
+OS: Any between Ubuntu, Fedora, and Debian
+
+Plan: Basic
+
+CPU options: regular with SSD
+1 GB / 1 CPU
+25 GB SSD Disk
+1000 GB transfer
+
+Note: You can select the cheapest option with 512 MB /1 CPU but this has been a hit or miss.
+
+Datacenter region: Choose one depending on where you are located.
+
+Authentication: Password or SSH 
+(Select SSH if you know what you are doing, otherwise choose password)
+```
 **Setting up NadekoBot**
 Assuming you have followed the link above to setup an account and a Droplet with a 64-bit operational system on Digital Ocean and got the `IP address and root password (in your e-mail)` to login, it's time to get started.
 

@@ -11,12 +11,12 @@ public partial class Searches
     public partial class FeedCommands : NadekoModule<FeedsService>
     {
         private static readonly Regex _ytChannelRegex =
-            new(@"youtube\.com\/(?:c\/|channel\/|user\/)?(?<channelid>[a-zA-Z0-9\-]{1,})");
+            new(@"youtube\.com\/(?:c\/|channel\/|user\/)?(?<channelid>[a-zA-Z0-9\-_]{1,})");
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.ManageMessages)]
-        public Task YtUploadNotif(string url, [Leftover] ITextChannel channel = null)
+        public Task YtUploadNotif(string url, ITextChannel channel = null, [Leftover] string message = null)
         {
             var m = _ytChannelRegex.Match(url);
             if (!m.Success)
@@ -24,41 +24,54 @@ public partial class Searches
 
             var channelId = m.Groups["channelid"].Value;
 
-            return Feed("https://www.youtube.com/feeds/videos.xml?channel_id=" + channelId, channel);
+            return Feed("https://www.youtube.com/feeds/videos.xml?channel_id=" + channelId, channel, message);
         }
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.ManageMessages)]
-        public async Task Feed(string url, [Leftover] ITextChannel channel = null)
+        public async Task Feed(string url, ITextChannel channel = null, [Leftover] string message = null)
         {
-            var success = Uri.TryCreate(url, UriKind.Absolute, out var uri)
-                          && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
-            if (success)
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) 
+                || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
             {
-                channel ??= (ITextChannel)ctx.Channel;
-                try
-                {
-                    await FeedReader.ReadAsync(url);
-                }
-                catch (Exception ex)
-                {
-                    Log.Information(ex, "Unable to get feeds from that url");
-                    success = false;
-                }
+                await ReplyErrorLocalizedAsync(strs.feed_invalid_url);
+                return; 
             }
 
-            if (success)
+            channel ??= (ITextChannel)ctx.Channel;
+            try
             {
-                success = _service.AddFeed(ctx.Guild.Id, channel.Id, url);
-                if (success)
-                {
-                    await ReplyConfirmLocalizedAsync(strs.feed_added);
-                    return;
-                }
+                await FeedReader.ReadAsync(url);
+            }
+            catch (Exception ex)
+            {
+                Log.Information(ex, "Unable to get feeds from that url");
+                await ReplyErrorLocalizedAsync(strs.feed_cant_parse);
+                return;
             }
 
-            await ReplyConfirmLocalizedAsync(strs.feed_not_valid);
+            if (ctx.User is not IGuildUser gu || !gu.GuildPermissions.Administrator)
+                message = message?.SanitizeMentions(true);
+            
+            var result = _service.AddFeed(ctx.Guild.Id, channel.Id, url, message);
+            if (result == FeedAddResult.Success)
+            {
+                await ReplyConfirmLocalizedAsync(strs.feed_added);
+                return;
+            }
+
+            if (result == FeedAddResult.Duplicate)
+            {
+                await ReplyErrorLocalizedAsync(strs.feed_duplicate);
+                return;
+            }
+
+            if (result == FeedAddResult.LimitReached)
+            {
+                await ReplyErrorLocalizedAsync(strs.feed_limit_reached);
+                return;
+            }
         }
 
         [Cmd]

@@ -2,9 +2,9 @@
 using LinqToDB;
 using LinqToDB.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Nadeko.Common;
 using NadekoBot.Db;
 using NadekoBot.Db.Models;
+using OneOf;
 
 namespace NadekoBot.Modules.Xp.Services;
 
@@ -19,7 +19,8 @@ public class ClubService : INService, IClubService
         _httpFactory = httpFactory;
     }
 
-    public async Task<bool?> CreateClubAsync(IUser user, string clubName)
+    
+    public async Task<ClubCreateResult> CreateClubAsync(IUser user, string clubName)
     {
         //must be lvl 5 and must not be in a club already
 
@@ -27,11 +28,14 @@ public class ClubService : INService, IClubService
         var du = uow.GetOrCreateUser(user);
         var xp = new LevelStats(du.TotalXp);
         
-        if (xp.Level < 5 || du.ClubId is not null)
-            return false;
+        if (xp.Level < 5) 
+            return ClubCreateResult.InsufficientLevel;
+        
+        if (du.ClubId is not null)
+            return ClubCreateResult.AlreadyInAClub;
 
         if (await uow.Clubs.AnyAsyncEF(x => x.Name == clubName))
-            return null;
+            return ClubCreateResult.NameTaken;
         
         du.IsClubAdmin = true;
         du.Club = new()
@@ -45,17 +49,20 @@ public class ClubService : INService, IClubService
         await uow.GetTable<ClubApplicants>()
                  .DeleteAsync(x => x.UserId == du.Id);
 
-        return true;
+        return ClubCreateResult.Success;
     }
-
-    public ClubInfo TransferClub(IUser from, IUser newOwner)
+    
+    public OneOf<ClubInfo, ClubTransferError> TransferClub(IUser from, IUser newOwner)
     {
         using var uow = _db.GetDbContext();
         var club = uow.Clubs.GetByOwner(@from.Id);
         var newOwnerUser = uow.GetOrCreateUser(newOwner);
 
-        if (club is null || club.Owner.UserId != from.Id || !club.Members.Contains(newOwnerUser))
-            return null;
+        if (club is null || club.Owner.UserId != from.Id)
+            return ClubTransferError.NotOwner;
+        
+        if (!club.Members.Contains(newOwnerUser))
+            return ClubTransferError.TargetNotMember;
 
         club.Owner.IsClubAdmin = true; // old owner will stay as admin
         newOwnerUser.IsClubAdmin = true;
@@ -63,22 +70,25 @@ public class ClubService : INService, IClubService
         uow.SaveChanges();
         return club;
     }
-
-    public async Task<bool?> ToggleAdminAsync(IUser owner, IUser toAdmin)
+    
+    public async Task<ToggleAdminResult> ToggleAdminAsync(IUser owner, IUser toAdmin)
     {
+        if (owner.Id == toAdmin.Id)
+            return ToggleAdminResult.CantTargetThyself;
+        
         await using var uow = _db.GetDbContext();
         var club = uow.Clubs.GetByOwner(owner.Id);
         var adminUser = uow.GetOrCreateUser(toAdmin);
 
-        if (club is null || club.Owner.UserId != owner.Id || !club.Members.Contains(adminUser))
-            return null;
-
-        if (club.OwnerId == adminUser.Id)
-            return true;
-
+        if (club is null)
+            return ToggleAdminResult.NotOwner;
+        
+        if(!club.Members.Contains(adminUser))
+            return ToggleAdminResult.TargetNotMember;
+        
         var newState = adminUser.IsClubAdmin = !adminUser.IsClubAdmin;
         await uow.SaveChangesAsync();
-        return newState;
+        return newState ? ToggleAdminResult.AddedAdmin : ToggleAdminResult.RemovedAdmin;
     }
 
     public ClubInfo GetClubByMember(IUser user)
@@ -87,27 +97,31 @@ public class ClubService : INService, IClubService
         var member = uow.Clubs.GetByMember(user.Id);
         return member;
     }
-
-    public async Task<bool> SetClubIconAsync(ulong ownerUserId, string url)
+    
+    public async Task<SetClubIconResult> SetClubIconAsync(ulong ownerUserId, string url)
     {
         if (url is not null)
         {
             using var http = _httpFactory.CreateClient();
             using var temp = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
-            if (!temp.IsImage() || temp.GetContentLength() > 5.Megabytes().Bytes)
-                return false;
+            
+            if (!temp.IsImage()) 
+                return SetClubIconResult.InvalidFileType;
+            
+            if (temp.GetContentLength() > 5.Megabytes().Bytes)
+                return SetClubIconResult.TooLarge;
         }
 
         await using var uow = _db.GetDbContext();
         var club = uow.Clubs.GetByOwner(ownerUserId);
 
         if (club is null)
-            return false;
+            return SetClubIconResult.NotOwner;
 
         club.ImageUrl = url;
         await uow.SaveChangesAsync();
 
-        return true;
+        return SetClubIconResult.Success;
     }
 
     public bool GetClubByName(string clubName, out ClubInfo club)
@@ -118,18 +132,22 @@ public class ClubService : INService, IClubService
         return club is not null;
     }
 
-    public bool ApplyToClub(IUser user, ClubInfo club)
+    public ClubApplyResult ApplyToClub(IUser user, ClubInfo club)
     {
         using var uow = _db.GetDbContext();
         var du = uow.GetOrCreateUser(user);
         uow.SaveChanges();
 
-        if (du.Club is not null
-            || club.Bans.Any(x => x.UserId == du.Id)
-            || club.Applicants.Any(x => x.UserId == du.Id))
-            //user banned or a member of a club, or already applied,
-            // or doesn't min minumum level requirement, can't apply
-            return false;
+        //user banned or a member of a club, or already applied,
+        // or doesn't min minumum level requirement, can't apply
+        if (du.Club is not null)
+            return ClubApplyResult.AlreadyInAClub;
+        
+        if (club.Bans.Any(x => x.UserId == du.Id))
+            return ClubApplyResult.Banned;
+        
+        if (club.Applicants.Any(x => x.UserId == du.Id))
+            return ClubApplyResult.InsufficientLevel;
 
         var app = new ClubApplicants
         {
@@ -138,23 +156,23 @@ public class ClubService : INService, IClubService
         };
 
         uow.Set<ClubApplicants>().Add(app);
-
         uow.SaveChanges();
-        return true;
+        return ClubApplyResult.Success;
     }
 
-    public bool AcceptApplication(ulong clubOwnerUserId, string userName, out DiscordUser discordUser)
+    
+    public ClubAcceptResult AcceptApplication(ulong clubOwnerUserId, string userName, out DiscordUser discordUser)
     {
         discordUser = null;
         using var uow = _db.GetDbContext();
         var club = uow.Clubs.GetByOwnerOrAdmin(clubOwnerUserId);
         if (club is null)
-            return false;
+            return ClubAcceptResult.NotOwnerOrAdmin;
 
         var applicant =
             club.Applicants.FirstOrDefault(x => x.User.ToString().ToUpperInvariant() == userName.ToUpperInvariant());
         if (applicant is null)
-            return false;
+            return ClubAcceptResult.NoSuchApplicant;
 
         applicant.User.Club = club;
         applicant.User.IsClubAdmin = false;
@@ -166,7 +184,7 @@ public class ClubService : INService, IClubService
 
         discordUser = applicant.User;
         uow.SaveChanges();
-        return true;
+        return ClubAcceptResult.Accepted;
     }
 
     public ClubInfo GetClubWithBansAndApplications(ulong ownerUserId)
@@ -175,17 +193,19 @@ public class ClubService : INService, IClubService
         return uow.Clubs.GetByOwnerOrAdmin(ownerUserId);
     }
 
-    public bool LeaveClub(IUser user)
+    public ClubLeaveResult LeaveClub(IUser user)
     {
         using var uow = _db.GetDbContext();
         var du = uow.GetOrCreateUser(user, x => x.Include(u => u.Club));
-        if (du.Club is null || du.Club.OwnerId == du.Id)
-            return false;
+        if (du.Club is null)
+            return ClubLeaveResult.NotInAClub; 
+        if (du.Club.OwnerId == du.Id)
+            return ClubLeaveResult.OwnerCantLeave;
 
         du.Club = null;
         du.IsClubAdmin = false;
         uow.SaveChanges();
-        return true;
+        return ClubLeaveResult.Success;
     }
 
     public bool SetDescription(ulong userId, string desc)
@@ -213,23 +233,23 @@ public class ClubService : INService, IClubService
         return true;
     }
 
-    public bool Ban(ulong bannerId, string userName, out ClubInfo club)
+    public ClubBanResult Ban(ulong bannerId, string userName, out ClubInfo club)
     {
         using var uow = _db.GetDbContext();
         club = uow.Clubs.GetByOwnerOrAdmin(bannerId);
         if (club is null)
-            return false;
+            return ClubBanResult.NotOwnerOrAdmin;
 
         var usr = club.Members.FirstOrDefault(x => x.ToString().ToUpperInvariant() == userName.ToUpperInvariant())
                   ?? club.Applicants
                          .FirstOrDefault(x => x.User.ToString().ToUpperInvariant() == userName.ToUpperInvariant())
                          ?.User;
         if (usr is null)
-            return false;
+            return ClubBanResult.WrongUser;
 
         if (club.OwnerId == usr.Id
             || (usr.IsClubAdmin && club.Owner.UserId != bannerId)) // can't ban the owner kek, whew
-            return false;
+            return ClubBanResult.Unbannable;
 
         club.Bans.Add(new()
         {
@@ -244,39 +264,40 @@ public class ClubService : INService, IClubService
 
         uow.SaveChanges();
 
-        return true;
+        return ClubBanResult.Success;
     }
 
-    public bool UnBan(ulong ownerUserId, string userName, out ClubInfo club)
+    public ClubUnbanResult UnBan(ulong ownerUserId, string userName, out ClubInfo club)
     {
         using var uow = _db.GetDbContext();
         club = uow.Clubs.GetByOwnerOrAdmin(ownerUserId);
         if (club is null)
-            return false;
+            return ClubUnbanResult.NotOwnerOrAdmin;
 
         var ban = club.Bans.FirstOrDefault(x => x.User.ToString().ToUpperInvariant() == userName.ToUpperInvariant());
         if (ban is null)
-            return false;
+            return ClubUnbanResult.WrongUser;
 
         club.Bans.Remove(ban);
         uow.SaveChanges();
 
-        return true;
+        return ClubUnbanResult.Success;
     }
 
-    public bool Kick(ulong kickerId, string userName, out ClubInfo club)
+    
+    public ClubKickResult Kick(ulong kickerId, string userName, out ClubInfo club)
     {
         using var uow = _db.GetDbContext();
         club = uow.Clubs.GetByOwnerOrAdmin(kickerId);
         if (club is null)
-            return false;
+            return ClubKickResult.NotOwnerOrAdmin;
 
         var usr = club.Members.FirstOrDefault(x => x.ToString().ToUpperInvariant() == userName.ToUpperInvariant());
         if (usr is null)
-            return false;
+            return ClubKickResult.TargetNotAMember;
 
         if (club.OwnerId == usr.Id || (usr.IsClubAdmin && club.Owner.UserId != kickerId))
-            return false;
+            return ClubKickResult.Hierarchy;
 
         club.Members.Remove(usr);
         var app = club.Applicants.FirstOrDefault(x => x.UserId == usr.Id);
@@ -284,7 +305,7 @@ public class ClubService : INService, IClubService
             club.Applicants.Remove(app);
         uow.SaveChanges();
 
-        return true;
+        return ClubKickResult.Success;
     }
 
     public List<ClubInfo> GetClubLeaderboardPage(int page)

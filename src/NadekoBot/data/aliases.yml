@@ -37,7 +37,7 @@ boost:
 boostmsg:
   - boostmsg
 boostdel:
-  - boostdel
+  - boostde
 logserver:
   - logserver
 logignore:
@@ -246,6 +246,9 @@ roles:
 channeltopic:
   - channeltopic
   - ct
+filterlist:
+  - filterlist
+  - fl
 chnlfilterinv:
   - chnlfilterinv
   - cfi
@@ -342,6 +345,9 @@ quoteid:
 quotedelete:
   - quotedelete
   - qdel
+quotedeleteauthor:
+  - quotedeleteauthor
+  - qdelauth
 draw:
   - draw
 drawnew:
@@ -738,6 +744,10 @@ forwardmessages:
 forwardtoall:
   - forwardtoall
   - fwtoall
+forwardtochannel:
+  - forwardtochannel
+  - fwtoch
+  - fwtochannel
 resetperms:
   - resetperms
 antiraid:
@@ -849,8 +859,8 @@ antispamignore:
   - antispamignore
 eventstart:
   - eventstart
-slotstats:
-  - slotstats
+betstats:
+  - betstats
 bettest:
   - bettest
 slot:
@@ -960,6 +970,10 @@ banmessagetest:
   - banmsgtest
 banmsgreset:
   - banmsgreset
+banprune:
+  - banprune
+timeout:
+  - timeout
 wait:
   - wait
 warnexpire:
@@ -996,7 +1010,10 @@ shopswap:
 shopmove:
   - shopmove
 buy:
+  - shopbuy
   - buy
+shopreq:
+  - shopreq
 gamevoicechannel:
   - gamevoicechannel
   - gvc
@@ -1257,6 +1274,9 @@ quotesimport:
 showembed:
   - showembed
 # NadekoExpressions
+exprtoggleglobal:
+  - exprtoggleglobal
+  - extg
 exprreact:
   - exreact
   - exr
@@ -1280,6 +1300,11 @@ expradd:
   - exadd
   - exa
   - acr
+expraddserver:
+  - expradds
+  - exadds
+  - exas
+  - expraddserver
 exprlist:
   - exprlist
   - exl
@@ -1297,6 +1322,10 @@ exprdelete:
   - exd
   - exdel
   - dcr
+exprdeleteserver:
+  - exprdelserv
+  - exds
+  - exdelserv
 exprclear:
   - exprclear
   - exc
@@ -1353,3 +1382,8 @@ patronmessage:
   - patronmsg
 eval:
   - eval
+autopublish:
+  - autopublish
+doas:
+  - doas
+  - execas 

@@ -176,6 +176,16 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
             var gxps = new List<UserXpStats>(globalToAdd.Count);
             await using (var ctx = _db.GetDbContext())
             {
+                var conf = _xpConfig.Data;
+                if (conf.CurrencyPerXp > 0)
+                {
+                    foreach (var user in globalToAdd)
+                    {
+                        var amount = user.Value.XpAmount * conf.CurrencyPerXp;
+                        await _cs.AddAsync(user.Key, (long)(amount), null);
+                    }
+                }
+                
                 // update global user xp in batches
                 // group by xp amount and update the same amounts at the same time
                 foreach (var group in globalToAdd.GroupBy(x => x.Value.XpAmount, x => x.Key))
@@ -197,7 +207,6 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
                     
                     dus.AddRange(items);
                 }
-
                 // update guild user xp in batches
                 foreach (var (guildId, toAdd) in guildToAdd)
                 {
@@ -277,8 +286,8 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
                 if (guildToAdd.TryGetValue(du.GuildId, out var users)
                     && users.TryGetValue(du.UserId, out var xpGainData))
                 {
-                    var oldLevel = new LevelStats(du.Xp - xpGainData.XpAmount);
-                    var newLevel = new LevelStats(du.Xp);
+                    var oldLevel = new LevelStats(du.Xp - xpGainData.XpAmount + du.AwardedXp);
+                    var newLevel = new LevelStats(du.Xp + du.AwardedXp);
 
                     if (oldLevel.Level < newLevel.Level)
                     {
