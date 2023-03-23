@@ -45,7 +45,7 @@ public class HelpService : IExecNoCommand, INService
 
             // only send dm help text if it contains one of the keywords, if they're specified
             // if they're not, then reply to every DM
-            if (settings.DmHelpTextKeywords.Any() && !settings.DmHelpTextKeywords.Any(k => msg.Content.Contains(k)))
+            if (settings.DmHelpTextKeywords is not null && !settings.DmHelpTextKeywords.Any(k => msg.Content.Contains(k)))
                 return Task.CompletedTask;
 
             var rep = new ReplacementBuilder().WithOverride("%prefix%", () => _bss.Data.Prefix)
@@ -152,18 +152,22 @@ public class HelpService : IExecNoCommand, INService
                   .Any(x => x is OnlyPublicBotAttribute))
             toReturn.Add("Only Public Bot");
 
-        var userPerm = (UserPermAttribute)cmd.Preconditions.FirstOrDefault(ca => ca is UserPermAttribute);
+        var userPermString = cmd.Preconditions
+                                .Where(ca => ca is UserPermAttribute)
+                                .Cast<UserPermAttribute>()
+                                .Select(userPerm =>
+                                {
+                                    if (userPerm.ChannelPermission is { } cPerm)
+                                        return GetPreconditionString(cPerm);
 
-        var userPermString = string.Empty;
-        if (userPerm is not null)
-        {
-            if (userPerm.ChannelPermission is { } cPerm)
-                userPermString = GetPreconditionString(cPerm);
+                                    if (userPerm.GuildPermission is { } gPerm)
+                                        return GetPreconditionString(gPerm);
 
-            if (userPerm.GuildPermission is { } gPerm)
-                userPermString = GetPreconditionString(gPerm);
-        }
-
+                                    return string.Empty;
+                                })
+                                .Where(x => !string.IsNullOrWhiteSpace(x))
+                                .Join('\n');
+        
         if (overrides is null)
         {
             if (!string.IsNullOrWhiteSpace(userPermString))

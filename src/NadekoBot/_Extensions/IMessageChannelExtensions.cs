@@ -23,11 +23,7 @@ public static class MessageChannelExtensions
             embeds: embeds is null
                 ? null
                 : embeds as Embed[] ?? embeds.ToArray(),
-            components: components,
-            options: new()
-            {
-                RetryMode = RetryMode.AlwaysRetry
-            });
+            components: components);
     }
 
     public static async Task<IUserMessage> SendAsync(
@@ -154,27 +150,6 @@ public static class MessageChannelExtensions
         string? url = null,
         string? footer = null)
         => ch.SendAsync(eb, MessageType.Error, title, text, url, footer);
-
-    // weird stuff
-    
-    public static Task<IUserMessage> SendTableAsync<T>(
-        this IMessageChannel ch,
-        string seed,
-        IEnumerable<T> items,
-        Func<T, string> howToPrint,
-        int columns = 3)
-        => ch.SendMessageAsync($@"{seed}```css
-{items.Chunk(columns)
-      .Select(ig => string.Concat(ig.Select(howToPrint)))
-      .Join("\n")}
-```");
-
-    public static Task<IUserMessage> SendTableAsync<T>(
-        this IMessageChannel ch,
-        IEnumerable<T> items,
-        Func<T, string> howToPrint,
-        int columns = 3)
-        => ch.SendTableAsync("", items, howToPrint, columns);
 
     public static Task SendPaginatedConfirmAsync(
         this ICommandContext ctx,

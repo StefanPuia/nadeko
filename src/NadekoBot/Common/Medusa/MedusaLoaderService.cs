@@ -1,5 +1,6 @@
 ﻿using Discord.Commands.Builders;
 using Microsoft.Extensions.DependencyInjection;
+using Nadeko.Medusa.Adapters;
 using NadekoBot.Common.ModuleBehaviors;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
@@ -382,6 +383,11 @@ public sealed class MedusaLoaderService : IMedusaLoaderService, IReadyExecutor, 
         {
             var m = mb.WithName(snekInfo.Name);
 
+            foreach (var f in snekInfo.Filters)
+            {
+                m.AddPrecondition(new FilterAdapter(f, strings));
+            }
+
             foreach (var cmd in snekInfo.Commands)
             {
                 m.AddCommand(cmd.Aliases.First(),
@@ -390,7 +396,7 @@ public sealed class MedusaLoaderService : IMedusaLoaderService, IReadyExecutor, 
                         new(cmd),
                         new(medusaServices),
                         strings),
-                    CreateCommandFactory(medusaName, cmd));
+                    CreateCommandFactory(medusaName, cmd, strings));
             }
 
             foreach (var subInfo in snekInfo.Subsneks)
@@ -399,7 +405,7 @@ public sealed class MedusaLoaderService : IMedusaLoaderService, IReadyExecutor, 
 
     private static readonly RequireContextAttribute _reqGuild = new RequireContextAttribute(ContextType.Guild);
     private static readonly RequireContextAttribute _reqDm = new RequireContextAttribute(ContextType.DM);
-    private Action<CommandBuilder> CreateCommandFactory(string medusaName, SnekCommandData cmd)
+    private Action<CommandBuilder> CreateCommandFactory(string medusaName, SnekCommandData cmd, IMedusaStrings strings)
         => (cb) =>
         {
             cb.AddAliases(cmd.Aliases.Skip(1).ToArray());
@@ -408,6 +414,31 @@ public sealed class MedusaLoaderService : IMedusaLoaderService, IReadyExecutor, 
                 cb.AddPrecondition(_reqGuild);
             else if (cmd.ContextType == CommandContextType.Dm)
                 cb.AddPrecondition(_reqDm);
+            
+            foreach (var f in cmd.Filters)
+                cb.AddPrecondition(new FilterAdapter(f, strings));
+
+            foreach (var ubp in cmd.UserAndBotPerms)
+            {
+                if (ubp is user_permAttribute up)
+                {
+                    if (up.GuildPerm is { } gp)
+                        cb.AddPrecondition(new UserPermAttribute(gp));
+                    else if (up.ChannelPerm is { } cp)
+                        cb.AddPrecondition(new UserPermAttribute(cp));
+                }
+                else if (ubp is bot_permAttribute bp)
+                {
+                    if (bp.GuildPerm is { } gp)
+                        cb.AddPrecondition(new BotPermAttribute(gp));
+                    else if (bp.ChannelPerm is { } cp)
+                        cb.AddPrecondition(new BotPermAttribute(cp));
+                }
+                else if (ubp is bot_owner_onlyAttribute)
+                {
+                    cb.AddPrecondition(new OwnerOnlyAttribute());
+                }
+            }
 
             cb.WithPriority(cmd.Priority);
             
@@ -428,6 +459,9 @@ public sealed class MedusaLoaderService : IMedusaLoaderService, IReadyExecutor, 
             pb.WithIsMultiple(paramData.IsParams)
               .WithIsOptional(paramData.IsOptional)
               .WithIsRemainder(paramData.IsLeftover);
+
+            if (paramData.IsOptional)
+                pb.WithDefault(paramData.DefaultValue);
         };
 
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -750,8 +784,10 @@ public sealed class MedusaLoaderService : IMedusaLoaderService, IReadyExecutor, 
         var cmds = new List<SnekCommandData>();
         foreach (var method in methodInfos)
         {
-            var filters = method.GetCustomAttributes<FilterAttribute>().ToArray();
-            var prio = method.GetCustomAttribute<prioAttribute>()?.Priority ?? 0;
+            var filters = method.GetCustomAttributes<FilterAttribute>(true).ToArray();
+            var userAndBotPerms = method.GetCustomAttributes<MedusaPermAttribute>(true)
+                                        .ToArray();
+            var prio = method.GetCustomAttribute<prioAttribute>(true)?.Priority ?? 0;
 
             var paramInfos = method.GetParameters();
             var cmdParams = new List<ParamData>();
@@ -767,6 +803,7 @@ public sealed class MedusaLoaderService : IMedusaLoaderService, IReadyExecutor, 
 
                 var leftoverAttribute = pi.GetCustomAttribute<leftoverAttribute>(true);
                 var hasDefaultValue = pi.HasDefaultValue;
+                var defaultValue = pi.DefaultValue;
                 var isLeftover = leftoverAttribute != null;
                 var isParams = pi.GetCustomAttribute<ParamArrayAttribute>() is not null;
                 var paramType = pi.ParameterType;
@@ -803,7 +840,7 @@ public sealed class MedusaLoaderService : IMedusaLoaderService, IReadyExecutor, 
                     continue;
                 }
 
-                canInject = false;
+                canInject = false;                                                                                           
 
                 if (isParams)
                 {
@@ -824,11 +861,11 @@ public sealed class MedusaLoaderService : IMedusaLoaderService, IReadyExecutor, 
                     throw new ArgumentException("Leftover attribute error.");
                 }
 
-                cmdParams.Add(new ParamData(paramType, paramName, hasDefaultValue, isLeftover, isParams));
+                cmdParams.Add(new ParamData(paramType, paramName, hasDefaultValue, defaultValue, isLeftover, isParams));
             }
 
 
-            var cmdAttribute = method.GetCustomAttribute<cmdAttribute>()!; 
+            var cmdAttribute = method.GetCustomAttribute<cmdAttribute>(true)!; 
             var aliases = cmdAttribute.Aliases;
             if (aliases.Length == 0)
                 aliases = new[] { method.Name.ToLowerInvariant() };
@@ -838,6 +875,7 @@ public sealed class MedusaLoaderService : IMedusaLoaderService, IReadyExecutor, 
                 method,
                 instance,
                 filters,
+                userAndBotPerms,
                 cmdContext,
                 diParams,
                 cmdParams,

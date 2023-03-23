@@ -664,8 +664,6 @@ avatar:
   - av
 hentai:
   - hentai
-nhentai:
-  - nhentai
 danbooru:
   - danbooru
 derpibooru:
@@ -728,6 +726,9 @@ showemojis:
 emojiadd:
   - emojiadd
   - ea
+stickeradd:
+  - stickeradd
+  - sa
 emojiremove:
   - emojiremove
   - emojirm
@@ -804,6 +805,7 @@ hentaibomb:
   - hentaibomb
 cleverbot:
   - cleverbot
+  - chatgpt
 shorten:
   - shorten
 wikia:

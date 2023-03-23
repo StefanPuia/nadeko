@@ -11,6 +11,7 @@ public sealed class SnekCommandData
         MethodInfo methodInfo,
         Snek module,
         FilterAttribute[] filters,
+        MedusaPermAttribute[] userAndBotPerms,
         CommandContextType contextType,
         IReadOnlyList<Type> injectedParams,
         IReadOnlyList<ParamData> parameters,
@@ -21,12 +22,15 @@ public sealed class SnekCommandData
         MethodInfo = methodInfo;
         Module = module;
         Filters = filters;
+        UserAndBotPerms = userAndBotPerms;
         ContextType = contextType;
         InjectedParams = injectedParams;
         Parameters = parameters;
         Priority = priority;
         OptionalStrings = strings;
     }
+
+    public MedusaPermAttribute[] UserAndBotPerms { get; set; }
 
     public CommandStrings OptionalStrings { get; set; }
 
