@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Nadeko.Common;
 using NadekoBot.Db;
 using NadekoBot.Services.Database.Models;
+using System.Globalization;
 
 namespace NadekoBot.Modules.Searches.Services;
 
@@ -270,6 +271,10 @@ public class FeedsService : INService
 
         return true;
     }
+
+    public string GetLastUpdated(string feedUrl) => _lastPosts.TryGetValue(feedUrl, out var lastUpdated)
+        ? lastUpdated.ToString(CultureInfo.InvariantCulture)
+        : "Not fetched";
 }
 
 public enum FeedAddResult

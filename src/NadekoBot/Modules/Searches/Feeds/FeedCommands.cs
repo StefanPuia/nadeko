@@ -104,7 +104,10 @@ public partial class Searches
                     var embed = _eb.Create().WithOkColor();
                     var i = 0;
                     var fs = string.Join("\n",
-                        feeds.Skip(cur * 10).Take(10).Select(x => $"`{(cur * 10) + ++i}.` <#{x.ChannelId}> {x.Url}"));
+                        feeds.Skip(cur * 10)
+                             .Take(10)
+                             .Select(x =>
+                                 $"`{(cur * 10) + ++i}.` <#{x.ChannelId}> {x.Url} {_service.GetLastUpdated(x.Url)}"));
 
                     return embed.WithDescription(fs);
                 },
