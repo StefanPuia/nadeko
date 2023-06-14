@@ -38,6 +38,9 @@ RUN chmod +x /usr/local/bin/yt-dlp
 RUN apt-get autoremove -y
 RUN apt-get autoclean -y
 
+RUN mkdir /.cache
+RUN chmod 777 /.cache
+
 COPY --from=build /app ./
 COPY docker-entrypoint.sh /usr/local/sbin
 
