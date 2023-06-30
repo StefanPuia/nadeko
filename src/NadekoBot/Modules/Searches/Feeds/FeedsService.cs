@@ -57,6 +57,7 @@ public class FeedsService : INService
         {
             var newValue = _errorCounters[url] = _errorCounters.GetValueOrDefault(url) + 1;
             var message = $"An error occured while getting rss stream ({newValue} / 100) {url}\n {exceptionMessage}";
+            Log.Error("{Message}", message);
             
             if (newValue >= 100)
             {
@@ -77,8 +78,6 @@ public class FeedsService : INService
                 // reset the error counter
                 ClearErrors(url);
             }
-
-            Log.Error("{Message}", message);
         }
         catch (Exception ex)
         {
@@ -196,6 +195,7 @@ public class FeedsService : INService
                 }
             }
 
+            Log.Information("Finished tracking feeds, waiting");
             await Task.WhenAll(Task.WhenAll(allSendTasks), Task.Delay(1000 * 60 * 30));
         }
     }
