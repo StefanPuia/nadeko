@@ -4,11 +4,13 @@ using NadekoBot.Modules.Utility.RaidComp;
 using Newtonsoft.Json;
 using System.Text;
 using System.Web;
+using System.Text.RegularExpressions;
 
 namespace NadekoBot.Modules.Utility.Services;
 
 public class RaidCompService : IExecOnMessage, INService
 {
+    private static readonly string CSV_PATTERN = @".+csv\?|$";
     private readonly IBotCredentials _creds;
     private readonly DiscordSocketClient _client;
     private readonly IEmbedBuilderService _eb;
@@ -36,7 +38,8 @@ public class RaidCompService : IExecOnMessage, INService
         {
             var channel = _client.GetChannel(_creds.RaidComp.AutoChannel);
             var attachmentUrl = msg.Attachments.First().Url;
-            if (attachmentUrl.ToLowerInvariant().EndsWith(".csv"))
+            var csvUrlMatch = Regex.Match(attachmentUrl, CSV_PATTERN, RegexOptions.IgnoreCase);
+            if (csvUrlMatch.Success)
             {
                 var buildString = await ConvertCsv(attachmentUrl);
                 await ((ITextChannel)channel).SendMessageAsync(buildString);
