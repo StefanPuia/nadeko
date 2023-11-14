@@ -3,6 +3,7 @@ using NadekoBot.Common.ModuleBehaviors;
 using NadekoBot.Modules.Utility.RaidComp;
 using Newtonsoft.Json;
 using System.Text;
+using System.Web;
 
 namespace NadekoBot.Modules.Utility.Services;
 
@@ -70,19 +71,19 @@ public class RaidCompService : IExecOnMessage, INService
             var response =
                 await http.PostAsync(importUrl, new StringContent(payload, Encoding.UTF8, "application/json"));
             var responseContent = await response.Content.ReadAsStringAsync();
-            if (response.IsSuccessStatusCode)
-            {
-                var builds = JsonConvert.DeserializeObject<RaidCompResult>(responseContent);
-                var buildLinks = builds
-                                 ?.Builds.Select(build =>
-                                     $"{_creds.RaidComp.Web}/build/{build.BuildId}/{build.BuildName}")
-                                 .ToList()
-                                 ?? new List<string>();
 
-                return string.Join("\n", buildLinks);
-            }
+            if (!response.IsSuccessStatusCode)
+                throw new Exception("There was an error generating the build: " + responseContent);
 
-            throw new Exception("There was an error generating the build: " + responseContent);
+            var builds = JsonConvert.DeserializeObject<RaidCompResult>(responseContent);
+            var buildLinks = builds
+                             ?.Builds.Select(build =>
+                                 $"{_creds.RaidComp.Web}/build/{build.BuildId}/{HttpUtility.UrlEncode(build.BuildName)}")
+                             .ToList()
+                             ?? new List<string>();
+
+            return string.Join("\n", buildLinks);
+
         }
         catch (Exception e)
         {
