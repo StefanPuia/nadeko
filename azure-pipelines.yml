@@ -8,7 +8,6 @@ trigger:
 variables:
   dockerRegistryServiceConnection: '6de94e67-eca1-41c5-98a7-8a3d21b62d99'
   imageRepository: 'nadeko'
-  containerRegistry: 'stefanpuia.azurecr.io'
   tag: '$(Build.BuildId)'
 
 stages:
@@ -51,7 +50,7 @@ stages:
                     COMPOSE_FILE=/apps/nadeko/nadeko.yml
                     PROJECT=nadeko
 
-                    docker pull $(containerRegistry):$(tag)
+                    docker-compose -f $COMPOSE_FILE -p $PROJECT pull
                     docker-compose -f $COMPOSE_FILE -p $PROJECT down
                     docker-compose -f $COMPOSE_FILE -p $PROJECT up --force-recreate -d
                   env:
