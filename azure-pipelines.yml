@@ -29,11 +29,12 @@ stages:
                 $(tag)
                 latest
 
-  - stage: deploy
-    displayName: Deploy
+  - stage: deployProd
+    displayName: Deploy Prod
+    dependsOn: build
     jobs:
-      - deployment: deploy
-        displayName: Deploy
+      - deployment: deployProd
+        displayName: Deploy Prod
         environment:
           name: prod
           resourceType: virtualMachine
