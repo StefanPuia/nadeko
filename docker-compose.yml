@@ -1,8 +1,26 @@
-version: "3.7"
-
+version: '3.7'
 services:
   redis:
+    restart: always
     image: redis:4-alpine
-    command: redis-server
-    ports:
-      - '6379:6379'
+    sysctls:
+      - net.core.somaxconn=511
+    command: redis-server --maxmemory 32M --maxmemory-policy volatile-lru
+    expose:
+      - 6379
+
+  nadeko:
+    user: '1003:1005'
+    image: stefanpuia.azurecr.io/nadeko:${TAG}
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      TZ: Europe/Brussels
+    volumes:
+      - /home/host/repo/nadeko-backup/config-v4/creds.yml:/app/creds.yml:ro
+      - /home/host/repo/nadeko-backup/config-v4/data:/app/data
+
+networks:
+  default:
+    driver: bridge

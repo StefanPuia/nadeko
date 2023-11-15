@@ -1,0 +1,57 @@
+pr: none
+
+trigger:
+  branches:
+    include:
+      - main
+
+variables:
+  dockerRegistryServiceConnection: '6de94e67-eca1-41c5-98a7-8a3d21b62d99'
+  imageRepository: 'nadeko'
+  containerRegistry: 'stefanpuia.azurecr.io'
+  tag: '$(Build.BuildId)'
+
+stages:
+  - stage: build
+    displayName: Build and push stage
+    jobs:
+      - job: Build
+        displayName: Build
+        steps:
+          - task: Docker@2
+            displayName: Build and push an image to container registry
+            inputs:
+              command: buildAndPush
+              repository: $(imageRepository)
+              dockerfile: "$(Build.SourcesDirectory)/Dockerfile"
+              containerRegistry: $(dockerRegistryServiceConnection)
+              tags: |
+                $(tag)
+                latest
+
+  - stage: deploy
+    displayName: Deploy
+    jobs:
+      - deployment: deploy
+        displayName: Deploy
+        environment:
+          name: prod
+          resourceType: virtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: Docker@2
+                  displayName: Authenticate to docker registry
+                  inputs:
+                    command: login
+                    containerRegistry: $(dockerRegistryServiceConnection)
+                - script: |
+                    COMPOSE_FILE=/apps/nadeko/nadeko.yml
+                    PROJECT=nadeko
+
+                    docker pull $(containerRegistry):$(tag)
+                    docker-compose -f $COMPOSE_FILE -p $PROJECT down
+                    docker-compose -f $COMPOSE_FILE -p $PROJECT up --force-recreate -d
+                  env:
+                    TAG: $(tag)
