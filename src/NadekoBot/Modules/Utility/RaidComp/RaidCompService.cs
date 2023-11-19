@@ -63,6 +63,7 @@ public class RaidCompService : IExecOnMessage, INService
         try
         {
             using var http = _httpFactory.CreateClient();
+            http.Timeout = TimeSpan.FromMinutes(2);
             var csvContent = await http.GetStringAsync(csvLink).ConfigureAwait(false);
 
             var payload = JsonConvert.SerializeObject(new Dictionary<string, string>
