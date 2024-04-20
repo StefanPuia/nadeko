@@ -50,8 +50,8 @@ stages:
                     COMPOSE_FILE=/apps/nadeko/nadeko.yml
                     PROJECT=nadeko
 
-                    docker-compose -f $COMPOSE_FILE -p $PROJECT pull
-                    docker-compose -f $COMPOSE_FILE -p $PROJECT down
-                    docker-compose -f $COMPOSE_FILE -p $PROJECT up --force-recreate -d
+                    docker compose -f $COMPOSE_FILE -p $PROJECT pull
+                    docker compose -f $COMPOSE_FILE -p $PROJECT down
+                    docker compose -f $COMPOSE_FILE -p $PROJECT up --force-recreate -d
                   env:
                     TAG: $(tag)
