@@ -1,4 +1,3 @@
-version: '3.7'
 services:
   redis:
     restart: always
@@ -17,9 +16,10 @@ services:
       - redis
     environment:
       TZ: Europe/Brussels
+      VERSION: "${TAG}"
     volumes:
-      - /home/host/repo/nadeko-backup/config-v4/creds.yml:/app/creds.yml:ro
-      - /home/host/repo/nadeko-backup/config-v4/data:/app/data
+      - /var/opt/nadeko/nadeko-backup/config-v4/creds.yml:/app/creds.yml:ro
+      - /var/opt/nadeko/nadeko-backup/config-v4/data:/app/data
 
 networks:
   default:
