@@ -195,6 +195,8 @@ setnick:
 setavatar:
   - setavatar
   - setav
+setbanner:
+  - setbanner
 setgame:
   - setgame
 send:
@@ -647,10 +649,6 @@ chucknorris:
 magicitem:
   - magicitem
   - mi
-revav:
-  - revav
-revimg:
-  - revimg
 safebooru:
   - safebooru
 wiki:
@@ -1390,4 +1388,6 @@ autopublish:
   - autopublish
 doas:
   - doas
-  - execas 
+  - execas
+cacheusers:
+  - cacheusers

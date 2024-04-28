@@ -5,7 +5,7 @@ namespace NadekoBot.Modules.Administration;
 public sealed class DoAsUserMessage : IUserMessage
 {
     private readonly string _message;
-    private IUserMessage _msg;
+    private readonly IUserMessage _msg;
     private readonly IUser _user;
 
     public DoAsUserMessage(SocketUserMessage msg, IUser user, string message)
@@ -49,6 +49,13 @@ public sealed class DoAsUserMessage : IUserMessage
         return _msg.RemoveAllReactionsForEmoteAsync(emote, options);
     }
 
+    public IAsyncEnumerable<IReadOnlyCollection<IUser>> GetReactionUsersAsync(
+        IEmote emoji,
+        int limit,
+        RequestOptions? options = null,
+        ReactionType type = ReactionType.Normal)
+        => _msg.GetReactionUsersAsync(emoji, limit, options, type);
+
     public IAsyncEnumerable<IReadOnlyCollection<IUser>> GetReactionUsersAsync(IEmote emoji, int limit,
         RequestOptions? options = null)
     {
@@ -78,6 +85,7 @@ public sealed class DoAsUserMessage : IUserMessage
     public IMessageChannel Channel => _msg.Channel;
 
     public IUser Author => _user;
+    public IThreadChannel Thread => _msg.Thread;
 
     public IReadOnlyCollection<IAttachment> Attachments => _msg.Attachments;
 
@@ -105,7 +113,9 @@ public sealed class DoAsUserMessage : IUserMessage
 
     public MessageFlags? Flags => _msg.Flags;
 
+    [Obsolete("Obsolete in favor of InteractionMetadata")]
     public IMessageInteraction Interaction => _msg.Interaction;
+    public MessageRoleSubscriptionData RoleSubscriptionData  => _msg.RoleSubscriptionData;
 
     public Task ModifyAsync(Action<MessageProperties> func, RequestOptions? options = null)
     {
@@ -134,5 +144,10 @@ public sealed class DoAsUserMessage : IUserMessage
         return _msg.Resolve(userHandling, channelHandling, roleHandling, everyoneHandling, emojiHandling);
     }
 
+    public MessageResolvedData ResolvedData => _msg.ResolvedData;
+
     public IUserMessage ReferencedMessage => _msg.ReferencedMessage;
+
+    public IMessageInteractionMetadata InteractionMetadata
+        => _msg.InteractionMetadata;
 }
