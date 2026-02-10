@@ -6,7 +6,7 @@ trigger:
       - main
 
 variables:
-  dockerRegistryServiceConnection: '6de94e67-eca1-41c5-98a7-8a3d21b62d99'
+  dockerRegistryServiceConnection: '480dd8f9-a634-47ee-b0a2-658206dfb459'
   imageRepository: 'nadeko'
   tag: '$(Build.BuildId)'
 
