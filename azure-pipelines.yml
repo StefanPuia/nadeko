@@ -46,7 +46,7 @@ stages:
                     command: login
                     containerRegistry: $(dockerRegistryServiceConnection)
                 - script: |
-                    COMPOSE_FILE=/apps/nadeko/nadeko.yml
+                    COMPOSE_FILE=/apps/nadeko/docker-compose.yml
                     PROJECT=nadeko
 
                     docker compose -f $COMPOSE_FILE -p $PROJECT pull
