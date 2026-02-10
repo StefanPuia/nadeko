@@ -33,7 +33,7 @@ stages:
     dependsOn: build
     jobs:
       - deployment: deployProd
-        pool: prod-vm-uks-core
+        pool: self-hosted-scale-set-02
         displayName: Deploy Prod
         environment: prod
         strategy:
