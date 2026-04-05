@@ -1,4 +1,5 @@
 #nullable disable
+using Microsoft.Extensions.Logging;
 using NadekoBot.Common.ModuleBehaviors;
 using NadekoBot.Modules.Utility.RaidComp;
 using Newtonsoft.Json;
@@ -15,17 +16,20 @@ public class RaidCompService : IExecOnMessage, INService
     private readonly DiscordSocketClient _client;
     private readonly IEmbedBuilderService _eb;
     private readonly IHttpClientFactory _httpFactory;
+    private readonly ILogger<RaidCompService> _logger;
 
     public RaidCompService(
         IBotCredentials creds,
         IHttpClientFactory factory,
         IEmbedBuilderService eb,
-        DiscordSocketClient client)
+        DiscordSocketClient client,
+        ILogger<RaidCompService> logger)
     {
         _creds = creds;
         _httpFactory = factory;
         _eb = eb;
         _client = client;
+        _logger = logger;
     }
 
     public int Priority => -1;
@@ -37,9 +41,12 @@ public class RaidCompService : IExecOnMessage, INService
         try
         {
             var channel = _client.GetChannel(_creds.RaidComp.AutoChannel);
-            var attachmentUrl = msg.Attachments.First().Url;
-            var csvUrlMatch = Regex.Match(attachmentUrl, CSV_PATTERN, RegexOptions.IgnoreCase);
-            if (csvUrlMatch.Success)
+            var attachmentUrl = msg.Attachments.Select(x => x.Url)
+                                   .Where(x => x.Contains(".csv"))
+                                   .FirstOrDefault(url =>
+                                       Regex.Match(url, CSV_PATTERN, RegexOptions.IgnoreCase).Success);
+            _logger.LogInformation("Processing CSV: {AttachmentUrl}", attachmentUrl);
+            if (attachmentUrl != null)
             {
                 var buildString = await ConvertCsv(attachmentUrl);
                 await ((ITextChannel)channel).SendMessageAsync(buildString);
@@ -68,10 +75,11 @@ public class RaidCompService : IExecOnMessage, INService
 
             var payload = JsonConvert.SerializeObject(new Dictionary<string, string>
             {
-                {"raw", csvContent}
+                { "raw", csvContent }
             });
 
             var importUrl = $"{_creds.RaidComp.Api}/build/import/raid-helper";
+            _logger.LogInformation("Sending to: {ImportUrl}", importUrl);
             var response =
                 await http.PostAsync(importUrl, new StringContent(payload, Encoding.UTF8, "application/json"));
             var responseContent = await response.Content.ReadAsStringAsync();
@@ -87,7 +95,6 @@ public class RaidCompService : IExecOnMessage, INService
                              ?? new List<string>();
 
             return string.Join("\n", buildLinks);
-
         }
         catch (Exception e)
         {
