@@ -30,7 +30,7 @@ forwardToChannel:
 # Settings this to false might get your bot banned if it gets into a spam loop with another bot.
 # This will only affect command executions, other features will still block bots from access.
 # Default true
-ignoreOtherBots: true
+ignoreOtherBots: false
 # When a user DMs the bot with a message which is not a command
 # they will receive this message. Leave empty for no response. The string which will be sent whenever someone DMs the bot.
 # Supports embeds. How it looks: https://puu.sh/B0BLV.png

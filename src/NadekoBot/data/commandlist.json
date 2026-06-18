@@ -5948,6 +5948,94 @@
       ]
     }
   ],
+  "pruneoldcommands": [
+    {
+      "Aliases": [
+        ".pruneold"
+      ],
+      "Description": "Prune old messages",
+      "Usage": [
+        ".pruneold x y [-s/--safe]",
+        ".pruneold 50 10",
+        ".pruneold 50 10 -s",
+        ".pruneold 50 10 --safe"
+      ],
+      "Submodule": "pruneoldcommands",
+      "Module": "pruneoldcommands",
+      "Options": null,
+      "Requirements": [
+        "SendMessages Server Permission"
+      ]
+    }
+  ],
+  "raidcompcommands": [
+    {
+      "Aliases": [
+        ".raidcomp",
+        ".createbuildfromcsvlink"
+      ],
+      "Description": "Create build from CSV link",
+      "Usage": [
+        ".raidcomp https://some-csv-link"
+      ],
+      "Submodule": "raidcompcommands",
+      "Module": "raidcompcommands",
+      "Options": null,
+      "Requirements": [
+        "SendMessages Server Permission"
+      ]
+    }
+  ],
+  "repeatingschedulecommands": [
+    {
+      "Aliases": [
+        ".rscha",
+        ".repeatingscheduleadd"
+      ],
+      "Description": "Schedules a command to be repeated every specified amount of time.",
+      "Usage": [
+        ".rscha 1m30s .say hello"
+      ],
+      "Submodule": "repeatingschedulecommands",
+      "Module": "repeatingschedulecommands",
+      "Options": null,
+      "Requirements": [
+        "Administrator Server Permission"
+      ]
+    },
+    {
+      "Aliases": [
+        ".rschd",
+        ".repeatingscheduledelete"
+      ],
+      "Description": "Deletes a repeating scheduled command by its id.",
+      "Usage": [
+        ".rschd 1"
+      ],
+      "Submodule": "repeatingschedulecommands",
+      "Module": "repeatingschedulecommands",
+      "Options": null,
+      "Requirements": [
+        "Administrator Server Permission"
+      ]
+    },
+    {
+      "Aliases": [
+        ".rschl",
+        ".repeatingschedulelist"
+      ],
+      "Description": "Lists all repeating schedules for the current guild.",
+      "Usage": [
+        ".rschl 1"
+      ],
+      "Submodule": "repeatingschedulecommands",
+      "Module": "repeatingschedulecommands",
+      "Options": null,
+      "Requirements": [
+        "Administrator Server Permission"
+      ]
+    }
+  ],
   "Searches": [
     {
       "Aliases": [

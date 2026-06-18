@@ -1,0 +1,10 @@
+﻿pruneold:
+  desc: "Prune old messages"
+createbuildfromcsvlink:
+  desc: "Create build from CSV link"
+repeatingscheduleadd:
+  desc: "Schedules a command to be repeated every specified amount of time."
+repeatingscheduledelete:
+  desc: "Deletes a repeating scheduled command by its id."
+repeatingschedulelist:
+  desc: "Lists all repeating schedules for the current guild."

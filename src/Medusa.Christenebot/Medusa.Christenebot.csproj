@@ -1,0 +1,40 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <OutputType>Library</OutputType>
+
+        <!-- Reduces some boilerplate in your .cs files -->
+        <ImplicitUsings>enable</ImplicitUsings>
+
+        <!-- Use latest .net features -->
+        <LangVersion>preview</LangVersion>
+        <EnablePreviewFeatures>true</EnablePreviewFeatures>
+        <GenerateRequiresPreviewFeaturesAttribute>true</GenerateRequiresPreviewFeaturesAttribute>
+
+        <!-- tell .net that this library will be used as a plugin -->
+        <EnableDynamicLoading>true</EnableDynamicLoading>
+    </PropertyGroup>
+
+    <!-- Copy shortcut and full strings to output (if they exist) -->
+    <ItemGroup>
+        <None Update="res.yml;cmds.yml;strings/**">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Nadeko.Medusa\Nadeko.Medusa.csproj">
+            <Private>false</Private>
+            <ExcludeAssets>runtime</ExcludeAssets>
+        </ProjectReference>
+        <ProjectReference Include="..\NadekoBot\NadekoBot.csproj">
+            <Private>false</Private>
+            <ExcludeAssets>runtime</ExcludeAssets>
+        </ProjectReference>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="JetBrains.Annotations" Version="2026.2.0" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.1" ExcludeAssets="runtime"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.1" ExcludeAssets="runtime"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.1" ExcludeAssets="runtime"/>
+    </ItemGroup>
+</Project>

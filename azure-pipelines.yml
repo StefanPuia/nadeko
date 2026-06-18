@@ -1,0 +1,80 @@
+﻿pr: none
+trigger:
+  - main
+
+variables:
+  dotnetVersion: '9.0.x'
+
+stages:
+  - stage: buildAndPackage
+    displayName: Build
+    jobs:
+      - job: buildAndPackage
+        displayName: Build
+        steps:
+          - task: UseDotNet@2
+            displayName: 'Use .NET SDK $(dotnetVersion)'
+            inputs:
+              version: $(dotnetVersion)
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Publish NadekoBot'
+            inputs:
+              command: 'publish'
+              publishWebProjects: false
+              configuration: 'Release'
+              projects: 'src/NadekoBot/NadekoBot.csproj'
+              arguments: '--self-contained -r linux-x64 --output $(Build.ArtifactStagingDirectory)'
+              zipAfterPublish: false
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Publish Christenebot medusa'
+            inputs:
+              command: 'publish'
+              publishWebProjects: false
+              configuration: 'Release'
+              projects: 'src/Medusa.Christenebot/Medusa.Christenebot.csproj'
+              arguments: '-r linux-x64 --output $(Build.ArtifactStagingDirectory)/NadekoBot/data/medusae'
+              zipAfterPublish: false
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifacts'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)/NadekoBot'
+              ArtifactName: 'bin'
+
+  - stage: deployProd
+    displayName: Deploy
+    dependsOn: buildAndPackage
+    jobs:
+      - deployment: deployProd
+        displayName: Deploy
+        environment:
+          name: prod
+          resourceType: VirtualMachine
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: none
+                  
+                - script: |
+                    set -e
+                    sudo systemctl stop nadeko
+                    sudo rm -rf /apps/nadeko/bin
+                  displayName: 'Stop Nadeko'
+                  
+                - task: DownloadBuildArtifacts@0
+                  displayName: 'Download Artifacts'
+                  inputs:
+                    artifactName: 'bin'
+                    downloadPath: '/apps/nadeko'
+
+                - script: |
+                    set -e
+                    sudo ln -s /apps/nadeko/data/creds.yml /apps/nadeko/bin/data/creds.yml
+                    sudo ln -s /apps/nadeko/data/creds.Medusa.Christenebot.yml /apps/nadeko/bin/data/medusae/creds.Medusa.Christenebot.yml
+                    sudo chmod +x /apps/nadeko/bin/NadekoBot
+                    sudo chown -R nadeko:nadeko /apps/nadeko/bin
+                    sudo systemctl start nadeko
+                  displayName: 'Start Nadeko'

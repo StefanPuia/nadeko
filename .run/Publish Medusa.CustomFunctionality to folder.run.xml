@@ -1,0 +1,8 @@
+﻿<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Publish Medusa.Christenebot to folder" type="DotNetFolderPublish" factoryName="Publish to folder">
+    <riderPublish configuration="Release" delete_existing_files="true" platform="Any CPU" target_folder="$PROJECT_DIR$/src/NadekoBot/data/medusae/Medusa.Christenebot" target_framework="net9.0" uuid_high="-2348698266005388825" uuid_low="-4669344923197977960" />
+    <method v="2">
+      <option name="Build" default="false" projectName="Medusa.Christenebot" projectPath="$PROJECT_DIR$/src/Medusa.Christenebot/Medusa.Christenebot.csproj" />
+    </method>
+  </configuration>
+</component>

@@ -596,15 +596,15 @@ public sealed class NadekoContext : DbContext
         #endregion
     }
 
-#if DEBUG
-    private static readonly ILoggerFactory _debugLoggerFactory = LoggerFactory.Create(x => x.AddConsole());
-#endif
+// #if DEBUG
+//     private static readonly ILoggerFactory _debugLoggerFactory = LoggerFactory.Create(x => x.AddConsole());
+// #endif
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-#if DEBUG
-        optionsBuilder.UseLoggerFactory(_debugLoggerFactory);
-#endif
+// #if DEBUG
+//         optionsBuilder.UseLoggerFactory(_debugLoggerFactory);
+// #endif
 
         optionsBuilder.ConfigureWarnings(x => x.Log(RelationalEventId.PendingModelChangesWarning)
             .Ignore());
