@@ -54,10 +54,21 @@ public class RepeatingScheduleService(
                         }
 
                         var tempMessage = await channel.SendMessageAsync(".");
-                        var user = tempMessage.Author;
+                        var message = await channel.GetMessageAsync(tempMessage.Id) as IUserMessage;
+                        var user = message?.Author;
+
+                        if (message is null || user is null)
+                        {
+                            Log.Warning(
+                                "Could not get temporary message or user for schedule {Schedule}",
+                                schedule);
+                            await UpdateScheduleNextRunTime(schedule);
+                            continue;
+                        }
+
                         await cmdHandler.TryRunCommand(guild,
                             channel,
-                            new DoAsUserMessage(tempMessage, user, schedule.CommandText));
+                            new DoAsUserMessage(message, user, schedule.CommandText));
                         await UpdateScheduleNextRunTime(schedule);
                     }
                     catch (Exception e)
