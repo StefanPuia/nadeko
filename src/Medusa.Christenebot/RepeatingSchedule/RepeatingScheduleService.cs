@@ -47,18 +47,21 @@ public class RepeatingScheduleService(
 
                         if (guild is null || channel is null)
                         {
-                            Log.Warning("Guild or channel not found for schedule {Schedule}", schedule);
+                            Log.Warning("Guild or channel not found for schedule {Schedule}",
+                                schedule);
                             await UpdateScheduleNextRunTime(schedule);
                             continue;
                         }
 
-                        var message =
-                            await channel.GetMessageAsync(schedule.MessageId) as IUserMessage;
+                        var message = channel.GetCachedMessages()
+                                .FirstOrDefault(await channel.GetMessageAsync(schedule.MessageId))
+                            as IUserMessage;
                         var user = await ((IGuild) guild).GetUserAsync(schedule.UserId);
 
                         if (message is null || user is null)
                         {
-                            Log.Warning("Message or user not found for schedule {Schedule}", schedule);
+                            Log.Warning("Message or user not found for schedule {Schedule}",
+                                schedule);
                             await UpdateScheduleNextRunTime(schedule);
                             continue;
                         }
