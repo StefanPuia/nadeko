@@ -46,20 +46,27 @@ public class RepeatingScheduleService(
                             guild?.GetChannel(schedule.ChannelId) as ISocketMessageChannel;
 
                         if (guild is null || channel is null)
+                        {
+                            Log.Warning("Guild or channel not found for schedule {Schedule}", schedule);
+                            await UpdateScheduleNextRunTime(schedule);
                             continue;
+                        }
 
                         var message =
                             await channel.GetMessageAsync(schedule.MessageId) as IUserMessage;
-                        var user = await (guild as IGuild).GetUserAsync(schedule.UserId);
+                        var user = await ((IGuild) guild).GetUserAsync(schedule.UserId);
 
                         if (message is null || user is null)
+                        {
+                            Log.Warning("Message or user not found for schedule {Schedule}", schedule);
+                            await UpdateScheduleNextRunTime(schedule);
                             continue;
+                        }
 
                         await cmdHandler.TryRunCommand(guild,
                             channel,
                             new DoAsUserMessage(message, user, schedule.CommandText));
-                        await repository.UpdateNextRunTime(schedule.Id,
-                            DateTime.UtcNow.AddMinutes(schedule.DelayInMinutes));
+                        await UpdateScheduleNextRunTime(schedule);
                     }
                     catch (Exception e)
                     {
@@ -67,6 +74,12 @@ public class RepeatingScheduleService(
                             "Error executing repeating schedule command {Schedule}",
                             schedule);
                     }
+                }
+
+                async Task UpdateScheduleNextRunTime(RepeatingScheduleRecord schedule)
+                {
+                    await repository.UpdateNextRunTime(schedule.Id,
+                        DateTime.UtcNow.AddMinutes(schedule.DelayInMinutes));
                 }
             }
             catch (Exception e)
