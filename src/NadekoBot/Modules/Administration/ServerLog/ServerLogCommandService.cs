@@ -56,11 +56,13 @@ public sealed class LogCommandService : ILogCommandService, IReadyExecutor
 
         using (var uow = db.GetDbContext())
         {
-            var guildIds = client.Guilds.Select(x => x.Id).ToList();
+            // var guildIds = client.Guilds.Select(x => x.Id).ToList();
+            // Serilog.Log.Warning("Loaded guilds, {}", guildIds.Join(", "));
 
             var channels = uow.GetTable<LogChannel>()
-                .Where(x => guildIds.Contains(x.GuildId))
+                // .Where(x => guildIds.Contains(x.GuildId))
                 .ToList();
+            Serilog.Log.Warning("Loaded channels, {Channels}, {Foo}", channels.Join(", "), "bar");
 
             _logChannels = channels
                 .GroupBy(x => x.GuildId)
@@ -68,9 +70,10 @@ public sealed class LogCommandService : ILogCommandService, IReadyExecutor
                     g => g.Key,
                     g => g.ToFrozenDictionary(x => x.LogType, x => x.ChannelId))
                 .ToConcurrent();
+            Serilog.Log.Warning("Loaded logChannels, {LogChannels}", _logChannels);
 
             var ignores = uow.GetTable<LogIgnore>()
-                .Where(x => guildIds.Contains(x.GuildId))
+                // .Where(x => guildIds.Contains(x.GuildId))
                 .ToList();
 
             _logIgnores = ignores
