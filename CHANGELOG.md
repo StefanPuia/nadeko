@@ -2,12 +2,43 @@
 
 *a,c,f,r,o,d*
 
-## [7.2.7]
+## [7.2.11] - 17.07.2026
 
 ### Fixed
 
-- If something goes wrong during AI agent startup, it will get disabled instead of crashing the process
+- Server log settings are now loaded correctly after a restart
 
+## [7.2.10] - 14.07.2026
+
+### Changed
+
+- Antispam now ignores users who have the Manage Messages permission in the channel, so moderators are no longer punished for spam
+- AI agent default response token budget raised 
+
+### Fixed
+
+- Timed muting an already-muted user now extends the mute instead of erroring
+- Fixed a bug with timed `.chatmute` and `.voicemute` lifting all mute types on that user when the timer expired, instead of only the expired type (say the user is muted for 12h in voice and 1h in chat, when chat mute expired it would've clear all mutes. This is now fixed)
+- `.mute` with a duration outside the allowed range now shows an error instead of silently doing nothing
+- AI agent now sends `max_completion_tokens` and `reasoning_effort` to match the latest OpenAI API spec
+- AI agent now runs bot commands using the server's configured prefix instead of always assuming `.`, so agent-issued commands work in servers with a custom prefix
+
+## [7.2.9] - 12.07.2026
+
+### Fixed
+
+- `.wiki` and `.wikia` should no longer fail with a 403 error
+
+## [7.2.8] - 12.07.2026
+
+### Fixed
+
+- `.yun` now accepts modern YouTube channel URL formats (`@handle`, `/c/`, `/user/`)
+- Brave-backed search commands no longer crash with a JSON deserialization error
+
+## [7.2.7] - 07.06.20226
+
+- If something goes wrong during AI agent startup, it will get disabled instead of crashing the process
 
 ## [7.2.6] - 23.05.2026
 
