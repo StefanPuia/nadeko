@@ -1,4 +1,6 @@
-﻿# DO NOT CHANGE
-version: 1
+# DO NOT CHANGE THE VERSION MANUALLY
+version: 2
 # Maximum total cache size in gigabytes. Minimum 1. Default 10
 maxCacheSizeGb: 10
+# Maximum number of tracks in the queue of one server. Default 500
+maxQueueSize: 500

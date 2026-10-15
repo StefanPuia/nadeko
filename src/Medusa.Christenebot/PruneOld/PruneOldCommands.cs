@@ -25,8 +25,12 @@ public class PruneOldCommands([inject] PruneService service) : Snek
                 currentCount = 1000;
                 break;
         }
+        
+        var pruneSession = service.TryStart(ctx.Channel);
+        if (pruneSession is null)
+            return;
 
-        await service.PruneWhere(ctx.User.Id,
+        await service.PruneWhere(pruneSession,
                 ctx.Channel,
                 currentCount,
                 message =>
