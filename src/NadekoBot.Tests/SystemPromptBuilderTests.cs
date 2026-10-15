@@ -22,66 +22,62 @@ public class SystemPromptBuilderTests
     }
 
     [Test]
-    public void CollectToolGuidance_NoTools_ReturnsEmpty()
+    public void Compose_DefaultPrompts_HaveNoPerTurnData()
     {
-        var result = SystemPromptBuilder.CollectToolGuidance(new List<IAiTool>());
+        var snapshot = new PromptSnapshot(DefaultPrompts.Soul, DefaultPrompts.Operator);
 
-        Assert.That(result, Is.Empty);
+        Assert.That(SystemPromptBuilder.HasTurnTokens(snapshot), Is.False);
+
+        var prompt = SystemPromptBuilder.Compose(snapshot, "Nadeko", 42, ["guide"], null);
+
+        Assert.That(prompt, Does.StartWith("You are Nadeko,"));
+        Assert.That(prompt, Does.Contain("guide"));
+        Assert.That(prompt, Does.Not.Contain("Current time").And.Not.Contain("CONTEXT:").And.Not.Contain("{"));
     }
 
     [Test]
-    public void CollectToolGuidance_NullGuidance_Skipped()
+    public void Compose_PerTurnTokens_AreStillReplaced()
     {
+        var snapshot = new PromptSnapshot("Hi {userName} in #{channelName} on {guildName}, I am {botName}", "");
+
+        Assert.That(SystemPromptBuilder.HasTurnTokens(snapshot), Is.True);
+
+        var prompt = SystemPromptBuilder.Compose(
+            snapshot,
+            "Nadeko",
+            42,
+            [],
+            new TurnTokens("Guild", "general", "Bob"));
+
+        Assert.That(prompt, Does.StartWith("Hi Bob in #general on Guild, I am Nadeko"));
+    }
+
+    [Test]
+    public void CollectToolGuidance_SkipsMissingGuidance()
+    {
+        Assert.That(SystemPromptBuilder.CollectToolGuidance(new List<IAiTool>()), Is.Empty);
+
         var tools = new List<IAiTool>
         {
             new FakeTool("a", null),
-            new FakeTool("b", "use tool b wisely")
+            new FakeTool("b", "   \n\t  "),
+            new FakeTool("c", "real guidance")
         };
 
         var result = SystemPromptBuilder.CollectToolGuidance(tools);
 
-        Assert.That(result, Has.Count.EqualTo(1));
-        Assert.That(result[0], Is.EqualTo("use tool b wisely"));
+        Assert.That(result, Is.EqualTo(new[] { "real guidance" }));
     }
 
     [Test]
-    public void CollectToolGuidance_WhitespaceGuidance_Skipped()
-    {
-        var tools = new List<IAiTool>
-        {
-            new FakeTool("a", "   \n\t  "),
-            new FakeTool("b", "real guidance")
-        };
-
-        var result = SystemPromptBuilder.CollectToolGuidance(tools);
-
-        Assert.That(result, Has.Count.EqualTo(1));
-        Assert.That(result[0], Is.EqualTo("real guidance"));
-    }
-
-    [Test]
-    public void CollectToolGuidance_DuplicateGuidance_Deduplicated()
-    {
-        var tools = new List<IAiTool>
-        {
-            new FakeTool("a", "same guidance"),
-            new FakeTool("b", "same guidance"),
-            new FakeTool("c", "different guidance")
-        };
-
-        var result = SystemPromptBuilder.CollectToolGuidance(tools);
-
-        Assert.That(result, Has.Count.EqualTo(2));
-    }
-
-    [Test]
-    public void CollectToolGuidance_SortedAlphabetically()
+    public void CollectToolGuidance_DeduplicatesAndSortsAlphabetically()
     {
         var tools = new List<IAiTool>
         {
             new FakeTool("z-tool", "zzzz guidance"),
             new FakeTool("a-tool", "aaaa guidance"),
-            new FakeTool("m-tool", "mmmm guidance")
+            new FakeTool("m-tool", "mmmm guidance"),
+            new FakeTool("m2-tool", "mmmm guidance")
         };
 
         var result = SystemPromptBuilder.CollectToolGuidance(tools);

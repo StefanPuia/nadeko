@@ -1,4 +1,6 @@
-﻿using LinqToDB;
+﻿using System.Net;
+using Discord.Net;
+using LinqToDB;
 using LinqToDB.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using NadekoBot.Common.ModuleBehaviors;
@@ -136,6 +138,7 @@ public sealed class RepeaterService : IReadyExecutor, INService
         var toTrigger = await uow.Set<Repeater>()
                                  .AsNoTracking()
                                  .Where(x => x.GuildId == guildId)
+                                 .OrderBy(x => x.Id)
                                  .Skip(index)
                                  .FirstOrDefaultAsyncEF();
 
@@ -204,6 +207,10 @@ public sealed class RepeaterService : IReadyExecutor, INService
                 repeater.ChannelId);
         }
 
+        // guild and channel caches are incomplete until the shard is connected again
+        if (_client.ConnectionState != ConnectionState.Connected)
+            return;
+
         var channel = _client.GetChannel(repeater.ChannelId) as ITextChannel;
         if (channel is null)
         {
@@ -211,8 +218,15 @@ public sealed class RepeaterService : IReadyExecutor, INService
             {
                 channel = await _client.Rest.GetChannelAsync(repeater.ChannelId) as ITextChannel;
             }
-            catch
+            catch (HttpException ex) when (IsPermanentFailure(ex))
             {
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex,
+                    "[Repeater] Unable to fetch channel {ChannelId}. The repeater will retry later",
+                    repeater.ChannelId);
+                return;
             }
         }
 
@@ -271,12 +285,12 @@ public sealed class RepeaterService : IReadyExecutor, INService
 
         try
         {
-            var text = SmartText.CreateFrom(repeater.Message);
-            text = await _repSvc.ReplaceAsync(text, repCtx);
+            var template = SmartText.CreateFrom(repeater.Message);
+            var text = await _repSvc.ReplaceAsync(template, repCtx);
 
             var newMsg = await _sender.Response(channel)
                                       .Text(text)
-                                      .Sanitize(false)
+                                      .Mentions(TemplateMentions.FromTemplate(template))
                                       .SendAsync();
             
             _ = newMsg.AddReactionAsync(new Emoji("🔄"));
@@ -289,11 +303,20 @@ public sealed class RepeaterService : IReadyExecutor, INService
 
             rr.ErrorCount = 0;
         }
+        catch (HttpException ex) when (IsPermanentFailure(ex))
+        {
+            rr.ErrorCount++;
+            Log.Warning(ex, "[Repeater] Error sending repeat message ({ErrorCount})", rr.ErrorCount);
+        }
         catch (Exception ex)
         {
-            Log.Error(ex, "[Repeater] Error sending repeat message ({ErrorCount})", rr.ErrorCount++);
+            // outages and server errors must not count towards removal
+            Log.Warning(ex, "[Repeater] Temporary error sending repeat message in {ChannelId}", channel.Id);
         }
     }
+
+    private static bool IsPermanentFailure(HttpException ex)
+        => ex.HttpCode is HttpStatusCode.Forbidden or HttpStatusCode.NotFound;
 
     private async Task RemoveRepeaterInternal(Repeater r)
     {
@@ -368,12 +391,14 @@ public sealed class RepeaterService : IReadyExecutor, INService
 
     public async Task<RunningRepeater?> RemoveByIndexAsync(ulong guildId, int index)
     {
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(index, _ucs.Data.MaxRepeaters * 2);
+        if (index < 0)
+            return null;
 
         await using var uow = _db.GetDbContext();
         var toRemove = await uow.Set<Repeater>()
                                 .AsNoTracking()
                                 .Where(x => x.GuildId == guildId)
+                                .OrderBy(x => x.Id)
                                 .Skip(index)
                                 .FirstOrDefaultAsyncEF();
 
@@ -406,6 +431,7 @@ public sealed class RepeaterService : IReadyExecutor, INService
         var toToggle = await uow.Set<Repeater>()
                                 .AsQueryable()
                                 .Where(x => x.GuildId == guildId)
+                                .OrderBy(x => x.Id)
                                 .Skip(index)
                                 .FirstOrDefaultAsyncEF();
 
@@ -416,7 +442,18 @@ public sealed class RepeaterService : IReadyExecutor, INService
         if (newValue)
             _noRedundant.Add(toToggle.Id);
         else
+        {
             _noRedundant.TryRemove(toToggle.Id);
+
+            // only no-redundant mode tracks the last message, a stale id would be fetched on every run
+            toToggle.LastMessageId = null;
+            lock (_queueLocker)
+            {
+                var node = _repeaterQueue.FindNode(x => x.Repeater.Id == toToggle.Id);
+                if (node is not null)
+                    node.Value.Repeater.LastMessageId = null;
+            }
+        }
 
         await uow.SaveChangesAsync();
         return newValue;
@@ -427,6 +464,7 @@ public sealed class RepeaterService : IReadyExecutor, INService
         await using var ctx = _db.GetDbContext();
         var toSkip = await ctx.Set<Repeater>()
                               .Where(x => x.GuildId == guildId)
+                              .OrderBy(x => x.Id)
                               .Skip(index)
                               .FirstOrDefaultAsyncEF();
 

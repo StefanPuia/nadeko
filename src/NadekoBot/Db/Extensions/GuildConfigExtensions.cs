@@ -33,6 +33,8 @@ public static class GuildConfigExtensions
     public static async Task<StreamRoleSettings> GetOrCreateStreamRoleSettings(this DbContext ctx, ulong guildId)
     {
         var srs = await ctx.Set<StreamRoleSettings>()
+            .Include(x => x.Whitelist)
+            .Include(x => x.Blacklist)
             .Where(x => x.GuildId == guildId)
             .FirstOrDefaultAsyncEF();
 
@@ -100,6 +102,8 @@ public static class GuildConfigExtensions
             .InsertWithOutputAsync(() => new()
             {
                 GuildId = guildId,
+                XpFormulaA = XpSettings.DEFAULT_FORMULA_A,
+                XpFormulaC = XpSettings.DEFAULT_FORMULA_C,
             });
 
         return srs;

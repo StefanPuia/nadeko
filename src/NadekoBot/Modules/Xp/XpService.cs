@@ -1,4 +1,7 @@
 #nullable disable warnings
+using System.Buffers;
+using System.Net;
+using Discord.Net;
 using LinqToDB;
 using Microsoft.EntityFrameworkCore;
 using NadekoBot.Common.ModuleBehaviors;
@@ -23,6 +26,9 @@ namespace NadekoBot.Modules.Xp.Services;
 
 public class XpService : INService, IReadyExecutor, IExecNoCommand
 {
+    private const int MAX_CLUB_IMAGE_BYTES = 8 * 1024 * 1024;
+    public const int MAX_ROLE_REWARDS = 100;
+
     private readonly DbService _db;
     private readonly IImageCache _images;
     private readonly FontProvider _fonts;
@@ -122,14 +128,9 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
         }
     }
 
-    /// <summary>
-    /// The current batch of users that will gain xp
-    /// </summary>
-    private ConcurrentDictionary<ulong, XpQueueEntry> _usersBatch = new();
+    // A tuple key boxes once per member per flush; per-guild maps would make each flush walk every guild.
+    private readonly ConcurrentDictionary<(ulong GuildId, ulong UserId), XpQueueEntry> _usersBatch = new();
 
-    /// <summary>
-    /// The current batch of users that will gain voice xp
-    /// </summary>
     private HashSet<IGuildUser> _voiceXpBatch = [];
 
     private async Task UpdateVoiceXp()
@@ -162,7 +163,7 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
 
                     if (oldBatch.Contains(u))
                     {
-                        validUsers.Add(new(g.Id, u.Id, u.Username, u.DisplayAvatarId, rate.Amount, vc.Id));
+                        validUsers.Add(new(g.Id, u.Id, rate.Amount, vc.Id, true));
                     }
 
                     _voiceXpBatch.Add(u);
@@ -170,71 +171,51 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
             }
         }
 
-        await UpdateXpInternalAsync(validUsers.ToArray());
+        await UpdateXpInternalAsync(validUsers);
     }
 
     private async Task UpdateXp()
     {
-        var currentBatch = Interlocked.Exchange(ref _usersBatch, new());
-
         _xpCooldowns.Cleanup();
 
-        if (currentBatch.IsEmpty)
+        if (_usersBatch.IsEmpty)
             return;
 
-        var entries = new XpQueueEntry[currentBatch.Count];
-        var i = 0;
-        foreach (var (_, entry) in currentBatch)
-            entries[i++] = entry;
+        // TryRemove per entry, not a swap: a swap can lose a gain written to the old dictionary mid-flush.
+        var entries = new List<XpQueueEntry>(_usersBatch.Count);
+        foreach (var (key, _) in _usersBatch)
+        {
+            if (_usersBatch.TryRemove(key, out var entry))
+                entries.Add(entry);
+        }
 
         await UpdateXpInternalAsync(entries);
     }
 
-    private async Task UpdateXpInternalAsync(XpQueueEntry[] currentBatch)
+    private async Task UpdateXpInternalAsync(List<XpQueueEntry> currentBatch)
     {
-        if (currentBatch.Length == 0)
+        if (currentBatch.Count == 0)
             return;
 
-        await using var ctx = _db.GetDbContext();
-        await using var tx = await ctx.Database.BeginTransactionAsync();
-        await using var lctx = ctx.CreateLinqToDBConnection();
-
-        var tempTableName = "xptemp_" + Guid.NewGuid().ToString("N");
-        await using var batchTable = await lctx.CreateTempTableAsync<UserXpBatch>(tempTableName);
-
-        await batchTable.BulkCopyAsync(currentBatch.Select(static x => new UserXpBatch()
+        List<UserXpStats> updated;
+        try
         {
-            GuildId = x.GuildId,
-            UserId = x.UserId,
-            Username = x.Username,
-            AvatarId = x.AvatarId,
-            XpToGain = x.Xp
-        }));
+            updated = await WriteBatchInternalAsync(currentBatch);
+        }
+        catch
+        {
+            // Nothing was committed, so the gains go back into the queue; Merge adds them to newer ones.
+            foreach (var entry in currentBatch)
+                QueueXpInternal(entry);
+            throw;
+        }
 
-        await lctx.ExecuteAsync(
-            $"""
-             INSERT INTO UserXpStats (GuildId, UserId, Xp)
-             SELECT "{tempTableName}"."GuildId", "{tempTableName}"."UserId", "XpToGain"
-             FROM {tempTableName}
-             WHERE TRUE
-             ON CONFLICT (GuildId, UserId) DO UPDATE 
-             SET 
-                 Xp = UserXpStats.Xp + EXCLUDED.Xp;
-             """);
-
-
-        var updated = await batchTable
-            .InnerJoin(lctx.GetTable<UserXpStats>(),
-                (u, s) => u.GuildId == s.GuildId && u.UserId == s.UserId,
-                (batch, stats) => stats)
-            .ToListAsyncLinqToDB();
-
-        await tx.CommitAsync();
-
-        var userToXp = currentBatch.ToDictionary(static x => x.UserId, static x => x);
+        var userToXp = new Dictionary<(ulong GuildId, ulong UserId), XpQueueEntry>(currentBatch.Count);
+        foreach (var entry in currentBatch)
+            userToXp[(entry.GuildId, entry.UserId)] = entry;
         foreach (var u in updated)
         {
-            if (!userToXp.TryGetValue(u.UserId, out var data))
+            if (!userToXp.TryGetValue((u.GuildId, u.UserId), out var data))
                 continue;
 
             var f = _xpFormula.GetFormula(u.GuildId);
@@ -252,6 +233,67 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
         }
     }
 
+    private async Task<List<UserXpStats>> WriteBatchInternalAsync(List<XpQueueEntry> currentBatch)
+    {
+        await using var ctx = _db.GetDbContext();
+        await using var tx = await ctx.Database.BeginTransactionAsync();
+        await using var lctx = ctx.CreateLinqToDBConnection();
+
+        var tempTableName = "xptemp_" + Guid.NewGuid().ToString("N");
+        List<UserXpStats> updated;
+
+        // the temp table must be dropped before the commit; after it the drop fails silently and the table leaks on the pooled connection
+        await using (var batchTable = await lctx.CreateTempTableAsync<UserXpBatch>(tempTableName))
+        {
+            await batchTable.BulkCopyAsync(currentBatch.Select(static x => new UserXpBatch()
+            {
+                GuildId = x.GuildId,
+                UserId = x.UserId,
+                XpToGain = x.Xp,
+                CountsForClub = x.CountsForClub
+            }));
+
+            await lctx.ExecuteAsync(
+                $"""
+                 INSERT INTO UserXpStats (GuildId, UserId, Xp)
+                 SELECT "{tempTableName}"."GuildId", "{tempTableName}"."UserId", "XpToGain"
+                 FROM {tempTableName}
+                 WHERE TRUE
+                 ON CONFLICT (GuildId, UserId) DO UPDATE 
+                 SET 
+                     Xp = UserXpStats.Xp + EXCLUDED.Xp;
+                 """);
+
+            await AddClubXpAsync(lctx, tempTableName);
+
+            updated = await batchTable
+                .InnerJoin(lctx.GetTable<UserXpStats>(),
+                    (u, s) => u.GuildId == s.GuildId && u.UserId == s.UserId,
+                    (batch, stats) => stats)
+                .ToListAsyncLinqToDB();
+        }
+
+        await tx.CommitAsync();
+        return updated;
+    }
+
+    // a fixed rate per tick keeps guild xp rates and .xpadd from inflating the global club leaderboard
+    private const long CLUB_XP_PER_TICK = 3;
+
+    // must run in the same transaction as the UserXpStats upsert, otherwise a crash mid-flush desyncs club xp
+    public static Task<int> AddClubXpAsync(DataConnection lctx, string tempTableName)
+        => lctx.ExecuteAsync(
+            $"""
+             UPDATE Clubs
+             SET Xp = Xp + agg.Gain
+             FROM (SELECT du.ClubId AS ClubId, COUNT(DISTINCT t.UserId) * {CLUB_XP_PER_TICK} AS Gain
+                   FROM "{tempTableName}" t
+                   INNER JOIN DiscordUser du ON du.UserId = t.UserId
+                   WHERE du.ClubId IS NOT NULL AND t.CountsForClub <> 0
+                   GROUP BY du.ClubId) AS agg
+             WHERE Clubs.Id = agg.ClubId;
+             """);
+
     private Func<Task> NotifyUser(
         ulong guildId,
         ulong? channelId,
@@ -265,6 +307,7 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
             await HandleNotifyInternalAsync(guildId, channelId, userId, newLevel);
         };
 
+    // One level-up can pass many reward levels. Each role changes at most once, and the currency arrives as one sum.
     private async Task HandleRewardsInternalAsync(
         ulong guildId,
         ulong userId,
@@ -272,72 +315,95 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
         long newLevel)
     {
         var settings = await GetFullXpSettingsFor(guildId);
-        var rrews = settings.RoleRewards;
-        var crews = settings.CurrencyRewards;
 
-        //loop through levels since last level up, so if a high amount of xp is gained, reward are still applied.
-        for (var i = oldLevel + 1; i <= newLevel; i++)
+        long currency = 0;
+        foreach (var crew in settings.CurrencyRewards)
         {
-            var rrew = rrews.FirstOrDefault(x => x.Level == i);
-            if (rrew is not null)
-            {
-                var guild = _client.GetGuild(guildId);
-                var role = guild?.GetRole(rrew.RoleId);
-                var user = guild?.GetUser(userId);
+            if (crew.Level > oldLevel && crew.Level <= newLevel)
+                currency += crew.Amount;
+        }
 
-                if (role is not null && user is not null)
+        if (currency > 0)
+            await _cs.AddAsync(userId, currency, new("xp", "level-up"));
+
+        var guild = _client.GetGuild(guildId);
+        var user = guild?.GetUser(userId);
+        if (guild is null || user is null)
+            return;
+
+        var changes = GetRoleRewardChanges(settings.RoleRewards, oldLevel, newLevel);
+        foreach (var (roleId, remove) in changes)
+        {
+            var role = guild.GetRole(roleId);
+            if (role is null || remove != HasRole(user, roleId) || !RoleChecks.CanBotAssign(guild, role))
+                continue;
+
+            try
+            {
+                if (remove)
                 {
-                    if (rrew.Remove)
-                    {
-                        try
-                        {
-                            await user.RemoveRoleAsync(role);
-                            await _notifySub.NotifyAsync(new RemoveRoleRewardNotifyModel(guild.Id,
-                                    role.Id,
-                                    user.Id,
-                                    newLevel),
-                                isShardLocal: true);
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Warning(ex,
-                                "Unable to remove role {RoleId} from user {UserId}: {Message}",
-                                role.Id,
-                                user.Id,
-                                ex.Message);
-                        }
-                    }
-                    else
-                    {
-                        try
-                        {
-                            await user.AddRoleAsync(role);
-                            await _notifySub.NotifyAsync(new AddRoleRewardNotifyModel(guild.Id,
-                                    role.Id,
-                                    user.Id,
-                                    newLevel),
-                                isShardLocal: true);
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Warning(ex,
-                                "Unable to add role {RoleId} to user {UserId}: {Message}",
-                                role.Id,
-                                user.Id,
-                                ex.Message);
-                        }
-                    }
+                    await user.RemoveRoleAsync(role);
+                    await _notifySub.NotifyAsync(new RemoveRoleRewardNotifyModel(guild.Id, role.Id, user.Id, newLevel),
+                        isShardLocal: true);
+                }
+                else
+                {
+                    await user.AddRoleAsync(role);
+                    await _notifySub.NotifyAsync(new AddRoleRewardNotifyModel(guild.Id, role.Id, user.Id, newLevel),
+                        isShardLocal: true);
                 }
             }
-
-            //get currency reward for this level
-            var crew = crews.FirstOrDefault(x => x.Level == i);
-            if (crew is not null)
+            catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.Forbidden)
             {
-                //give the user the reward if it exists
-                await _cs.AddAsync(userId, crew.Amount, new("xp", "level-up"));
+                // The other roles would fail the same way, and each 403 counts toward Discord's invalid request limit.
+                Log.Warning("Missing permission to change the role rewards of user {UserId} in guild {GuildId}",
+                    user.Id,
+                    guild.Id);
+                return;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex,
+                    "Unable to change role {RoleId} of user {UserId}: {Message}",
+                    role.Id,
+                    user.Id,
+                    ex.Message);
             }
         }
+    }
+
+    // The reward of the highest level decides whether a role is added or removed.
+    public static Dictionary<ulong, bool> GetRoleRewardChanges(
+        IEnumerable<XpRoleReward> rewards,
+        long oldLevel,
+        long newLevel)
+    {
+        var levels = new Dictionary<ulong, int>();
+        var changes = new Dictionary<ulong, bool>();
+        foreach (var rrew in rewards)
+        {
+            if (rrew.Level <= oldLevel || rrew.Level > newLevel)
+                continue;
+
+            if (levels.TryGetValue(rrew.RoleId, out var seen) && seen > rrew.Level)
+                continue;
+
+            levels[rrew.RoleId] = rrew.Level;
+            changes[rrew.RoleId] = rrew.Remove;
+        }
+
+        return changes;
+    }
+
+    private static bool HasRole(SocketGuildUser user, ulong roleId)
+    {
+        foreach (var role in user.Roles)
+        {
+            if (role.Id == roleId)
+                return true;
+        }
+
+        return false;
     }
 
     private async Task HandleNotifyInternalAsync(
@@ -420,7 +486,8 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
         await uow.SaveChangesAsync();
     }
 
-    public async Task SetRoleRewardAsync(
+    // False when the server already has MAX_ROLE_REWARDS levels with a role reward.
+    public async Task<bool> SetRoleRewardAsync(
         ulong guildId,
         int level,
         ulong roleId,
@@ -438,6 +505,9 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
         }
         else
         {
+            if (settings.RoleRewards.Count >= MAX_ROLE_REWARDS)
+                return false;
+
             settings.RoleRewards.Add(new()
             {
                 Level = level,
@@ -447,6 +517,7 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
         }
 
         await uow.SaveChangesAsync();
+        return true;
     }
 
     public async Task<IReadOnlyCollection<UserXpStats>> GetGuildUserXps(ulong guildId, int page)
@@ -541,7 +612,7 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
         if (!TryAddUserGainedXp(user.Id, rate.Cooldown))
             return default;
 
-        _usersBatch[user.Id] = new(guild.Id, user.Id, user.Username, user.DisplayAvatarId, rate.Amount, gc.Id);
+        QueueXpInternal(new(guild.Id, user.Id, rate.Amount, gc.Id, true));
 
         return default;
     }
@@ -563,10 +634,17 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
     public Task AddXpAsync(ulong channelId, long amount, params IGuildUser[] users)
     {
         foreach (var user in users)
-            _usersBatch[user.Id] = new(user.GuildId, user.Id, user.Username, user.DisplayAvatarId, amount, channelId);
+            QueueXpInternal(new(user.GuildId, user.Id, amount, channelId, false));
 
         return Task.CompletedTask;
     }
+
+    // Gains in one flush window add up, so a grant and a chat message in the same 3 seconds both count.
+    private void QueueXpInternal(XpQueueEntry entry)
+        => _usersBatch.AddOrUpdate((entry.GuildId, entry.UserId),
+            static (_, added) => added,
+            static (_, old, added) => XpQueueEntry.Merge(old, added),
+            entry);
     
     private bool TryAddUserGainedXp(ulong userId, float cdInMinutes)
         => _xpCooldowns.TryAddCooldown(userId, cdInMinutes);
@@ -819,7 +897,8 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
         if (!string.IsNullOrWhiteSpace(url))
         {
             var data = await _images.GetImageDataAsync(new Uri(url));
-            return data;
+            if (data is not null)
+                return data;
         }
 
         return await _images.GetXpBackgroundImageAsync();
@@ -836,7 +915,8 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
             if (!string.IsNullOrWhiteSpace(url))
             {
                 var data = await _images.GetImageDataAsync(new Uri(url));
-                frame = Image.Load<Rgba32>(data);
+                if (data is not null)
+                    frame = Image.Load<Rgba32>(data);
             }
         }
 
@@ -889,24 +969,33 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
                 var result = await _c.GetImageDataAsync(imgUrl);
                 if (!result.TryPickT0(out var data, out _))
                 {
-                    using (var http = _httpFactory.CreateClient())
+                    using (var http = _httpFactory.CreateClient(ExternalHttp.CLIENT_NAME))
                     using (var temp = await http.GetAsync(imgUrl, HttpCompletionOption.ResponseHeadersRead))
                     {
-                        if (!temp.IsImage() || temp.GetContentLength() > 11 * 1024 * 1024)
+                        if (!temp.IsSuccessStatusCode || !temp.IsImage())
                             return;
 
-                        var imgData = await temp.Content.ReadAsByteArrayAsync();
-                        using (var tempDraw = Image.Load<Rgba32>(imgData))
+                        if (await ExternalHttp.ReadLimitedAsync(temp.Content, MAX_CLUB_IMAGE_BYTES) is not { } imgData)
+                            return;
+
+                        try
                         {
+                            var bytes = imgData.Buffer.AsSpan(0, imgData.Length);
+                            if (!ImageCache.IsWithinPixelLimit(bytes))
+                                return;
+
+                            using var tempDraw = Image.Load<Rgba32>(new DecoderOptions { MaxFrames = 1 }, bytes);
                             tempDraw.Mutate(x => x
                                 .Resize(template.Club.Icon.Size.X, template.Club.Icon.Size.Y)
                                 .ApplyRoundedCorners(Math.Max(template.Club.Icon.Size.X,
                                                          template.Club.Icon.Size.Y)
                                                      / 2.0f));
-                            await using (var tds = await tempDraw.ToStreamAsync())
-                            {
-                                data = tds.ToArray();
-                            }
+                            await using var tds = await tempDraw.ToStreamAsync();
+                            data = tds.ToArray();
+                        }
+                        finally
+                        {
+                            ArrayPool<byte>.Shared.Return(imgData.Buffer);
                         }
                     }
 
@@ -1150,7 +1239,16 @@ public class XpService : INService, IReadyExecutor, IExecNoCommand
 public readonly record struct XpQueueEntry(
     ulong GuildId,
     ulong UserId,
-    string Username,
-    string AvatarId,
     long Xp,
-    ulong? ChannelId);
+    ulong? ChannelId,
+    bool CountsForClub)
+{
+    // A gain with no origin channel (0) keeps the channel of an earlier gain for the level-up notice.
+    public static XpQueueEntry Merge(in XpQueueEntry old, in XpQueueEntry added)
+        => added with
+        {
+            Xp = old.Xp + added.Xp,
+            ChannelId = added.ChannelId is null or 0 ? old.ChannelId : added.ChannelId,
+            CountsForClub = old.CountsForClub || added.CountsForClub
+        };
+}

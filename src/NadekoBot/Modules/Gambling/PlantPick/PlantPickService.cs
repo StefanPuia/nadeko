@@ -4,6 +4,8 @@ using LinqToDB.EntityFrameworkCore;
 using NadekoBot.Common.ModuleBehaviors;
 using NadekoBot.Db.Models;
 using NadekoBot.Modules.Games.Quests;
+using System.Globalization;
+using System.Net;
 using SixLabors.Fonts;
 using SixLabors.Fonts.Unicode;
 using SixLabors.ImageSharp;
@@ -178,6 +180,10 @@ public class PlantPickService(
         if (!_generationChannels.Contains(channel.Id))
             return default;
 
+        var botPerms = ((SocketGuild)channel.Guild).CurrentUser.GetPermissions(channel);
+        if (!botPerms.ViewChannel || !botPerms.SendMessages || !botPerms.AttachFiles)
+            return default;
+
         _ = Task.Run(async () =>
         {
             try
@@ -223,26 +229,48 @@ public class PlantPickService(
                         await using (stream)
                             sent = await channel.SendFileAsync(stream, $"currency_image.{ext}", toSend);
 
-                        var res = await AddPlantToDatabase(channel.GuildId,
+                        var (total, toDelete) = await AddPlantToDatabase(channel.GuildId,
                             channel.Id,
                             client.CurrentUser.Id,
                             sent.Id,
                             dropAmount,
-                            pw,
-                            true);
+                            pw);
 
-                        if (res.toDelete.Length > 0)
+                        if (toDelete.Length > 0 && botPerms.ManageMessages)
                         {
-                            await channel.DeleteMessagesAsync(res.toDelete);
+                            var merged = GetText(channel.GuildId, strs.curgen_pl(total, config.Currency.Sign))
+                                         + "\n> "
+                                         + GetText(channel.GuildId, strs.pick_pl_pw(prefix));
+
+                            await sent.ModifyAsync(m => m.Content = merged);
+                            await channel.DeleteMessagesAsync(toDelete);
                         }
                     }
                 }
             }
-            catch
+            catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.Forbidden)
             {
+                Log.Warning("Turning off currency generation in {GuildId}/{ChannelId}: the bot cannot post there",
+                    channel.GuildId,
+                    channel.Id);
+                await DisableGenerationInternalAsync(channel.GuildId, channel.Id);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Error generating currency in {ChannelId}", channel.Id);
             }
         });
         return default;
+    }
+
+    private async Task DisableGenerationInternalAsync(ulong gid, ulong cid)
+    {
+        await using var uow = db.GetDbContext();
+        await uow.GetTable<GCChannelId>()
+            .Where(x => x.ChannelId == cid && x.GuildId == gid)
+            .DeleteAsync();
+
+        _generationChannels.TryRemove(cid);
     }
 
     public async Task<long> PickAsync(
@@ -295,7 +323,20 @@ public class PlantPickService(
         return amount;
     }
 
-    public async Task<ulong?> SendPlantMessageAsync(
+    private string GetPlantText(ulong gid, string user, long amount, string pass)
+    {
+        var prefix = cmdHandler.GetPrefix(gid);
+        var text = GetText(gid,
+            strs.planted(Format.Bold(user), CurrencyHelper.N(amount, CultureInfo.InvariantCulture, gss.Data.Currency.Sign)));
+
+        var hasPw = !string.IsNullOrWhiteSpace(pass);
+        if (amount > 1)
+            return text + "\n> " + GetText(gid, hasPw ? strs.pick_pl_pw(prefix) : strs.pick_pl(prefix));
+
+        return text + "\n> " + GetText(gid, hasPw ? strs.pick_sn_pw(prefix) : strs.pick_sn(prefix));
+    }
+
+    public async Task<IUserMessage> SendPlantMessageAsync(
         ulong gid,
         IMessageChannel ch,
         string user,
@@ -304,25 +345,9 @@ public class PlantPickService(
     {
         try
         {
-            // get the text
-            var prefix = cmdHandler.GetPrefix(gid);
-            var msgToSend = GetText(gid, strs.planted(Format.Bold(user), amount + gss.Data.Currency.Sign));
-
-            var hasPw = !string.IsNullOrWhiteSpace(pass);
-            if (amount > 1)
-                msgToSend += "\n> " + GetText(gid, hasPw ? strs.pick_pl_pw(prefix) : strs.pick_pl(prefix));
-            else
-                msgToSend += "\n> " + GetText(gid, hasPw ? strs.pick_sn_pw(prefix) : strs.pick_sn(prefix));
-
-            //get the image
             var (stream, ext) = await GetRandomCurrencyImageAsync(pass);
-            // send it
             await using (stream)
-            {
-                var msg = await ch.SendFileAsync(stream, $"img.{ext}", msgToSend);
-                // return sent message's id (in order to be able to delete it when it's picked)
-                return msg.Id;
-            }
+                return await ch.SendFileAsync(stream, $"img.{ext}", GetPlantText(gid, user, amount, pass));
         }
         catch (Exception ex)
         {
@@ -337,21 +362,17 @@ public class PlantPickService(
         ITextChannel ch,
         ulong userId,
         string user,
-        long amount,
-        string pass)
+        long amount)
     {
-        // normalize it - no more than 10 chars, uppercase
-        pass = pass?.Trim().TrimTo(10, true).ToUpperInvariant();
-        // has to be either null or alphanumeric
-        if (!string.IsNullOrWhiteSpace(pass) && !pass.IsAlphaNumeric())
-            return false;
+        // a chosen password would let a bot plant, then pick every merged drop without reading an image
+        var pass = gss.Data.Generation.HasPassword ? gs.GeneratePassword().ToUpperInvariant() : null;
 
         // remove currency from the user who's planting
         if (await cs.RemoveAsync(userId, amount, new("put/collect", "put")))
         {
             // try to send the message with the currency image
-            var msgId = await SendPlantMessageAsync(gid, ch, user, amount, pass);
-            if (msgId is null)
+            var msg = await SendPlantMessageAsync(gid, ch, user, amount, pass);
+            if (msg is null)
             {
                 // if it fails it will return null, if it returns null, refund
                 await cs.AddAsync(userId, amount, new("put/collect", "refund"));
@@ -359,8 +380,22 @@ public class PlantPickService(
             }
 
             // if it doesn't fail, put the plant in the database for other people to pick
-            await AddPlantToDatabase(gid, ch.Id, userId, msgId.Value, amount, pass);
+            var (total, toDelete) = await AddPlantToDatabase(gid, ch.Id, userId, msg.Id, amount, pass);
             await quests.ReportActionAsync(userId, QuestEventType.PlantOrPick, new() { { "type", "plant" } });
+
+            if (toDelete.Length > 0)
+            {
+                try
+                {
+                    var merged = GetPlantText(gid, user, total, pass);
+                    await msg.ModifyAsync(m => m.Content = merged);
+                    await ch.DeleteMessagesAsync(toDelete);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Updating merged plant messages failed");
+                }
+            }
 
             return true;
         }
@@ -375,19 +410,17 @@ public class PlantPickService(
         ulong uid,
         ulong mid,
         long amount,
-        string pass,
-        bool auto = false)
+        string pass)
     {
         await using var uow = db.GetDbContext();
+        await using var tran = await uow.Database.BeginTransactionAsync();
 
+        // a new password drop takes over all earlier drops, otherwise drops which scrolled away stay unpicked forever
         PlantedCurrency[] deleted = [];
-        if (!string.IsNullOrWhiteSpace(pass) && auto)
+        if (!string.IsNullOrWhiteSpace(pass))
         {
             deleted = await uow.GetTable<PlantedCurrency>()
-                .Where(x => x.GuildId == gid
-                            && x.ChannelId == cid
-                            && x.Password != null
-                            && x.Password.Length == pass.Length)
+                .Where(x => x.GuildId == gid && x.ChannelId == cid)
                 .DeleteWithOutputAsync();
         }
 
@@ -403,6 +436,8 @@ public class PlantPickService(
                 UserId = uid,
                 MessageId = mid,
             });
+
+        await tran.CommitAsync();
 
         return (totalDeletedAmount + amount, deleted.Select(x => x.MessageId).ToArray());
     }

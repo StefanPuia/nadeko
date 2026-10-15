@@ -43,13 +43,11 @@ public partial class Gambling
         }
 
         [Cmd]
+        [SpendsCurrency]
         [RequireContext(ContextType.Guild)]
-        public async Task Plant([OverrideTypeReader(typeof(BalanceTypeReader))] long amount = 1, string pass = null)
+        public async Task Plant([OverrideTypeReader(typeof(BalanceTypeReader))] long amount = 1)
         {
             if (amount < 1)
-                return;
-
-            if (!string.IsNullOrWhiteSpace(pass) && !pass.IsAlphaNumeric())
                 return;
 
             if (((SocketGuild)ctx.Guild).CurrentUser.GuildPermissions.ManageMessages)
@@ -62,8 +60,7 @@ public partial class Gambling
                 (ITextChannel)ctx.Channel,
                 ctx.User.Id,
                 ctx.User.ToString(),
-                amount,
-                pass);
+                amount);
 
             if (!success)
                 await Response().Error(strs.not_enough(CurrencySign)).SendAsync();

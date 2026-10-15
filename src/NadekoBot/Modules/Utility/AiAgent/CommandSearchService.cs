@@ -19,11 +19,9 @@ public sealed class CommandSearchService(
     private const int NUM_CLASSES = 2;
     private const float BN_EPS = 1e-5f;
 
-    private static readonly TypedKey<bool> _reloadKey = new("cmdsearch.reload");
+    public static readonly TypedKey<bool> ReloadKey = new("cmdsearch.reload");
 
-    // Bump when the parsed representation changes without the on-disk file changing,
-    // so the embeddings cache (keyed by this hash) is invalidated once. "v2" = prefix
-    // stripped from aliases/usage at parse time.
+    // Bumped when the parsing changes but the file does not, to invalidate the cache once.
     private static readonly byte[] _indexSchemaSalt = "v2-prefixless"u8.ToArray();
 
     private readonly SemanticIndex<CommandEntry> _index = new(
@@ -47,7 +45,7 @@ public sealed class CommandSearchService(
 
     public Task OnReadyAsync()
     {
-        _ = pubSub.Sub(_reloadKey, OnReloadRequestedInternalAsync);
+        _ = pubSub.Sub(ReloadKey, OnReloadRequestedInternalAsync);
         _ = Task.Run(InitializeInternalAsync);
 
         if (shardData.ShardId == 0)
@@ -115,7 +113,7 @@ public sealed class CommandSearchService(
             if (!_headReady)
                 LoadClassificationHeadInternal();
 
-            await pubSub.Pub(_reloadKey, true);
+            await pubSub.Pub(ReloadKey, true);
         }
         catch (Exception ex)
         {
@@ -157,6 +155,13 @@ public sealed class CommandSearchService(
         if (commands.Length == 0)
         {
             Log.Warning("CommandSearch: No commands found in commandlist.json");
+            return;
+        }
+
+        // Remembering the hash of a list which was never indexed would make every later reload skip it.
+        if (!embedder.IsReady)
+        {
+            Log.Warning("CommandSearch: Embedding model is not ready, the command list will be indexed on the next reload");
             return;
         }
 
@@ -225,7 +230,10 @@ public sealed class CommandSearchService(
     {
         if (!File.Exists(INTENT_HEAD_PATH))
         {
-            Log.Warning("CommandSearch: Intent head not found at {Path}", INTENT_HEAD_PATH);
+            Log.Warning(
+                "CommandSearch: Intent head not found at {Path}. The AI agent will not start from replies or the bot name. "
+                + "Copy data/ai/intent-head.bin from the release into the data/ai folder and restart the bot",
+                INTENT_HEAD_PATH);
             return;
         }
 
@@ -276,8 +284,7 @@ public sealed class CommandSearchService(
         }
     }
 
-    // Hash of the file bytes plus a schema salt, so a change in how we parse the file
-    // (without the file itself changing) invalidates the embeddings cache once.
+    // The salt is part of the hash, so a change of the parsing alone also invalidates the cache.
     private static byte[] ComputeListHashInternal(byte[] cmdListBytes)
     {
         using var hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
@@ -286,10 +293,8 @@ public sealed class CommandSearchService(
         return hasher.GetHashAndReset();
     }
 
-    // The persisted commandlist.json bakes in CommandListGenerator.DefaultPrefix so it
-    // stays a stable prefixed source for external consumers. The agent works with raw
-    // commands (run_command re-applies the guild's prefix), so strip the single leading
-    // prefix here. Interior prefixes (e.g. ".doas @x .give") are arguments and preserved.
+    // run_command applies the prefix of the guild, so only the leading one is stripped here.
+    // An interior prefix, as in ".doas @x .give", is an argument and stays.
     private static string StripLeadingPrefixInternal(string s)
         => s.StartsWith(CommandListGenerator.DefaultPrefix, StringComparison.Ordinal)
             ? s[CommandListGenerator.DefaultPrefix.Length..]

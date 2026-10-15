@@ -7,6 +7,7 @@ ar:
   commands_ran: الأوامر المنفّذة
   config_edit_fail: 'فشل تعيين {0} إلى القيمة {1}'
   config_list: قائمة الإعدادات
+  config_locked: 'مضيف هذا البوت يتحكم في الإعداد {0} ضمن إعدادات {1}. لا يمكنك تغييره.'
   config_not_found: 'الإعداد {0} غير موجود'
   config_prop_not_found: 'الخاصية {0} غير موجودة في إعداد {1}'
   emoji_add_error: خطأ في إضافة الإيموجي. إما نفدت خانات الإيموجي أو حجم الصورة غير مناسب.
@@ -43,11 +44,14 @@ ar:
   sniped_by: 'التقطها {0}'
   sticker_error: يجب إرسال ملصق مع هذا الأمر، أو رفع صورة بصيغة .png أو .apng بأبعاد 300×300 وحجم لا يتجاوز 512 كيلوبايت.
   uptime: مدة التشغيل
-  user_afk: 'المستخدم {0} غائب (AFK).'
   userid: '{0} للمستخدم {1} هو {2}'
   verbose_errors_disabled: لن تظهر الأخطاء بعد الآن عند استخدام الأوامر بشكل غير صحيح.
   verbose_errors_enabled: ستظهر الأخطاء الآن عند استخدام الأوامر بشكل غير صحيح.
   whos_playing_game: '{0} مستخدم يلعبون {1}'
+  afk_cleared: تم إلغاء حالة AFK الخاصة بك.
+  afk_reply: '{0} في حالة AFK: {1}'
+  afk_no_reason: لم يتم تحديد سبب.
+  afk_too_long: 'يمكن أن تحتوي رسالة AFK على {0} حرف كحد أقصى.'
 
 de-DE:
   afk_set: AFK-Nachricht gesetzt. Schreibe eine Nachricht in einem beliebigen Kanal zum Zurücksetzen.
@@ -58,6 +62,7 @@ de-DE:
   commands_ran: Commands ausgeführt
   config_edit_fail: 'Einstellen von {0} zu der Menge {1} gescheitert.'
   config_list: Konfigurationsliste
+  config_locked: 'Der Host dieses Bots steuert die Einstellung {0} der Konfiguration {1}. Du kannst sie nicht ändern.'
   config_not_found: 'Konfiguration {0} nicht gefunden'
   config_prop_not_found: 'Eigentum {0} nicht gefunden mit {1} Konfiguration'
   emoji_add_error: Fehler beim hinzufügen des Emoji. Es sind keine Emoji slots mehr vorhanden, oder die Bildgröße ist unangemessen.
@@ -94,11 +99,14 @@ de-DE:
   sniped_by: 'Abgefangen von {0}'
   sticker_error: Du musst entweder einen Sticker mit diesem Befehl senden oder ein 300x300 .png oder .apng Bild hochladen. Bis zu 512KB groß.
   uptime: Betriebszeit
-  user_afk: 'Benutzer {0} ist AFK.'
   userid: '{0} des Nutzers {1} ist {2}'
   verbose_errors_disabled: Unbehandelte Befehl Fehler werden nicht mehr im Chat angezeigt.
   verbose_errors_enabled: Unbehandelte Befehl Fehler werden von nun an im Chat angezeigt.
   whos_playing_game: '{0} Benutzer spielen {1}'
+  afk_cleared: Dein AFK-Status ist jetzt aufgehoben.
+  afk_reply: '{0} ist AFK: {1}'
+  afk_no_reason: Kein Grund angegeben.
+  afk_too_long: 'Die AFK-Nachricht darf höchstens {0} Zeichen lang sein.'
 
 es-ES:
   afk_set: Mensaje de AFK establecido. Escribe un mensaje en cualquier canal para limpiar.
@@ -109,6 +117,7 @@ es-ES:
   commands_ran: Comandos ejecutados
   config_edit_fail: 'No se ha podido configurar {0} al valor {1}'
   config_list: Lista de configuraciones
+  config_locked: 'El host de este bot controla el ajuste {0} de la configuración {1}. No puedes cambiarlo.'
   config_not_found: 'Configuración {0} no encontrada'
   config_prop_not_found: 'La propiedad {0} no se encuentra en la configuración {1}'
   emoji_add_error: Error al agregar emoji. Ya no hay espacio para más, o el tamaño de la imagen no es adecuado.
@@ -145,11 +154,14 @@ es-ES:
   sniped_by: 'Capturado por {0}'
   sticker_error: Debes enviar un sticker junto con este comando, o subir una imagen .png o .apng de 300x300. Hasta 512KB de tamaño.
   uptime: Tiempo en línea
-  user_afk: 'El usuario {0} está AFK.'
   userid: '{0} del usuario {1} es {2}'
   verbose_errors_disabled: El uso incorrecto de comandos ya no mostrará errores.
   verbose_errors_enabled: Desde ahora, el uso incorrecto de comandos mostrará errores.
   whos_playing_game: '{0} usuarios están jugando {1}'
+  afk_cleared: Tu estado de AFK se ha borrado.
+  afk_reply: '{0} está AFK: {1}'
+  afk_no_reason: Sin motivo especificado.
+  afk_too_long: 'El mensaje de AFK puede tener un máximo de {0} caracteres.'
 
 fr-FR:
   afk_set: Message AFK défini. Tapez un message dans n'importe quel salon pour l'effacer.
@@ -160,6 +172,7 @@ fr-FR:
   commands_ran: Commandes exécutées
   config_edit_fail: 'Échec de la définition de {0} sur la valeur {1}'
   config_list: Liste de configuration
+  config_locked: 'L''hébergeur de ce bot contrôle le paramètre {0} de la configuration {1}. Tu ne peux pas le modifier.'
   config_not_found: 'Configuration {0} introuvable'
   config_prop_not_found: 'Propriété {0} introuvable dans la configuration {1}'
   emoji_add_error: Erreur lors de l'ajout d'emoji. Soit vous n'avez plus d'emplacements pour emoji, soit la taille de l'image est inadéquate.
@@ -196,11 +209,14 @@ fr-FR:
   sniped_by: 'Capturé par {0}'
   sticker_error: Vous devez envoyer un sticker avec cette commande, ou télécharger une image .png ou .apng de 300x300. Jusqu'à 512 Ko.
   uptime: Temps de fonctionnement
-  user_afk: 'L''utilisateur {0} est AFK.'
   userid: '{0} de l''utilisateur {1} est {2}'
   verbose_errors_disabled: Les commandes mal utilisées n'afficheront plus de message d'erreur.
   verbose_errors_enabled: Les commandes mal utilisées afficheront désormais un message d'erreur.
   whos_playing_game: '{0} utilisateurs jouent à {1}'
+  afk_cleared: Ton statut AFK a été retiré.
+  afk_reply: '{0} est AFK : {1}'
+  afk_no_reason: Aucune raison indiquée.
+  afk_too_long: 'Le message AFK ne peut pas dépasser {0} caractères.'
 
 id-ID:
   afk_set: Pesan AFK sudah diatur. Ketik pesan di channel mana pun untuk menghapusnya.
@@ -211,6 +227,7 @@ id-ID:
   commands_ran: Perintah dijalankan
   config_edit_fail: 'Gagal mengatur {0} ke nilai {1}'
   config_list: Daftar konfigurasi
+  config_locked: 'Host bot ini mengatur pengaturan {0} di konfigurasi {1}. Kamu tidak bisa mengubahnya.'
   config_not_found: 'Konfigurasi {0} tidak ditemukan'
   config_prop_not_found: 'Properti {0} tidak ditemukan di konfigurasi {1}'
   emoji_add_error: Gagal menambahkan emoji. Slot emoji habis, atau ukuran gambar tidak sesuai.
@@ -247,11 +264,14 @@ id-ID:
   sniped_by: 'Di-snipe oleh {0}'
   sticker_error: Kamu harus mengirim stiker bersama perintah ini, atau mengunggah gambar .png atau .apng berukuran 300x300. Maksimal 512KB.
   uptime: Waktu aktif
-  user_afk: 'Pengguna {0} sedang AFK.'
   userid: '{0} dari pengguna {1} adalah {2}'
   verbose_errors_disabled: Perintah yang salah digunakan tidak akan menampilkan error lagi.
   verbose_errors_enabled: Perintah yang salah digunakan sekarang akan menampilkan error.
   whos_playing_game: '{0} pengguna sedang bermain {1}'
+  afk_cleared: Status AFK kamu sudah dihapus.
+  afk_reply: '{0} sedang AFK: {1}'
+  afk_no_reason: Tidak ada alasan.
+  afk_too_long: 'Pesan AFK maksimal {0} karakter.'
 
 ja-JP:
   afk_set: AFKメッセージが設定されました。任意のチャンネルでメッセージを送信するとクリアされます。
@@ -262,6 +282,7 @@ ja-JP:
   commands_ran: 実行されたコマンド数
   config_edit_fail: '{0}の値を{1}に設定できませんでした'
   config_list: 設定一覧
+  config_locked: '{1} 設定の {0} はこのボットのホストが管理しています。変更できません。'
   config_not_found: '設定{0}が見つかりません'
   config_prop_not_found: '{1}設定にプロパティ{0}が見つかりません'
   emoji_add_error: 絵文字の追加中にエラーが発生しました。絵文字スロットが不足しているか、画像サイズが不適切です。
@@ -298,11 +319,14 @@ ja-JP:
   sniped_by: '{0}がスナイプ'
   sticker_error: このコマンドと一緒にステッカーを送信するか、300x300の.pngまたは.apng画像をアップロードしてください。最大512KBです。
   uptime: 稼働時間
-  user_afk: 'ユーザー{0}はAFK中です。'
   userid: '{1}の{0}は{2}です'
   verbose_errors_disabled: 間違ったコマンドを使用してもエラーを表示しません。
   verbose_errors_enabled: 間違ったコマンドを使用した際にエラーを表示します。
   whos_playing_game: '{0}人のユーザーが{1}をプレイ中'
+  afk_cleared: AFK ステータスを解除しました。
+  afk_reply: '{0} は AFK です: {1}'
+  afk_no_reason: 理由が指定されていません。
+  afk_too_long: 'AFK メッセージは最大 {0} 文字までです。'
 
 ko-KR:
   afk_set: AFK 메시지가 설정되었어요. 아무 채널에서 메시지를 보내면 해제돼요.
@@ -313,6 +337,7 @@ ko-KR:
   commands_ran: 실행된 명령어 수
   config_edit_fail: '{0}을(를) {1} 값으로 설정하는 데 실패했어요'
   config_list: 설정 목록
+  config_locked: '{1} 설정의 {0} 항목은 이 봇의 호스트가 관리해요. 변경할 수 없어요.'
   config_not_found: '{0} 설정을 찾을 수 없어요'
   config_prop_not_found: '{1} 설정에서 {0} 속성을 찾을 수 없어요'
   emoji_add_error: 이모지 추가 중 오류가 발생했어요. 이모지 슬롯이 부족하거나 이미지 크기가 적절하지 않아요.
@@ -349,11 +374,14 @@ ko-KR:
   sniped_by: '{0}이(가) 스나이프함'
   sticker_error: 이 명령어와 함께 스티커를 보내거나, 300x300 크기의 .png 또는 .apng 이미지를 업로드해 주세요. 최대 512KB까지 가능해요.
   uptime: 가동 시간
-  user_afk: '유저 {0}이(가) AFK 상태예요.'
   userid: '유저 {1}의 {0}은(는) {2}이에요'
   verbose_errors_disabled: 잘못 사용된 명령어가 더 이상 오류를 표시하지 않아요.
   verbose_errors_enabled: 잘못 사용된 명령어가 이제 오류를 표시해요.
   whos_playing_game: '{0}명의 유저가 {1}을(를) 플레이 중이에요'
+  afk_cleared: AFK 상태가 해제되었습니다.
+  afk_reply: '{0}님은 AFK 상태입니다: {1}'
+  afk_no_reason: 사유가 지정되지 않았습니다.
+  afk_too_long: 'AFK 메시지는 최대 {0}자까지 입력할 수 있습니다.'
 
 pl-PL:
   afk_set: Wiadomość AFK ustawiona. Napisz coś na dowolnym kanale, żeby ją usunąć.
@@ -364,6 +392,7 @@ pl-PL:
   commands_ran: Wykonane komendy
   config_edit_fail: 'Nie udało się ustawić {0} na wartość {1}'
   config_list: Lista konfiguracji
+  config_locked: 'Ustawieniem {0} w konfiguracji {1} zarządza host tego bota. Nie możesz go zmienić.'
   config_not_found: 'Nie znaleziono konfiguracji {0}'
   config_prop_not_found: 'Właściwość {0} nie została znaleziona w konfiguracji {1}'
   emoji_add_error: Błąd podczas dodawania emoji. Albo skończyły się sloty na emoji, albo rozmiar obrazu jest nieodpowiedni.
@@ -400,11 +429,14 @@ pl-PL:
   sniped_by: 'Przechwycone przez {0}'
   sticker_error: Musisz wysłać naklejkę razem z tą komendą lub przesłać obraz .png lub .apng o wymiarach 300x300. Maksymalnie 512KB.
   uptime: Czas działania
-  user_afk: 'Użytkownik {0} jest AFK.'
   userid: '{0} użytkownika {1} to {2}'
   verbose_errors_disabled: Niepoprawnie użyte komendy nie będą już pokazywać błędów.
   verbose_errors_enabled: Niepoprawnie użyte komendy będą teraz pokazywać błędy.
   whos_playing_game: '{0} użytkowników gra w {1}'
+  afk_cleared: Twój status AFK został usunięty.
+  afk_reply: '{0} jest AFK: {1}'
+  afk_no_reason: Nie podano powodu.
+  afk_too_long: 'Wiadomość AFK może mieć maksymalnie {0} znaków.'
 
 pt-BR:
   afk_set: Mensagem de AFK definida. Digite uma mensagem em qualquer canal para limpar.
@@ -415,6 +447,7 @@ pt-BR:
   commands_ran: Comandos executados
   config_edit_fail: 'Falha em configurar {0} para o valor {1}'
   config_list: Config Lista
+  config_locked: 'O host deste bot controla a configuração {0} de {1}. Você não pode alterá-la.'
   config_not_found: 'Configuração {0} não encontrada'
   config_prop_not_found: 'Propriedade {0} não encontrada na configuração {1}'
   emoji_add_error: Erro ao adicionar emoji. O servidor não possui mais slots de emoji disponíveis ou o tamanho da imagem é incompatível.
@@ -451,11 +484,14 @@ pt-BR:
   sniped_by: 'Capturado por {0}'
   sticker_error: Você deve enviar um sticker junto com este comando, ou enviar uma imagem .png ou .apng de 300x300. Até 512KB de tamanho.
   uptime: Tempo de Atividade
-  user_afk: 'O usuário {0} está AFK.'
   userid: '{0} do usuário {1} é {2}'
   verbose_errors_disabled: Comandos utilizados incorretamente não exibirão mais erros.
   verbose_errors_enabled: Comandos utilizados incorretamente exibirão erros.
   whos_playing_game: '{0} usuários estão jogando {1}'
+  afk_cleared: Seu status AFK foi removido.
+  afk_reply: '{0} está AFK: {1}'
+  afk_no_reason: Nenhum motivo informado.
+  afk_too_long: 'A mensagem de AFK pode ter no máximo {0} caracteres.'
 
 ru-RU:
   afk_set: Сообщение AFK установлено. Напишите сообщение в любом канале, чтобы сбросить.
@@ -466,6 +502,7 @@ ru-RU:
   commands_ran: Команд запущено
   config_edit_fail: 'Не удалось установить {0} значение {1}'
   config_list: Список свойств
+  config_locked: 'Настройкой {0} в конфигурации {1} управляет хостинг этого бота. Ты не можешь её изменить.'
   config_not_found: 'Конфигурация {0} не найдена'
   config_prop_not_found: 'Свойство {0} не найдено в конфигурации {1}'
   emoji_add_error: Ошибка добавления эмодзи. Либо у вас закончились слоты для смайликов, либо размер изображения не отвечающий требованиям.
@@ -502,11 +539,14 @@ ru-RU:
   sniped_by: 'Перехвачено {0}'
   sticker_error: Вы должны отправить стикер с этой командой, или загрузить изображение .png или .apng размером 300x300. До 512 КБ.
   uptime: Время работы
-  user_afk: 'Пользователь {0} AFK.'
   userid: '{0} пользователя {1} - {2}'
   verbose_errors_disabled: Необработанные ошибки команд больше не будут показаны в чате.
   verbose_errors_enabled: Отныне необработанные ошибки команд будут показаны в чате.
   whos_playing_game: '{0} пользователей играют в {1}'
+  afk_cleared: Твой статус AFK снят.
+  afk_reply: '{0} сейчас AFK: {1}'
+  afk_no_reason: Причина не указана.
+  afk_too_long: 'Сообщение AFK может содержать максимум {0} символов.'
 
 sr-Cyrl-RS:
   afk_set: АФК порука постављена. Откуцајте поруку у било ком каналу да је обришете.
@@ -517,6 +557,7 @@ sr-Cyrl-RS:
   commands_ran: Извршене команде
   config_edit_fail: 'Неуспешно постављање {0} на вредност {1}'
   config_list: Листа конфигурација
+  config_locked: 'Подешавањем {0} у конфигурацији {1} управља хост овог бота. Не можеш да га промениш.'
   config_not_found: 'Конфигурација {0} није пронађена'
   config_prop_not_found: 'Својство {0} није пронађено у конфигурацији {1}'
   emoji_add_error: Грешка при додавању емоџија. Или су вам слотови за емоџије пуни, или величина слике није одговарајућа.
@@ -553,11 +594,14 @@ sr-Cyrl-RS:
   sniped_by: 'Ухваћено од {0}'
   sticker_error: Морате послати стикер уз ову команду, или отпремити .png или .apng слику величине 300x300. До 512KB.
   uptime: Време рада
-  user_afk: 'Корисник {0} је АФК.'
   userid: '{0} корисника {1} је {2}'
   verbose_errors_disabled: Погрешно коришћене команде више неће приказивати грешке.
   verbose_errors_enabled: Погрешно коришћене команде ће сада приказивати грешке.
   whos_playing_game: '{0} корисника игра {1}'
+  afk_cleared: Твој AFK статус је уклоњен.
+  afk_reply: '{0} је AFK: {1}'
+  afk_no_reason: Разлог није наведен.
+  afk_too_long: 'AFK порука може да има највише {0} знакова.'
 
 tr-TR:
   afk_set: AFK mesajı ayarlandı. Temizlemek için herhangi bir kanalda mesaj yaz.
@@ -568,6 +612,7 @@ tr-TR:
   commands_ran: Çalıştırılan komutlar
   config_edit_fail: '{0} değeri {1} olarak ayarlanamadı'
   config_list: Yapılandırma listesi
+  config_locked: '{1} yapılandırmasındaki {0} ayarını bu botun sunucusu yönetiyor. Bunu değiştiremezsin.'
   config_not_found: '{0} yapılandırması bulunamadı'
   config_prop_not_found: '{1} yapılandırmasında {0} özelliği bulunamadı'
   emoji_add_error: Emoji eklenirken hata oluştu. Ya emoji slotların doldu ya da resim boyutu uygun değil.
@@ -604,11 +649,14 @@ tr-TR:
   sniped_by: '{0} tarafından yakalandı'
   sticker_error: Bu komutla birlikte bir çıkartma göndermelisin ya da 300x300 boyutunda .png veya .apng resmi yüklemelisin. En fazla 512KB boyutunda.
   uptime: Çalışma süresi
-  user_afk: '{0} kullanıcısı AFK.'
   userid: '{1} kullanıcısının {0} değeri {2}'
   verbose_errors_disabled: Hatalı kullanılan komutlar artık hata göstermeyecek.
   verbose_errors_enabled: Hatalı kullanılan komutlar artık hata gösterecek.
   whos_playing_game: '{0} kullanıcı {1} oynuyor'
+  afk_cleared: AFK durumun kaldırıldı.
+  afk_reply: '{0} AFK: {1}'
+  afk_no_reason: Sebep belirtilmedi.
+  afk_too_long: 'AFK mesajı en fazla {0} karakter olabilir.'
 
 ts-TS:
   afk_set: AFK message set. Type a message in any channel to clear it. N-not that I'll miss you.
@@ -619,6 +667,7 @@ ts-TS:
   commands_ran: Commands ran
   config_edit_fail: 'Failed setting {0} to {1}. The value is probably wrong, b-baka.'
   config_list: Config list
+  config_locked: 'The host controls the {0} setting of {1}, not you. Hmph, you can''t change it.'
   config_not_found: 'Configuration {0} not found. D-did you even spell it right?'
   config_prop_not_found: 'Property {0} doesn''t exist on {1} configuration.'
   emoji_add_error: Couldn't add that emoji. You're probably out of slots or the image is wrong.
@@ -655,11 +704,14 @@ ts-TS:
   sniped_by: 'Sniped by {0}'
   sticker_error: You need to send a sticker with the command or upload a 300x300 .png or .apng under 512KB. Is that so hard?
   uptime: Uptime
-  user_afk: 'User {0} is AFK.'
   userid: '{0} of the user {1} is {2}'
   verbose_errors_disabled: Incorrectly used commands will no longer show errors.
   verbose_errors_enabled: Incorrectly used commands will now show errors. W-well, you clearly need the help.
   whos_playing_game: '{0} users are playing {1}.'
+  afk_cleared: Hmph. Your AFK status is cleared.
+  afk_reply: '{0} is AFK: {1}'
+  afk_no_reason: No reason specified.
+  afk_too_long: 'Keep it shorter. The AFK message can have a maximum of {0} characters.'
 
 uk-UA:
   afk_set: AFK-повідомлення встановлено. Напиши щось у будь-якому каналі, щоб зняти.
@@ -670,6 +722,7 @@ uk-UA:
   commands_ran: Виконано команд
   config_edit_fail: 'Не вдалося встановити {0} у значення {1}'
   config_list: Список конфігурацій
+  config_locked: 'Налаштуванням {0} у конфігурації {1} керує хостинг цього бота. Ти не можеш його змінити.'
   config_not_found: 'Конфігурацію {0} не знайдено'
   config_prop_not_found: 'Властивість {0} не знайдено в конфігурації {1}'
   emoji_add_error: Помилка додавання емодзі. Або закінчились слоти для емодзі, або розмір зображення не підходить.
@@ -706,11 +759,14 @@ uk-UA:
   sniped_by: 'Перехоплено {0}'
   sticker_error: Треба або надіслати стікер разом із цією командою, або завантажити .png чи .apng зображення 300x300. Максимум 512КБ.
   uptime: Час роботи
-  user_afk: 'Користувач {0} зараз AFK.'
   userid: '{0} користувача {1} - {2}'
   verbose_errors_disabled: Неправильно використані команди більше не показуватимуть помилки.
   verbose_errors_enabled: Неправильно використані команди тепер показуватимуть помилки.
   whos_playing_game: '{0} користувачів грають у {1}'
+  afk_cleared: Статус AFK знято.
+  afk_reply: '{0} має статус AFK: {1}'
+  afk_no_reason: Причину не вказано.
+  afk_too_long: 'Повідомлення AFK може містити щонайбільше {0} символів.'
 
 vi-VN:
   afk_set: Đã đặt tin nhắn AFK. Gõ tin nhắn ở bất kỳ kênh nào để xóa.
@@ -721,6 +777,7 @@ vi-VN:
   commands_ran: Lệnh đã chạy
   config_edit_fail: 'Không thể đặt {0} thành giá trị {1}'
   config_list: Danh sách cấu hình
+  config_locked: 'Máy chủ của bot này quản lý cài đặt {0} trong cấu hình {1}. Bạn không thể thay đổi nó.'
   config_not_found: 'Không tìm thấy cấu hình {0}'
   config_prop_not_found: 'Không tìm thấy thuộc tính {0} trong cấu hình {1}'
   emoji_add_error: Lỗi khi thêm emoji. Bạn có thể đã hết chỗ emoji, hoặc kích thước ảnh không phù hợp.
@@ -757,11 +814,14 @@ vi-VN:
   sniped_by: 'Bắt được bởi {0}'
   sticker_error: Bạn phải gửi kèm một sticker với lệnh này, hoặc tải lên ảnh .png hoặc .apng kích thước 300x300. Tối đa 512KB.
   uptime: Thời gian hoạt động
-  user_afk: 'Người dùng {0} đang AFK.'
   userid: '{0} của người dùng {1} là {2}'
   verbose_errors_disabled: Các lệnh sử dụng sai sẽ không còn hiển thị lỗi nữa.
   verbose_errors_enabled: Các lệnh sử dụng sai bây giờ sẽ hiển thị lỗi.
   whos_playing_game: '{0} người dùng đang chơi {1}'
+  afk_cleared: Trạng thái AFK của bạn đã được xóa.
+  afk_reply: '{0} đang AFK: {1}'
+  afk_no_reason: Không có lý do.
+  afk_too_long: 'Tin nhắn AFK chỉ có thể dài tối đa {0} ký tự.'
 
 zh-CN:
   afk_set: AFK 訊息已設定。在任何頻道輸入訊息即可清除。
@@ -772,6 +832,7 @@ zh-CN:
   commands_ran: 已執行指令
   config_edit_fail: '無法將 {0} 的值設定為 {1}'
   config_list: 設定列表
+  config_locked: '此机器人的托管方控制 {1} 配置中的 {0} 设置。你无法更改它。'
   config_not_found: '找不到設定 {0}'
   config_prop_not_found: '設定 {1} 中找不到屬性 {0}'
   emoji_add_error: 添加表情符號時出錯。您可能已經用完了表情符號空間，或是圖像太小了。
@@ -805,8 +866,11 @@ zh-CN:
   sniped_by: '被 {0} 截獲'
   sticker_error: 你必須隨此指令發送貼圖，或上傳 300x300 的 .png 或 .apng 圖片。最大 512KB。
   uptime: 上線時間
-  user_afk: '使用者 {0} 目前離開中。'
   userid: '{1}的{0}是{2}'
   verbose_errors_disabled: 錯誤使用的命令現在將不再顯示錯誤了。
   verbose_errors_enabled: 錯誤使用的命令現在開始會顯示錯誤了。
   whos_playing_game: '{0} 位使用者正在玩 {1}'
+  afk_cleared: 已清除你的 AFK 状态。
+  afk_reply: '{0} 正在 AFK：{1}'
+  afk_no_reason: 未说明原因。
+  afk_too_long: 'AFK 消息最多可以有 {0} 个字符。'

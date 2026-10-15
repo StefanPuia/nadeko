@@ -404,9 +404,9 @@
       ],
       "Description": "Deletes a single message given the channel and message ID, or a message link.\nIf channel is omitted, message will be searched for in the current channel.\nYou can also specify time parameter after which the message will be deleted (up to 7 days).\nThis timer won't persist through bot restarts.",
       "Usage": [
-        ".delete #chat 771562360594628608",
-        ".delete 771562360594628600",
-        ".delete 771562360594628608 5m"
+        ".delete 771562360594628608 5m",
+        ".delete <message link>",
+        ".delete #chat 771562360594628608"
       ],
       "Submodule": "MessageCommands",
       "Module": "Administration",
@@ -620,7 +620,7 @@
       "Aliases": [
         ".dpo"
       ],
-      "Description": "Overrides required user permissions that the command has with the specified ones. You can only use server-level permissions. This action will make the bot ignore user permission requirements which command has by default. Provide no permissions to reset to default.",
+      "Description": "Replaces the user permissions that a command requires with the specified permissions.\nYou can use only server-level permissions.\nThe bot then ignores the default user permission requirements of the command.\nOverrides work only for commands, not for expressions.\nProvide no permissions to reset the command to its default requirements.",
       "Usage": [
         ".dpo .prune ManageMessages BanMembers",
         ".dpo .prune"
@@ -792,7 +792,7 @@
         ".prune",
         ".clear"
       ],
-      "Description": "`.prune` removes all Nadeko's messages in the last 100 messages. `.prune X` removes last `X` number of messages from the channel (up to 1000). `.prune @Someone` removes all Someone's messages in the last 100 messages. `.prune @Someone X` removes last `X` number of 'Someone's' messages in the channel. Only messages from the last 2 weeks can be pruned. Use `--safe` or `-s` to skip pinned messages. Use `--after` or `-a` followed by a message ID to only prune messages after that message.",
+      "Description": "`.prune` removes all Nadeko's messages in the last 100 messages. `.prune X` removes last `X` number of messages from the channel (up to 1000). `.prune @Someone` removes all Someone's messages in the last 100 messages. `.prune @Someone X` removes last `X` number of 'Someone's' messages in the channel. Only messages from the last 2 weeks can be pruned. Use `--safe` or `-s` to skip pinned messages. Use `--after` or `-a` followed by a message ID to only prune messages after that message. The progress message has a Cancel button which stops the prune.",
       "Usage": [
         ".prune",
         ".prune -s",
@@ -805,10 +805,7 @@
       ],
       "Submodule": "PruneCommands",
       "Module": "Administration",
-      "Options": [
-        "`--safe` (`-s`)   Whether pinned messages should be deleted.  ",
-        "`--after` (`-a`)   Prune only messages after the specified message ID.  "
-      ],
+      "Options": null,
       "Requirements": []
     },
     {
@@ -1395,6 +1392,21 @@
     },
     {
       "Aliases": [
+        ".serverexport",
+        ".srvexport"
+      ],
+      "Description": "Exports the data of this server to a file. You can import the file on a NadeKloud bot.\nThe file contains the server settings, permissions, expressions, quotes, xp, warnings, reminders and other server data.\nThe file does not contain currency, waifus, clubs, button roles, giveaways or bot settings.\nThe bot sends the file to the server owner in a DM. Only the server owner can use this command, once every 24 hours.\nThe bot owner can give a server id. Then the bot saves a full export to `data/server-exports/`.",
+      "Usage": [
+        ".serverexport",
+        ".serverexport 123123123123123123"
+      ],
+      "Submodule": "ServerExportCommands",
+      "Module": "Administration",
+      "Options": null,
+      "Requirements": []
+    },
+    {
+      "Aliases": [
         ".logserver"
       ],
       "Description": "Enables or Disables ALL log events. If enabled, all log events will log to this channel.",
@@ -1467,6 +1479,39 @@
         "Bot Owner Only",
         "No Public Bot",
         "Administrator Server Permission"
+      ]
+    },
+    {
+      "Aliases": [
+        ".tempvoice",
+        ".tvc"
+      ],
+      "Description": "Sets a voice channel as a temporary voice hub, or removes the hub.\nWhen a member joins the hub, the bot creates a voice channel for that member and moves the member into it.\nThe member can rename, limit and manage the new channel. The bot deletes the channel 15 seconds after it becomes empty.\nWithout a channel, the command uses your current voice channel.\nA server can have up to 5 hubs.\nA server can have up to 25 temporary voice channels at the same time.\nThe bot needs the View Channel, Connect, Move Members and Manage Channels permissions in the hub.",
+      "Usage": [
+        ".tempvoice",
+        ".tempvoice Create a room"
+      ],
+      "Submodule": "TempVoiceCommands",
+      "Module": "Administration",
+      "Options": null,
+      "Requirements": [
+        "ManageChannels Server Permission"
+      ]
+    },
+    {
+      "Aliases": [
+        ".tempvoicelist",
+        ".tvcl"
+      ],
+      "Description": "Shows the temporary voice hubs on this server.",
+      "Usage": [
+        ".tempvoicelist"
+      ],
+      "Submodule": "TempVoiceCommands",
+      "Module": "Administration",
+      "Options": null,
+      "Requirements": [
+        "ManageChannels Server Permission"
       ]
     },
     {
@@ -1568,6 +1613,45 @@
     },
     {
       "Aliases": [
+        ".autothread",
+        ".ath"
+      ],
+      "Description": "Makes the bot create a thread for each new message in this channel.\nUse the command without options to turn the feature on or off.\nModes:\n- `all` (default) creates a thread for any message\n- `media` creates a thread only for messages with an attachment or a link\nArchive durations: `1h`, `24h` (default), `3d`, `7d`. `3d` and `7d` need a boosted server.\nUse `--backfill` to also create threads for recent messages.",
+      "Usage": [
+        ".autothread",
+        ".autothread -m media",
+        ".autothread --mode all --archive 3d",
+        ".autothread -m media -b 5"
+      ],
+      "Submodule": "ThreadCommands",
+      "Module": "Administration",
+      "Options": [
+        "`--mode` (`-m`)   Which messages start a thread. all or media. Default all.  ",
+        "`--archive` (`-a`)   Inactive time after which the bot archives the thread. 1h, 24h, 3d or 7d. Default 24h.  ",
+        "`--backfill` (`-b`)   Also create threads for this many recent messages. 1 to 10.  "
+      ],
+      "Requirements": [
+        "ManageThreads Server Permission"
+      ]
+    },
+    {
+      "Aliases": [
+        ".autothreadlist",
+        ".athl"
+      ],
+      "Description": "Shows the channels in which the bot creates threads automatically.",
+      "Usage": [
+        ".autothreadlist"
+      ],
+      "Submodule": "ThreadCommands",
+      "Module": "Administration",
+      "Options": null,
+      "Requirements": [
+        "ManageThreads Server Permission"
+      ]
+    },
+    {
+      "Aliases": [
         ".timezones"
       ],
       "Description": "Lists all timezones available on the system to be used with `.timezone`.",
@@ -1583,7 +1667,7 @@
       "Aliases": [
         ".timezone"
       ],
-      "Description": "Sets this guild's timezone. This affects bot's time output in this server (logs, etc.). **Setting timezone requires Administrator server permission.**",
+      "Description": "Sets this guild's timezone. This affects bot's time output in this server (logs, etc.). **Setting timezone requires Administrator server permission.**\nYou can use a timezone id, such as `Europe/Berlin`, or a city, such as `Berlin`. Letter case does not matter.",
       "Usage": [
         ".timezone",
         ".timezone GMT Standard Time"
@@ -3094,10 +3178,9 @@
       "Aliases": [
         ".plant"
       ],
-      "Description": "Spend an amount of currency to plant it in this channel. Default is 1. You\ncan specify the password after the amount. Password has to be alphanumeric\nand it will be trimmed down to 10 characters if it's longer.",
+      "Description": "Spends an amount of currency to plant it in this channel. Default is 1.\nWhen currency drops use passwords, the bot shows a random password on the image.\nThe new plant takes all earlier drops in this channel.",
       "Usage": [
-        ".plant 5",
-        ".plant 10 meow"
+        ".plant 5"
       ],
       "Submodule": "PlantPickCommands",
       "Module": "Gambling",
@@ -3169,7 +3252,7 @@
       "Aliases": [
         ".shopadd"
       ],
-      "Description": "Adds an item to the shop.\nFirst you begin by specifying the type of the item you wish to add.\nAvailable types are role, list and command.\nIf the item is a role, specify a role id or a role name.\nIn case you're selling a command, and you need user's name, id etc, you can use the following placeholders:\n-     `%you%` - Buyer mention\n-     `%you.username%` - Buyer's username\n-     `%you.name%` - Buyer's global name\n-     `%you.nick%` - Buyer's display name\n90% of currency from each purchase will be received by the user who added the item to the shop. This is configurable by the bot owner",
+      "Description": "Adds an item to the shop.\nFirst you begin by specifying the type of the item you wish to add.\nAvailable types are role, list and command.\nIf the item is a role, specify a role id or a role name.\nIn case you're selling a command, and you need user's name, id etc, you can use the following placeholders:\n-     `%you%` - Buyer mention\n-     `%you.id%` - Buyer's id\nThe command cannot use the buyer's name, because the buyer chooses it. Owner-only commands do not run from the shop.\n90% of currency from each purchase will be received by the user who added the item to the shop. This is configurable by the bot owner",
       "Usage": [
         ".shopadd role 1000 Rich",
         ".shopadd cmd 1000 .setrole %you% Rich"
@@ -4309,7 +4392,7 @@
     {
       "Aliases": [
         ".queueshuffle",
-        ".qsh",
+        ".qush",
         ".qshuffle",
         ".shuffle"
       ],
@@ -5086,7 +5169,7 @@
     {
       "Aliases": [
         ".forwardmessages",
-        ".fw",
+        ".fwm",
         ".fwmsgs"
       ],
       "Description": "Toggles whether you will receive DMs forwarded from bot users. All owners receive them by default. Use this to opt out or back in.",
@@ -7230,9 +7313,9 @@
       "Aliases": [
         ".afk"
       ],
-      "Description": "Toggles AFK status for yourself with the specified message. \nIf you don't provide a message it default to a generic one.\nAnyone @ mentioning you in any server will receive the afk message.\nThis will only work if the other user's message starts with the mention.",
+      "Description": "Sets your AFK status with an optional message of up to 200 characters.\nWhen a message starts with a mention of you, or replies to you, the bot shows your AFK message.\nThe bot clears your AFK status when you send a message, or after 8 hours.",
       "Usage": [
-        ".afk"
+        ".afk Eating dinner"
       ],
       "Submodule": "Utility",
       "Module": "Utility",
@@ -7241,26 +7324,8 @@
     },
     {
       "Aliases": [
-        ".eval"
-      ],
-      "Description": "Execute arbitrary C# code and (optionally) return a result. Several namespaces are included by default.\nSpecial variables available:\n`self` - Instance of the command group executing the command (this)\n`guild` - Server in which the command is executed\n`channel` - Channel in which the command is executed\n`user` - User executing the command\n`ctx` - Discord.Net command context\n`services` - Nadeko's IServiceProvider",
-      "Usage": [
-        ".eval 123 / 4.5f",
-        ".eval await ctx.OkAsync();",
-        ".eval await ctx.Response().Confirm(\"uwu\").SendAsync();"
-      ],
-      "Submodule": "Utility",
-      "Module": "Utility",
-      "Options": null,
-      "Requirements": [
-        "Bot Owner Only",
-        "No Public Bot"
-      ]
-    },
-    {
-      "Aliases": [
         ".snipe",
-        ".sn"
+        ".sni"
       ],
       "Description": "Snipe the message you replied to with this command.\nOtherwise, if you don't reply to a message, it will snipe the last message sent in the channel (out of the last few messages) which has text or an image.",
       "Usage": [
@@ -7322,7 +7387,7 @@
         ".aiskilladd",
         ".aisa"
       ],
-      "Description": "Adds a named skill to the AI agent for this server.\nSkills are custom instructions that get included in every agent interaction.\nMaximum 10 skills per server, 1000 characters per instruction.",
+      "Description": "Adds a named skill to the AI agent for this server.\nSkills are custom instructions that get included in every agent interaction.\nMaximum 10 skills per server, 2000 characters per instruction.",
       "Usage": [
         ".agentskilladd moderator Always enforce the server rules strictly and warn users before taking action",
         ".agentskilladd greeter Welcome new users warmly and point them to the #rules channel"
@@ -7456,6 +7521,76 @@
     },
     {
       "Aliases": [
+        ".agentwhitelist",
+        ".aiwhitelist",
+        ".aiwl"
+      ],
+      "Description": "Lets a user use the AI agent, or takes the permission away again.\nThe bot owner can always use the agent.\nRun the command again on the same user to remove the permission.",
+      "Usage": [
+        ".agentwhitelist @Someone",
+        ".agentwhitelist 123123123123"
+      ],
+      "Submodule": "AiAgentCommands",
+      "Module": "Utility",
+      "Options": null,
+      "Requirements": [
+        "Bot Owner Only"
+      ]
+    },
+    {
+      "Aliases": [
+        ".agentwhitelistrole",
+        ".aiwhitelistrole",
+        ".aiwlr"
+      ],
+      "Description": "Lets every member of a role use the AI agent, or takes the permission away again.\nRun the command again on the same role to remove the permission.",
+      "Usage": [
+        ".agentwhitelistrole Moderators"
+      ],
+      "Submodule": "AiAgentCommands",
+      "Module": "Utility",
+      "Options": null,
+      "Requirements": [
+        "Bot Owner Only"
+      ]
+    },
+    {
+      "Aliases": [
+        ".agentwhitelistserver",
+        ".aiwhitelistserver",
+        ".aiwls"
+      ],
+      "Description": "Lets every member of a server use the AI agent, or takes the permission away again.\nRun the command without an id to use the current server.\nRun the command again on the same server to remove the permission.",
+      "Usage": [
+        ".agentwhitelistserver",
+        ".agentwhitelistserver 123123123123"
+      ],
+      "Submodule": "AiAgentCommands",
+      "Module": "Utility",
+      "Options": null,
+      "Requirements": [
+        "Bot Owner Only"
+      ]
+    },
+    {
+      "Aliases": [
+        ".agentwhitelistlist",
+        ".aiwhitelistlist",
+        ".aiwll"
+      ],
+      "Description": "Shows the users, roles and servers which can use the AI agent.",
+      "Usage": [
+        ".agentwhitelistlist"
+      ],
+      "Submodule": "AiAgentCommands",
+      "Module": "Utility",
+      "Options": null,
+      "Requirements": [
+        "Bot Owner Only"
+      ]
+    },
+    {
+      "Aliases": [
         ".aiprompt",
         ".aprompt",
         ".apr"
@@ -7494,9 +7629,9 @@
         ".alias",
         ".cmdmap"
       ],
-      "Description": "Create a custom alias for a certain Nadeko command. Provide no alias to remove the existing one.",
+      "Description": "Creates a custom alias for a command. Give no mapping to remove the alias.\nAn alias cannot give arguments to a command which spends currency. The member gives them.",
       "Usage": [
-        ".alias allin .bf all h"
+        ".alias bf .betflip"
       ],
       "Submodule": "CommandMapCommands",
       "Module": "Utility",
@@ -7794,7 +7929,7 @@
         ".invitecreate",
         ".invcr"
       ],
-      "Description": "Creates a new invite which has infinite max uses and never expires.",
+      "Description": "Creates an invite to this channel. By default the invite has no use limit and never expires.",
       "Usage": [
         ".invitecreate"
       ],
@@ -7834,7 +7969,7 @@
         ".invrm",
         ".invdel"
       ],
-      "Description": "Deletes an invite on the specified index. Use `.invitelist` to see the list of invites.",
+      "Description": "Deletes the invite with the specified number. Use `.invitelist` to see the numbers.",
       "Usage": [
         ".invitedelete 2"
       ],
@@ -7997,9 +8132,8 @@
         ".lcha",
         ".lchadd"
       ],
-      "Description": "Adds a channel as a live channel with the specified template.\nYou can see a full list of placeholders with `.phs` command.",
+      "Description": "Adds a channel as a live channel with the specified template.\nYou can see a full list of placeholders with `.phs` command.\nThe channel name from the template must have 1 to 100 characters.",
       "Usage": [
-        ".livechadd #general Time: %server.time%",
         ".livechadd #general -- %server.members% --"
       ],
       "Submodule": "LiveChannelCommands",
@@ -8161,7 +8295,7 @@
         ".que",
         ".qedit"
       ],
-      "Description": "Edits a quote with the specified ID.",
+      "Description": "Edits the text of a quote with the specified ID.\nYou can edit your own quotes.\nUsers with the Manage Messages permission can edit any quote on the server.",
       "Usage": [
         ".quoteedit 55 This is the new response."
       ],
@@ -8453,11 +8587,28 @@
     },
     {
       "Aliases": [
+        ".starboard",
+        ".sboard"
+      ],
+      "Description": "Makes the current channel the starboard and opens the setup panel.\nThe bot copies messages which get enough star reactions to the starboard.\nThe most starred message stays at the top of the channel.\nA message stays on the starboard even if the original message is deleted.\nThe star reaction can be a custom emote.\nThe panel sets how many messages the starboard shows, from 10 to 100.",
+      "Usage": [
+        ".starboard"
+      ],
+      "Submodule": "StarboardCommands",
+      "Module": "Utility",
+      "Options": null,
+      "Requirements": [
+        "ManageServer Server Permission"
+      ]
+    },
+    {
+      "Aliases": [
         ".streamrole"
       ],
       "Description": "Sets a role which is monitored for streamers (FromRole), and a role to add if a user from 'FromRole' is streaming (AddRole). When a user from 'FromRole' starts streaming, they will receive an 'AddRole'. You can only have 1 Stream Role per server. Provide no parameters to disable.",
       "Usage": [
-        ".streamrole \"Eligible Streamers\" \"Featured Streams\""
+        ".streamrole \"Eligible Streamers\" \"Featured Streams\"",
+        ".streamrole"
       ],
       "Submodule": "StreamRoleCommands",
       "Module": "Utility",
@@ -8711,11 +8862,11 @@
     },
     {
       "Aliases": [
-        ".convertlist"
+        ".convert"
       ],
-      "Description": "List of the convertible dimensions and currencies.",
+      "Description": "Converts a value from one unit or currency to another.\nGive the value, the unit and the target unit. You can write `to` between the units.\nIf you give no target unit, the bot shows the value in common units.\nThe bot accepts SI prefixes (`km`, `MB`, `µs`) and combined units (`km/h`, `m2`, `USD/gal`).\nUse `.convertlist` to see all units and currencies.",
       "Usage": [
-        ".convertlist"
+        ".convert 5 km to mi"
       ],
       "Submodule": "UnitConverterCommands",
       "Module": "Utility",
@@ -8724,11 +8875,11 @@
     },
     {
       "Aliases": [
-        ".convert"
+        ".convertlist"
       ],
-      "Description": "Convert quantities. Use `.convertlist` to see supported dimensions and currencies.",
+      "Description": "Shows all units and currencies which the converter accepts.",
       "Usage": [
-        ".convert m km 1000"
+        ".convertlist"
       ],
       "Submodule": "UnitConverterCommands",
       "Module": "Utility",
@@ -8973,7 +9124,7 @@
         ".wclaim",
         ".wc"
       ],
-      "Description": "Buys the manager position for a waifu.\nYou must bid at least 115% of the current price. Only available in the first 18h of a cycle.\n90% goes to old manager (or waifu if first), 5% to waifu, 5% burned.",
+      "Description": "Buys the manager position for a waifu. Your bid becomes the waifu's new price.\nA waifu earns returns only while a manager holds the position. Each cycle, the manager receives a cut of the waifu's fee.\nYour bid must be at least 115% of the current price.\nBid split:\n- the previous manager gets back up to the old price\n- the waifu gets half of the rest\n- the other half is burned",
       "Usage": [
         ".waifubuy 1150 @user",
         ".waifubuy 5000 @user",
@@ -8989,7 +9140,7 @@
         ".waifufee",
         ".wfee"
       ],
-      "Description": "Sets your waifu fee (1-5%). You must be opted in as a waifu.",
+      "Description": "Sets your waifu fee (1-5%). The fee is your share of each cycle's returns. Your manager takes a cut of the fee.\nYou must be opted in as a waifu.",
       "Usage": [
         ".waifufee 3"
       ],
@@ -9095,7 +9246,7 @@
         ".wresign",
         ".wdivorce"
       ],
-      "Description": "Resign from managing a specific waifu. The waifu's price drops to the minimum.\nNo refund is given.",
+      "Description": "Resign from managing a specific waifu. The waifu's price drops to the minimum and it stops earning returns until someone buys the manager position.\nNo refund is given.",
       "Usage": [
         ".waifuresign @user",
         ".waifuresign 123456789012345678"
@@ -9204,7 +9355,7 @@
       "Aliases": [
         ".xpadd"
       ],
-      "Description": "Adds server XP to a single user or all users with a role on this server. This does not affect their global ranking. You can use negative values.",
+      "Description": "Adds server XP to a single user or all users with a role on this server. You can use negative values. The bot does not count this XP for clubs.",
       "Usage": [
         ".xpadd 100 @Someone",
         ".xpadd 500 SomeRoleName"

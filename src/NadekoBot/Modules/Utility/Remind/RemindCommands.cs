@@ -42,11 +42,12 @@ public partial class Utility
                 return;
             }
 
-            ulong target;
-            target = meorhere == MeOrHere.Me ? ctx.User.Id : ctx.Channel.Id;
+            // private reminders are delivered by user id, and a reminder in DMs is always private
+            var isPrivate = meorhere == MeOrHere.Me || ctx.Guild is null;
+            var target = isPrivate ? ctx.User.Id : ctx.Channel.Id;
 
             var success = await RemindInternal(target,
-                meorhere == MeOrHere.Me || ctx.Guild is null,
+                isPrivate,
                 remindData.Time,
                 remindData.What,
                 ReminderType.User);
@@ -190,16 +191,23 @@ public partial class Utility
             {
                 var perms = ((IGuildUser)ctx.User).GetPermissions((IGuildChannel)ctx.Channel);
                 if (!perms.MentionEveryone)
-                    message = message.SanitizeAllMentions();
+                    message = message.SanitizeTemplateMentions();
             }
 
-            await _service.AddReminderAsync(ctx.User.Id,
-                targetId,
-                ctx.Guild?.Id,
-                isPrivate,
-                time,
-                message,
-                ReminderType.User);
+            if (!await _service.AddReminderAsync(ctx.User.Id,
+                    targetId,
+                    ctx.Guild?.Id,
+                    isPrivate,
+                    time,
+                    message,
+                    ReminderType.User))
+            {
+                await Response()
+                    .Error(strs.reminder_limit(RemindService.MAX_REMINDERS_PER_USER,
+                        RemindService.MAX_REMINDERS_PER_SERVER))
+                    .SendAsync();
+                return true;
+            }
 
             var eb = CreateEmbed()
                 .WithOkColor()

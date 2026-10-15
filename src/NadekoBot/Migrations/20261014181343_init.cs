@@ -29,6 +29,20 @@ namespace NadekoBot.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AiAgentWhitelistEntry",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    ItemId = table.Column<ulong>(type: "INTEGER", nullable: false),
+                    Type = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AiAgentWhitelistEntry", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AntiAltSetting",
                 columns: table => new
                 {
@@ -115,6 +129,22 @@ namespace NadekoBot.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AutoPublishChannel", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AutoThreadChannel",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    GuildId = table.Column<ulong>(type: "INTEGER", nullable: false),
+                    ChannelId = table.Column<ulong>(type: "INTEGER", nullable: false),
+                    Mode = table.Column<int>(type: "INTEGER", nullable: false),
+                    ArchiveDurationMinutes = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AutoThreadChannel", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -499,6 +529,7 @@ namespace NadekoBot.Migrations
                     VerbosePermissions = table.Column<bool>(type: "INTEGER", nullable: false),
                     PermissionRole = table.Column<string>(type: "TEXT", nullable: true),
                     MuteRoleName = table.Column<string>(type: "TEXT", nullable: true),
+                    MuteRoleId = table.Column<ulong>(type: "INTEGER", nullable: true),
                     CleverbotEnabled = table.Column<bool>(type: "INTEGER", nullable: false),
                     WarningsInitialized = table.Column<bool>(type: "INTEGER", nullable: false),
                     GameVoiceChannel = table.Column<ulong>(type: "INTEGER", nullable: true),
@@ -1005,6 +1036,72 @@ namespace NadekoBot.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "StarboardConfig",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    GuildId = table.Column<ulong>(type: "INTEGER", nullable: false),
+                    ChannelId = table.Column<ulong>(type: "INTEGER", nullable: false),
+                    Emote = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false, defaultValue: "⭐"),
+                    Threshold = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 3),
+                    AllowSelfStar = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
+                    AllowBots = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: false),
+                    IsEnabled = table.Column<bool>(type: "INTEGER", nullable: false, defaultValue: true),
+                    Limit = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 100)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StarboardConfig", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "StarboardEntry",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    GuildId = table.Column<ulong>(type: "INTEGER", nullable: false),
+                    ChannelId = table.Column<ulong>(type: "INTEGER", nullable: false),
+                    MessageId = table.Column<ulong>(type: "INTEGER", nullable: false),
+                    StarCount = table.Column<int>(type: "INTEGER", nullable: false),
+                    Position = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StarboardEntry", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "StarboardIgnoredChannel",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    GuildId = table.Column<ulong>(type: "INTEGER", nullable: false),
+                    ChannelId = table.Column<ulong>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StarboardIgnoredChannel", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "StarboardMessage",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    GuildId = table.Column<ulong>(type: "INTEGER", nullable: false),
+                    Index = table.Column<int>(type: "INTEGER", nullable: false),
+                    MessageId = table.Column<ulong>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StarboardMessage", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "StickyRoles",
                 columns: table => new
                 {
@@ -1072,6 +1169,35 @@ namespace NadekoBot.Migrations
                 {
                     table.PrimaryKey("PK_TempRole", x => x.Id);
                     table.UniqueConstraint("AK_TempRole_GuildId_UserId_RoleId", x => new { x.GuildId, x.UserId, x.RoleId });
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TempVoiceChannel",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    GuildId = table.Column<ulong>(type: "INTEGER", nullable: false),
+                    ChannelId = table.Column<ulong>(type: "INTEGER", nullable: false),
+                    OwnerId = table.Column<ulong>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TempVoiceChannel", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "TempVoiceHub",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    GuildId = table.Column<ulong>(type: "INTEGER", nullable: false),
+                    ChannelId = table.Column<ulong>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TempVoiceHub", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -1847,7 +1973,7 @@ namespace NadekoBot.Migrations
                     Description = table.Column<string>(type: "TEXT", nullable: true),
                     ImageUrl = table.Column<string>(type: "TEXT", nullable: true),
                     BannerUrl = table.Column<string>(type: "TEXT", nullable: true),
-                    Xp = table.Column<int>(type: "INTEGER", nullable: false),
+                    Xp = table.Column<long>(type: "INTEGER", nullable: false),
                     OwnerId = table.Column<int>(type: "INTEGER", nullable: true),
                     DateAdded = table.Column<DateTime>(type: "TEXT", nullable: true)
                 },
@@ -1894,6 +2020,12 @@ namespace NadekoBot.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_AiAgentWhitelistEntry_Type_ItemId",
+                table: "AiAgentWhitelistEntry",
+                columns: new[] { "Type", "ItemId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_AntiAltSetting_GuildId",
                 table: "AntiAltSetting",
                 column: "GuildId",
@@ -1921,6 +2053,17 @@ namespace NadekoBot.Migrations
                 table: "AutoPublishChannel",
                 column: "GuildId",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AutoThreadChannel_ChannelId",
+                table: "AutoThreadChannel",
+                column: "ChannelId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AutoThreadChannel_GuildId",
+                table: "AutoThreadChannel",
+                column: "GuildId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AutoTranslateChannels_ChannelId",
@@ -1971,6 +2114,11 @@ namespace NadekoBot.Migrations
                 table: "Clubs",
                 column: "OwnerId",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Clubs_Xp",
+                table: "Clubs",
+                column: "Xp");
 
             migrationBuilder.CreateIndex(
                 name: "IX_CommandAlias_GuildId",
@@ -2024,6 +2172,11 @@ namespace NadekoBot.Migrations
                 name: "IX_DiscordUser_Username",
                 table: "DiscordUser",
                 column: "Username");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Expressions_GuildId",
+                table: "Expressions",
+                column: "GuildId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_FeedSub_GuildId_Url",
@@ -2113,6 +2266,11 @@ namespace NadekoBot.Migrations
                 table: "ImageOnlyChannels",
                 column: "ChannelId",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ImageOnlyChannels_GuildId",
+                table: "ImageOnlyChannels",
+                column: "GuildId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_LineUpUser_GuildId_ChannelId_DateAdded",
@@ -2219,9 +2377,24 @@ namespace NadekoBot.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_Reminders_GuildId",
+                table: "Reminders",
+                column: "GuildId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Reminders_UserId",
+                table: "Reminders",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Reminders_When",
                 table: "Reminders",
                 column: "When");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Repeaters_GuildId",
+                table: "Repeaters",
+                column: "GuildId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_RewardedUsers_PlatformUserId",
@@ -2279,6 +2452,35 @@ namespace NadekoBot.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_StarboardConfig_GuildId",
+                table: "StarboardConfig",
+                column: "GuildId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StarboardEntry_GuildId_MessageId",
+                table: "StarboardEntry",
+                columns: new[] { "GuildId", "MessageId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StarboardEntry_GuildId_Position",
+                table: "StarboardEntry",
+                columns: new[] { "GuildId", "Position" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StarboardIgnoredChannel_GuildId_ChannelId",
+                table: "StarboardIgnoredChannel",
+                columns: new[] { "GuildId", "ChannelId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StarboardMessage_GuildId_Index",
+                table: "StarboardMessage",
+                columns: new[] { "GuildId", "Index" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_StickyRoles_GuildId_UserId",
                 table: "StickyRoles",
                 columns: new[] { "GuildId", "UserId" },
@@ -2304,6 +2506,28 @@ namespace NadekoBot.Migrations
                 name: "IX_TempRole_ExpiresAt",
                 table: "TempRole",
                 column: "ExpiresAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TempVoiceChannel_ChannelId",
+                table: "TempVoiceChannel",
+                column: "ChannelId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TempVoiceChannel_GuildId_OwnerId",
+                table: "TempVoiceChannel",
+                columns: new[] { "GuildId", "OwnerId" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TempVoiceHub_ChannelId",
+                table: "TempVoiceHub",
+                column: "ChannelId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TempVoiceHub_GuildId",
+                table: "TempVoiceHub",
+                column: "GuildId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Todos_ArchiveId",
@@ -2566,6 +2790,9 @@ namespace NadekoBot.Migrations
                 name: "AiAgentGuildSkill");
 
             migrationBuilder.DropTable(
+                name: "AiAgentWhitelistEntry");
+
+            migrationBuilder.DropTable(
                 name: "AntiAltSetting");
 
             migrationBuilder.DropTable(
@@ -2579,6 +2806,9 @@ namespace NadekoBot.Migrations
 
             migrationBuilder.DropTable(
                 name: "AutoPublishChannel");
+
+            migrationBuilder.DropTable(
+                name: "AutoThreadChannel");
 
             migrationBuilder.DropTable(
                 name: "AutoTranslateUsers");
@@ -2752,6 +2982,18 @@ namespace NadekoBot.Migrations
                 name: "SlowmodeIgnoredUser");
 
             migrationBuilder.DropTable(
+                name: "StarboardConfig");
+
+            migrationBuilder.DropTable(
+                name: "StarboardEntry");
+
+            migrationBuilder.DropTable(
+                name: "StarboardIgnoredChannel");
+
+            migrationBuilder.DropTable(
+                name: "StarboardMessage");
+
+            migrationBuilder.DropTable(
                 name: "StickyRoles");
 
             migrationBuilder.DropTable(
@@ -2765,6 +3007,12 @@ namespace NadekoBot.Migrations
 
             migrationBuilder.DropTable(
                 name: "TempRole");
+
+            migrationBuilder.DropTable(
+                name: "TempVoiceChannel");
+
+            migrationBuilder.DropTable(
+                name: "TempVoiceHub");
 
             migrationBuilder.DropTable(
                 name: "Todos");

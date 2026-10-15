@@ -14,11 +14,11 @@ public partial class Administration
         {
             page--;
 
-            if (page is < 0 or > 20)
-                return;
-
+            const int timezonesPerPage = 20;
             var timezones = TimeZoneInfo.GetSystemTimeZones().OrderBy(x => x.BaseUtcOffset).ToArray();
-            var timezonesPerPage = 20;
+
+            if (page < 0 || page * timezonesPerPage >= timezones.Length)
+                return;
 
             var curTime = DateTimeOffset.UtcNow;
 
@@ -52,25 +52,30 @@ public partial class Administration
         [Cmd]
         [RequireContext(ContextType.Guild)]
         public async Task Timezone()
-            => await Response().Confirm(strs.timezone_guild(_service.GetTimeZoneOrUtc(ctx.Guild.Id))).SendAsync();
+        {
+            if (_service.GetGuildTimeZone(ctx.Guild.Id) is { } own)
+            {
+                await Response().Confirm(strs.timezone_guild(own)).SendAsync();
+                return;
+            }
+
+            var fallback = _service.GetBotDefaultTimeZone() ?? TimeZoneInfo.Utc;
+            await Response().Confirm(strs.timezone_guild_default(fallback)).SendAsync();
+        }
 
         [Cmd]
         [RequireContext(ContextType.Guild)]
         [UserPerm(GuildPerm.Administrator)]
         public async Task Timezone([Leftover] string id)
         {
-            TimeZoneInfo tz;
-            try { tz = TimeZoneInfo.FindSystemTimeZoneById(id); }
-            catch { tz = null; }
-
-
+            var tz = GuildTimezoneService.TryFindTimeZone(id);
             if (tz is null)
             {
                 await Response().Error(strs.timezone_not_found).SendAsync();
                 return;
             }
 
-            _service.SetTimeZone(ctx.Guild.Id, tz);
+            await _service.SetTimeZoneAsync(ctx.Guild.Id, tz);
 
             await Response().Confirm(tz.ToString()).SendAsync();
         }

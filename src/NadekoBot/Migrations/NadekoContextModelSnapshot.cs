@@ -52,6 +52,26 @@ namespace NadekoBot.Migrations
                     b.ToTable("AiAgentGuildSkill");
                 });
 
+            modelBuilder.Entity("NadekoBot.Db.Models.AiAgentWhitelistEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("ItemId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Type", "ItemId")
+                        .IsUnique();
+
+                    b.ToTable("AiAgentWhitelistEntry");
+                });
+
             modelBuilder.Entity("NadekoBot.Db.Models.AntiAltSetting", b =>
                 {
                     b.Property<int>("Id")
@@ -243,6 +263,34 @@ namespace NadekoBot.Migrations
                         .IsUnique();
 
                     b.ToTable("AutoPublishChannel");
+                });
+
+            modelBuilder.Entity("NadekoBot.Db.Models.AutoThreadChannel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ArchiveDurationMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("ChannelId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("GuildId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Mode")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChannelId")
+                        .IsUnique();
+
+                    b.HasIndex("GuildId");
+
+                    b.ToTable("AutoThreadChannel");
                 });
 
             modelBuilder.Entity("NadekoBot.Db.Models.AutoTranslateChannel", b =>
@@ -476,7 +524,7 @@ namespace NadekoBot.Migrations
                     b.Property<int?>("OwnerId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("Xp")
+                    b.Property<long>("Xp")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
@@ -486,6 +534,8 @@ namespace NadekoBot.Migrations
 
                     b.HasIndex("OwnerId")
                         .IsUnique();
+
+                    b.HasIndex("Xp");
 
                     b.ToTable("Clubs");
                 });
@@ -1015,6 +1065,9 @@ namespace NadekoBot.Migrations
                     b.Property<string>("Locale")
                         .HasColumnType("TEXT");
 
+                    b.Property<ulong?>("MuteRoleId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("MuteRoleName")
                         .HasColumnType("TEXT");
 
@@ -1124,6 +1177,8 @@ namespace NadekoBot.Migrations
 
                     b.HasIndex("ChannelId")
                         .IsUnique();
+
+                    b.HasIndex("GuildId");
 
                     b.ToTable("ImageOnlyChannels");
                 });
@@ -1374,6 +1429,8 @@ namespace NadekoBot.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("GuildId");
 
                     b.ToTable("Expressions");
                 });
@@ -1656,6 +1713,10 @@ namespace NadekoBot.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("GuildId");
+
+                    b.HasIndex("UserId");
+
                     b.HasIndex("When");
 
                     b.ToTable("Reminders");
@@ -1692,6 +1753,8 @@ namespace NadekoBot.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("GuildId");
 
                     b.ToTable("Repeaters");
                 });
@@ -2101,6 +2164,53 @@ namespace NadekoBot.Migrations
                     b.HasIndex("ExpiresAt");
 
                     b.ToTable("TempRole");
+                });
+
+            modelBuilder.Entity("NadekoBot.Db.Models.TempVoiceChannel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("ChannelId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("GuildId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("OwnerId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChannelId")
+                        .IsUnique();
+
+                    b.HasIndex("GuildId", "OwnerId");
+
+                    b.ToTable("TempVoiceChannel");
+                });
+
+            modelBuilder.Entity("NadekoBot.Db.Models.TempVoiceHub", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("ChannelId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("GuildId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChannelId")
+                        .IsUnique();
+
+                    b.HasIndex("GuildId");
+
+                    b.ToTable("TempVoiceHub");
                 });
 
             modelBuilder.Entity("NadekoBot.Db.Models.TodoModel", b =>
@@ -2665,6 +2775,132 @@ namespace NadekoBot.Migrations
                     b.HasIndex("When");
 
                     b.ToTable("ScheduledCommand");
+                });
+
+            modelBuilder.Entity("NadekoBot.Modules.Utility.Starboard.Db.StarboardConfig", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("AllowBots")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("AllowSelfStar")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<ulong>("ChannelId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Emote")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("⭐");
+
+                    b.Property<ulong>("GuildId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<int>("Limit")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(100);
+
+                    b.Property<int>("Threshold")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(3);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GuildId")
+                        .IsUnique();
+
+                    b.ToTable("StarboardConfig");
+                });
+
+            modelBuilder.Entity("NadekoBot.Modules.Utility.Starboard.Db.StarboardEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("ChannelId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("GuildId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("MessageId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("StarCount")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GuildId", "MessageId")
+                        .IsUnique();
+
+                    b.HasIndex("GuildId", "Position");
+
+                    b.ToTable("StarboardEntry");
+                });
+
+            modelBuilder.Entity("NadekoBot.Modules.Utility.Starboard.Db.StarboardIgnoredChannel", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("ChannelId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("GuildId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GuildId", "ChannelId")
+                        .IsUnique();
+
+                    b.ToTable("StarboardIgnoredChannel");
+                });
+
+            modelBuilder.Entity("NadekoBot.Modules.Utility.Starboard.Db.StarboardMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("GuildId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Index")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong>("MessageId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GuildId", "Index")
+                        .IsUnique();
+
+                    b.ToTable("StarboardMessage");
                 });
 
             modelBuilder.Entity("NadekoBot.Modules.Utility.UserNotifications.Db.UserNotifyBlock", b =>

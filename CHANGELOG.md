@@ -2,6 +2,340 @@
 
 *a,c,f,r,o,d*
 
+## [7.6.3] - 14.10.2026
+
+### Added
+
+- `.serverexport` / `.srvexport` sends the server data to the server owner in a DM.
+    - import the file on a NadeKloud bot
+    - once every 24 hours
+    - the bot owner can save a full export with a server id
+
+### Dev
+
+- `NadekoBot.Hosted` can import a server export
+- `NadekoBot.Hosted` has new API routes for server health and activity
+- Added database indexes on the server id of expressions, repeaters and image-only channels
+
+## [7.6.2] - 13.10.2026
+
+### Added
+
+- The AI agent shows a live list of the steps it takes while it works.
+    - `.config aiagent showactivity` / `.conf aiagent showactivity` turns the list off
+
+### Dev
+
+- `NadekoBot.Hosted` has new API routes
+
+## [7.6.1] - 12.10.2026
+
+### Added
+
+- `.config bot timezone` / `.conf bot timezone` sets the default timezone for servers without their own `.timezone`.
+
+### Changed
+
+- `.sqlexec`, `.sqlselect` and `.sqlselectcsv` cannot use ATTACH, DETACH, VACUUM INTO or PRAGMA.
+- The AI agent, shop items, aliases and scheduled commands cannot run owner-only commands.
+- Shop command items replace all buyer name placeholders with the buyer's mention.
+- `.exprsimport` / `.eximport` accepts at most 1000 expressions and 1 MB.
+- `.quotesimport` / `.qimp` accepts at most 1000 quotes and 1 MB.
+- `.play` does not play local files. Use `.local` / `.lo`.
+- `.play` / `.radio` accept local network links only from the bot owner.
+- The AI agent does not follow instructions in channel messages or web pages.
+- The AI agent edits or deletes other messages only for users with Manage Messages.
+- The AI agent reads channel history only for users with Read Message History.
+- Aliases and scheduled commands cannot start the AI agent.
+- `.config` / `.conf` refuses values outside the range of each setting
+    - accepts 0 for the xp cooldown, image xp and the currency generation cooldown
+    - accepts 0 for repeater, scheduled command and live channel limits
+    - accepts any letter case for the AI reasoning level
+- On start, the bot resets config file values which break the bot to the default.
+- The bot sets a music cache size below 1 GB to 1 GB.
+- A music queue holds at most 500 tracks. The owner can change the limit.
+- `.remind` allows 10 active reminders per member, and 50 per server outside DMs.
+- `.quoteadd` / `.qa` / `.qadd` limits
+    - keywords have at most 64 characters, quote text at most 4000
+    - a server has at most 10000 quotes
+- `.xprolereward` / `.xprr` allows role rewards on at most 100 levels.
+- `.defprefix` refuses prefixes longer than 10 characters.
+- `.userrolecolor` / `.urc`, `.userrolename` / `.urn` and `.userroleicon` / `.uri` have a 30 second cooldown.
+- `.alias` / `.cmdmap` cannot give fixed arguments to commands which spend currency.
+- Saved messages ping only the @everyone, @here and role mentions which their author wrote.
+- Placeholder values cannot form other placeholders or mentions.
+- Greet, bye, boost and `.notify` / `.nfy` messages keep mentions only from users with Mention Everyone.
+- Repeaters, feeds, stream alerts and reminders keep mentions only from users with Mention Everyone.
+
+### Fixed
+
+- `.xpadd` keeps xp which the member gains at the same time.
+- Members gain xp for each message when the text xp cooldown is under 3 seconds.
+- Members keep xp which they gain while the database is busy.
+- A level-up past many reward levels changes each role only once.
+- Xp cards skip club icons which are too large.
+- `.quoteedit` / `.qedit` / `.qe` fixes
+    - users with Manage Messages can edit any quote on the server
+    - edits only quotes of the current server
+    - shows a correct error when no quote matches
+- The bot does not fetch feeds, emojis, images or music streams from local network addresses, also after a redirect.
+- The music cache stores files only in its own folder.
+- `.youtube` / `.yt` with Invidious searches for the full query.
+- Fishing gives currency when the fishing currency minimum is above the maximum.
+- The AI agent and shop items cannot delete other users' playlists or skip the `.savechat` limit.
+- The AI agent, shop items, aliases and scheduled commands do not get the owner's patron access.
+- Feeds, server logs and currency generation stop in channels where the bot lacks permissions.
+- The bot refuses very large images and music files.
+- `.sqlselect` and `.sqlselectcsv` show at most 1000 rows.
+- Saved playlists cannot play local files.
+- `.repeatremove` / `.reprm` works when a server has more repeaters than the limit.
+
+### Removed
+
+- `.eval`
+
+### Dev
+
+- The new `NadekoBot.Hosted` program runs the bot with a REST API for NadeKloud
+    - a manager can set the token and AI key, restore backups and install updates
+    - the host controls some settings and disables medusae, local files and local network links
+    - under the coordinator, each shard serves the routes of its servers, except currency rewards
+- Tests cover mention rules, the music proxy, alias currency checks and the new limits.
+
+## [7.5.1] - 04.10.2026
+
+### Fixed
+
+- The AI agent now finds new commands on all shards after an update.
+- `.tempvoice` fixes
+    - refuses a hub where the bot lacks permissions
+    - removes the hub when the bot loses permissions
+    - deletes a new channel the member does not join
+
+## [7.5.0] - 03.10.2026
+
+### Added
+
+- The AI agent can convert units and currencies.
+- Added `.tempvoice` / `.tvc` to set temporary voice hubs
+    - a member who joins a hub gets a new voice channel
+    - the bot deletes the channel 15 seconds after it becomes empty
+    - `.tempvoicelist` / `.tvcl` shows the hubs
+
+### Changed
+
+- `.convert` accepts more units and input forms.
+    - accepts `5 km mi`, `5km to mi` and the old `km mi 5` order
+    - accepts SI prefixes and combined units like `km/h`, `kWh` and `USD/gal`
+    - shows common units when you give no target unit
+- `.convertlist` shows one unit category per page.
+- `.convert` supports about 160 currencies and gold, silver, platinum and palladium.
+- `.draw` / `.drawnew` now show the names of the drawn cards as text.
+- `.stats` shows the current avatar of the bot.
+
+### Fixed
+
+- `.convert` gives more exact results and suggests a unit when it does not know one.
+- `.userinfo` / `.uinfo` and server log messages no longer show `#0000` after usernames.
+
+### Removed
+
+- `.convert` no longer accepts the regional area units aankadam, chatak, kottah, guntha, ground, marla, kanal, bigha and biswa.
+
+### Dev
+
+- The bot defines units in code. The bot no longer reads `data/units.json`.
+
+## [7.4.2] - 01.10.2026
+
+### Changed
+
+- `.alias` / `.cmdmap` allows up to 50 aliases per server.
+
+### Fixed
+
+- Quote commands work more reliably.
+    - `.quotesdeleteall` / `.qdall` always deletes and shows an error when no quote matches
+    - `.quotesimport` / `.qim` accepts lowercase keywords, quotes without an author name and empty keywords
+- `.todo list` / `.todo ls` and `.todo archive list` / `.todo archive ls` now show lists with long entries.
+    - `.todo add` / `.todo a` and `.todo edit` / `.todo change` accept up to 400 characters
+    - archive names accept up to 100 characters
+    - todos show in the order you added them
+- `.trivia` / `.t` now takes answers only from the channel of the game.
+    - `.tl` shows the players sorted by points
+    - shows an error when the win requirement is below the minimum
+- `.alias` / `.cmdmap` now picks the longest matching trigger when triggers overlap.
+    - new aliases match in any letter case
+- `.acrophobia` / `.acro` now names every winner when votes are tied.
+    - bots can no longer submit or vote
+    - voting lasts 30 seconds by default, as documented
+- `.convert` now converts length, weight, temperature and other fixed units when currency rates are not available.
+    - shows an error when the number is too large
+- `.timezone` accepts a timezone id in any letter case or a city name.
+- `.timezones` shows every page of the list.
+- `.linkonlychannel` / `.linkonly` and `.imageonlychannel` / `.imageonly` turn off when the bot can not delete messages or stop users.
+    - the bot no longer stops deleting messages after one delete error
+    - the commands check for Manage Channels, Manage Messages and Manage Permissions
+- `.xkcd` now picks a random comic from all comics.
+    - shows an error for text other than `latest`
+    - shows the full date of the comic
+- `.muterole` / `.setmuterole`, `.streamoffline` / `.sto`, `.streamonlinedelete` / `.stondel` and `.verboseerror` / `.ve` now save on new servers.
+
+## [7.4.1] - 30.09.2026
+
+### Changed
+
+- AI agent requests now reuse the prompt cache of the model provider.
+- `{botName}` in `SOUL.md` / `OPERATOR.md` is now the global name of the bot.
+
+### Fixed
+
+- `.remind` no longer loses reminders.
+    - DM reminders, timely reminders and `.remind here` in DMs work
+    - adding many reminders at once no longer shows an error
+- The bot no longer deletes repeaters after a temporary Discord or network error.
+- The bot no longer deletes live channels while it reconnects to Discord.
+    - `.livechadd` / `.lcha` refuses a channel name that is empty or longer than 100 characters
+- Scheduled commands no longer disappear or stop running.
+    - `.scheduleadd` / `.scha` keeps schedules longer than 49 days and warns when the time is under 1 minute
+- An old timed ban no longer unbans a user who was banned again permanently.
+- `.remindlist` / `.remindl`, `.schedulelist` / `.schl`, `.lineuplist` / `.llist` and patron end dates now show the correct time on hosts outside UTC.
+- `.autoassignrole` / `.aar` now gives roles to new members when many members join at once.
+    - shows an error when the server already has 3 roles
+    - ignores deleted roles when it counts the roles
+- `.streamrole` now gives and removes the role when a stream replaces a game.
+    - removes the role from all members when you disable it
+- `.streamrolewhitelist` / `.srwl` and `.streamroleblacklist` / `.srbl` now work.
+- `.lineupnext` / `.lnext` no longer calls the same member twice.
+- `.lineup` / `.ljoin` shows "already in the lineup" instead of an error when used twice at once.
+- `.invitedelete` / `.invrm` now deletes the invite with the number which `.invitelist` / `.invlist` shows.
+    - accepts a channel and shows an error for a wrong number
+- `.invitelist` / `.invlist` now opens the requested page.
+- The AI agent now sees every new message in the channel.
+
+### Dev
+
+- The AI agent logs prompt and cached token counts for each session at debug level.
+
+## [7.4.0] - 29.09.2026
+
+### Changed
+
+- `.clubinfo` no longer shows a level next to each member.
+- `.plant` now shows a random password when currency drops use passwords.
+    - you can no longer choose the password
+    - the amount now shows with separators
+- A new currency drop with a password now takes all earlier drops in the channel.
+
+### Fixed
+
+- `.ga reroll` now works only on giveaways of the current server.
+- `.curtrs` now shows your transactions. The bot deleted them too early.
+- Clubs now gain xp when their members talk or stay in voice.
+    - each member tick gives the club a fixed 3 xp
+    - server xp rates and `.xpadd` do not change club xp
+- `.clublb` / `.clubinfo` now show the real club xp, level and rank.
+- Message links in commands now work only for channels of the current server.
+- `.dpo` now shows an error for an expression. Overrides apply only to commands.
+- `.afk` now shows the AFK message safely and less often.
+    - the AFK message is plain text of up to 200 characters and never pings
+    - the bot replies once per channel every 5 minutes
+    - `.afk` no longer clears itself right after you set it
+- `.connect4` / `.con4` turn timeouts no longer crash the bot.
+- `.gamevoicechannel` / `.gvc` now moves users to the voice channel of their game.
+- `.vcrole` without a role now removes the voice channel role.
+- `.typestart` now starts a new contest in the current channel.
+    - the countdown before the contest now shows
+    - each player now gets a correct and unique place
+- `.tictactoe` / `.ttt` accepts moves only in the channel of the game.
+- `.notify` / `.nfy` and `.agentskilllist` / `.aisl` buttons now work after the first click.
+- `.hangman` gives the reward only to the winner.
+    - guess messages now show in the server language
+- `.joinrace` / `.jr` no longer takes the bet again from a player who already joined.
+    - the bot now tells you when you already joined or the race already started
+- `.bank deposit` / `.bank withdraw` no longer lose currency on a database error.
+    - the Banker quest counts only your own balance checks
+- Server shop commands now use the item numbers which `.shop` shows.
+    - `.shopbuy` / `.buy` buys the item at that number
+    - `.shopadd cmd`, `.shopswap` and `.shopmove` work again
+    - two users can not buy the same list item
+
+### Dev
+
+- The xp batch no longer copies the unused username and avatar of each user.
+- `.countup` and `.tictactoe` games now release their message handler when they end.
+
+## [7.3.0] - 23.08.2026
+
+### Added
+
+- `.autothread` / `.ath` makes the bot create a thread on each new message in a channel
+    - `--mode` / `-m` starts threads for all messages (-m all), or only for messages with an attachment or a link (-m media)
+    - `--archive` / `-a` sets the archive duration to `1h`, `24h`, `3d` or `7d`.
+    - `--backfill` / `-b` followed by a number 1-10 creates threads for up to 10 recent messages retroactively
+- `.autothreadlist` / `.athl` shows the channels which have this feature enabled
+- The `.prune` progress message now has a Cancel button which stops the prune.
+- `.starboard` / `.sboard` makes the current channel the starboard and opens the setup panel
+    - the bot copies messages which get enough star reactions
+    - the most starred message stays at the top of the channel
+    - the panel sets the emote, the reaction count, how many messages the board shows, and ignored channels
+- `.agentwhitelist` / `.aiwl` lets a user use the AI agent without patronage
+    - `.agentwhitelistrole` / `.aiwlr` and `.agentwhitelistserver` / `.aiwls` allow a whole role or server
+    - `.agentwhitelistlist` / `.aiwll` shows who can use the agent
+
+### Fixed
+
+- Waifu help texts now describe the current manager rules and the daily cycle.
+- `.cmds` no longer fails on modules which have many submodules or commands.
+- AI agent channel skills now apply only in their own channel.
+- `.aiskillremove` / `.aiskilltoggle` no longer change a channel skill with the same name.
+- `.cmds` now pages the submodule list and the command list.
+- `.prune` rewritten from scratch
+    - `.prune @user` and `.prune <userid>` no longer stop randomly
+    - `.prunecancel` / `.prunec` now stops the prune immediately
+    - now shows correct progress
+    - better error handling
+
+### Dev
+
+- Rewrote the prune loop and removed the unused patron prune result.
+- The prune progress message updates once every few seconds instead of once per batch
+- The ai agent allocates less on each message, and its comments are shorter.
+
+## [7.2.14] - 02.08.2026
+
+### Changed
+
+- `.cash` claim buttons now ask for confirmation before they collect anything.
+- Renamed aliases that two commands shared: `.snipe` to `.sni`, `.queueshuffle` to `.qush`, `.forwardmessages` to `.fwm`.
+
+### Fixed
+
+- Permission overrides, blocks and cooldowns on a subcommand no longer affect unrelated subcommands with the same name.
+- Permission settings saved under a bare subcommand name are removed. Set them again using the full command name.
+- `.dpo` now correctly bypasses a command's built-in permission requirement.
+- The bot now stores the mute role by id. Renaming the role no longer breaks muting.
+- `.muterole` now rejects roles that the bot cannot assign.
+- Sticky roles no longer fail completely when one saved role is invalid.
+- Mute commands now use the same hierarchy checks as other punishments.
+
+### Dev
+
+- Tests for mute role lookup and sticky role filtering.
+- Regenerated the initial migration baseline.
+
+## [7.2.13] - 30.07.2026
+
+### Added
+
+- `.cash` now shows waifu payout and rakeback claim buttons when you have something to claim, so you can collect them without running separate commands. Claiming removes only that button.
+
+## [7.2.12] - 29.07.2026
+
+### Fixed
+
+- Xp settings are no longer failing to be created on fresh databases, which previously broke xp level rewards
+
 ## [7.2.11] - 17.07.2026
 
 ### Fixed

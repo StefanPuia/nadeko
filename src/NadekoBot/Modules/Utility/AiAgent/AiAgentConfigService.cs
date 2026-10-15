@@ -2,9 +2,6 @@ using NadekoBot.Common.Configs;
 
 namespace NadekoBot.Modules.Utility.AiAgent;
 
-/// <summary>
-/// Config service for the AI agent feature
-/// </summary>
 public sealed class AiAgentConfigService : ConfigServiceBase<AiAgentConfig>
 {
     private const string FILE_PATH = "data/ai-agent.yml";
@@ -12,8 +9,13 @@ public sealed class AiAgentConfigService : ConfigServiceBase<AiAgentConfig>
 
     public override string Name => "aiagent";
 
-    public AiAgentConfigService(IConfigSeria serializer, IPubSub pubSub)
-        : base(FILE_PATH, serializer, pubSub, _changeKey)
+    public const int MAX_MODEL_LENGTH = 100;
+
+    private static readonly string[] _reasoningEfforts = ["", "none", "low", "medium", "high", "xhigh"];
+    private static readonly int _maxReasoningLength = _reasoningEfforts.Max(static x => x.Length);
+
+    public AiAgentConfigService(IConfigSeria serializer, IPubSub pubSub, BotPolicy policy)
+        : base(FILE_PATH, serializer, pubSub, _changeKey, policy)
     {
         AddParsedProp("enabled",
             static c => c.Enabled,
@@ -22,59 +24,64 @@ public sealed class AiAgentConfigService : ConfigServiceBase<AiAgentConfig>
             ConfigPrinters.ToString,
             "Whether the AI agent feature is enabled. Default false");
 
-        AddParsedProp("model",
+        AddTextProp("model",
             static c => c.ModelName,
             static (c, v) => c.ModelName = v,
-            ConfigParsers.String,
-            ConfigPrinters.ToString,
-            "Which model to use for the agent");
+            MAX_MODEL_LENGTH,
+            "Which model to use for the agent",
+            required: true);
 
-        AddParsedProp("maxtools",
+        AddNumberProp("maxtools",
             static c => c.MaxToolCalls,
             static (c, v) => c.MaxToolCalls = v,
             int.TryParse,
             ConfigPrinters.ToString,
             "Maximum number of tool calls the agent can make per invocation",
-            static val => val is > 0 and <= 50);
+            min: 1,
+            max: 50);
 
-        AddParsedProp("maxtokens",
+        AddNumberProp("maxtokens",
             static c => c.MaxTokens,
             static (c, v) => c.MaxTokens = v,
             int.TryParse,
             ConfigPrinters.ToString,
             "Max tokens per response (shared by reasoning + visible output on reasoning models)",
-            static val => val is > 100 and <= 128000);
+            min: 101,
+            max: 128000);
 
-        AddParsedProp("temperature",
+        AddNumberProp("temperature",
             static c => c.Temperature,
             static (c, v) => c.Temperature = v,
             double.TryParse,
             ConfigPrinters.ToString,
             "Temperature for LLM responses",
-            static val => val is >= 0 and <= 2);
+            min: 0,
+            max: 2, strict: true);
 
-        AddParsedProp("memory",
+        AddNumberProp("memory",
             static c => c.ChannelMessageMemory,
             static (c, v) => c.ChannelMessageMemory = v,
             int.TryParse,
             ConfigPrinters.ToString,
             "Number of recent messages per channel the agent remembers",
-            static val => val is >= 0 and <= 100);
+            min: 0,
+            max: 100);
 
-        AddParsedProp("memoryexpiry",
+        AddNumberProp("memoryexpiry",
             static c => c.MemoryIdleExpiryMinutes,
             static (c, v) => c.MemoryIdleExpiryMinutes = v,
             int.TryParse,
             ConfigPrinters.ToString,
             "Minutes of inactivity before channel memory expires",
-            static val => val is >= 1 and <= 1440);
+            min: 1,
+            max: 1440);
 
-        AddParsedProp("reasoning",
+        AddTextProp("reasoning",
             static c => c.ReasoningEffort,
             static (c, v) => c.ReasoningEffort = v,
-            ConfigParsers.String,
-            ConfigPrinters.ToString,
-            "Reasoning effort level: none, low, medium, high, xhigh, or empty to disable");
+            _maxReasoningLength,
+            "Reasoning effort level: none, low, medium, high, xhigh, or empty to disable",
+            IsReasoningEffort);
 
         AddParsedProp("useembed",
             static c => c.UseEmbed,
@@ -83,66 +90,47 @@ public sealed class AiAgentConfigService : ConfigServiceBase<AiAgentConfig>
             ConfigPrinters.ToString,
             "Whether AI agent text responses are sent as embeds. Default true");
 
+        AddParsedProp("showactivity",
+            static c => c.ShowActivity,
+            static (c, v) => c.ShowActivity = v,
+            bool.TryParse,
+            ConfigPrinters.ToString,
+            "Whether the agent shows a live message with the steps it takes. Default true");
+
         Migrate();
     }
 
+    private static bool IsReasoningEffort(string value)
+        => FindReasoningEffort(value) is not null;
+
+    // The effort names are ASCII.
+    private static string? FindReasoningEffort(string value)
+    {
+        foreach (var effort in _reasoningEfforts)
+        {
+            if (string.Equals(effort, value, StringComparison.OrdinalIgnoreCase))
+                return effort;
+        }
+
+        return null;
+    }
+
+    // A value which a self-host owner wrote in the file and which is not in the list goes to the provider unchanged.
+    public static string? GetReasoningEffort(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : FindReasoningEffort(value) ?? value;
+
     private void Migrate()
     {
-        if (Data.Version < 2)
-        {
-            ModifyConfig(c =>
-            {
-                c.Version = 2;
-            });
-        }
-
-        if (Data.Version < 3)
-        {
-            ModifyConfig(c =>
-            {
-                c.Version = 3;
-            });
-        }
-
-        if (Data.Version < 4)
-        {
-            ModifyConfig(c =>
-            {
-                c.Version = 4;
-            });
-        }
-
-        if (Data.Version < 5)
-        {
-            ModifyConfig(c =>
-            {
-                c.Version = 5;
-            });
-        }
-
-        if (Data.Version < 6)
-        {
-            ModifyConfig(c =>
-            {
-                c.Version = 6;
-            });
-        }
-
         if (Data.Version < 7)
-        {
             MigrateSystemPromptToFileInternal();
-            ModifyConfig(c =>
-            {
-                c.Version = 7;
-            });
-        }
 
-        if (Data.Version < 8)
+        // Versions 2-6 and 8 only removed properties, which the deserializer ignores,
+        // and version 9 only added one, which gets its default.
+        if (Data.Version < 9)
         {
-            // EnabledModules property was removed; old YAML keys are silently ignored by the deserializer.
             ModifyConfig(c =>
             {
-                c.Version = 8;
+                c.Version = 9;
             });
         }
     }
@@ -156,9 +144,7 @@ public sealed class AiAgentConfigService : ConfigServiceBase<AiAgentConfig>
 
             var raw = File.ReadAllText(FILE_PATH);
 
-            // Extract SystemPrompt from the raw YAML before it's dropped by the new schema.
-            // The property was a multiline YAML string. If present, write it to SOUL.md
-            // so operator customizations are preserved.
+            // Read before the new schema drops it, so the changes of the operator move to SOUL.md.
             const string key = "SystemPrompt:";
             var idx = raw.IndexOf(key, StringComparison.Ordinal);
             if (idx < 0)

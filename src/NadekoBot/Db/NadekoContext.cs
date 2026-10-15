@@ -84,6 +84,12 @@ public sealed class NadekoContext : DbContext
 
     // public DbSet<GuildColors> GuildColors { get; set; }
 
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+        configurationBuilder.Properties<DateTime?>().HaveConversion<UtcDateTimeConverter>();
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // load all entities from current assembly
@@ -336,6 +342,8 @@ public sealed class NadekoContext : DbContext
             })
             .IsUnique();
 
+        ci.HasIndex(x => x.Xp);
+
         #endregion
 
         #region ClubManytoMany
@@ -394,6 +402,8 @@ public sealed class NadekoContext : DbContext
         #region Reminders
 
         modelBuilder.Entity<Reminder>().HasIndex(x => x.When);
+        modelBuilder.Entity<Reminder>().HasIndex(x => x.UserId);
+        modelBuilder.Entity<Reminder>().HasIndex(x => x.GuildId);
 
         #endregion
 
@@ -450,7 +460,14 @@ public sealed class NadekoContext : DbContext
 
         #endregion
 
-        modelBuilder.Entity<ImageOnlyChannel>(ioc => ioc.HasIndex(x => x.ChannelId).IsUnique());
+        modelBuilder.Entity<ImageOnlyChannel>(ioc =>
+        {
+            ioc.HasIndex(x => x.ChannelId).IsUnique();
+            ioc.HasIndex(x => x.GuildId);
+        });
+
+        modelBuilder.Entity<NadekoExpression>(e => e.HasIndex(x => x.GuildId));
+        modelBuilder.Entity<Repeater>(e => e.HasIndex(x => x.GuildId));
 
         var atch = modelBuilder.Entity<AutoTranslateChannel>();
         atch.HasIndex(x => x.GuildId).IsUnique(false);

@@ -1,14 +1,13 @@
 afk:
   desc: |-
-    Toggles AFK status for yourself with the specified message. 
-    If you don't provide a message it default to a generic one.
-    Anyone @ mentioning you in any server will receive the afk message.
-    This will only work if the other user's message starts with the mention.
+    Sets your AFK status with an optional message of up to 200 characters.
+    When a message starts with a mention of you, or replies to you, the bot shows your AFK message.
+    The bot clears your AFK status when you send a message, or after 8 hours.
   ex:
-    - ''
+    - 'Eating dinner'
   params:
     - text:
-        desc: The message to send when someone pings you.
+        desc: "The message to show when someone pings you."
 channelid:
   desc: Shows current channel ID.
   ex:
@@ -88,23 +87,6 @@ emojiremove:
   params:
     - emotes:
         desc: The list of emojis to be removed from the server.
-eval:
-  desc: |-
-    Execute arbitrary C# code and (optionally) return a result. Several namespaces are included by default.
-    Special variables available:
-    `self` - Instance of the command group executing the command (this)
-    `guild` - Server in which the command is executed
-    `channel` - Channel in which the command is executed
-    `user` - User executing the command
-    `ctx` - Discord.Net command context
-    `services` - Nadeko's IServiceProvider
-  ex:
-    - 123 / 4.5f
-    - await ctx.OkAsync();
-    - await ctx.Response().Confirm("uwu").SendAsync();
-  params:
-    - scriptText:
-        desc: The code to be executed by the function.
 inrole:
   desc: |-
     Lists every person from the specified role(s) on this server. When multiple roles are specified, shows users who have ALL of them. You can specify a page number as the first argument. Provide no role to list users who have no roles.

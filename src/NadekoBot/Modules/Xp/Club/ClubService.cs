@@ -112,7 +112,7 @@ public class ClubService : INService, IClubService
             if (!UrlExtensions.IsPublicUrl(url))
                 return SetClubIconResult.InvalidFileType;
 
-            using var http = _httpFactory.CreateClient();
+            using var http = _httpFactory.CreateClient(ExternalHttp.CLIENT_NAME);
             using var temp = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
 
             if (!temp.IsImage())
@@ -165,13 +165,13 @@ public class ClubService : INService, IClubService
         return club is not null;
     }
 
-    public async Task<int> GetClubRankAsync(int clubId)
+    public async Task<int> GetClubRankAsync(long clubXp)
     {
         await using var uow = _db.GetDbContext();
 
         var rank = await uow.Clubs
                             .ToLinqToDBTable()
-                            .Where(x => x.Xp > (uow.Clubs.First(c => c.Id == clubId).Xp))
+                            .Where(x => x.Xp > clubXp)
                             .CountAsyncLinqToDB();
 
         return rank + 1;

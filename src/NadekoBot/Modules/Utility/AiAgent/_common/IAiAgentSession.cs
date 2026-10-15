@@ -4,22 +4,23 @@ using OneOf.Types;
 
 namespace NadekoBot.Modules.Utility.AiAgent;
 
-/// <summary>
-/// Runs the ReAct agent loop: sends prompt + tools to the LLM, executes tool calls,
-/// feeds results back, and repeats until the LLM produces a final text response or the step limit is hit.
-/// </summary>
+// Repeats until the LLM gives a final text response, or the step limit is reached.
 public interface IAiAgentSession
 {
-    /// <summary>
-    /// Execute the agent loop for a user prompt
-    /// </summary>
     Task<OneOf<AiAgentResult, Error<string>>> RunAsync(
-        string userPrompt,
+        AiAgentPrompt prompt,
         AiToolContext context,
         IReadOnlyList<IAiTool> tools,
         IReadOnlyList<JsonElement> toolSchemas,
         AiAgentConfig config,
-        string systemPrompt,
-        Func<string?>? channelHistoryProvider,
+        IAgentProgress? progress = null,
         CancellationToken ct = default);
 }
+
+// Ordered from the most shared part to the least shared part, which is the order the request sends them in.
+public sealed record AiAgentPrompt(
+    string System,
+    string Context,
+    ChannelHistoryFeed? History,
+    string Turn,
+    string Request);

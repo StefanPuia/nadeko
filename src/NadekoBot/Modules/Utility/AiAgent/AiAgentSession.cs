@@ -1,4 +1,6 @@
+using System.Buffers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using OneOf;
 using OneOf.Types;
@@ -9,28 +11,69 @@ public readonly record struct AiProviderInfo(string Url, string AuthValue);
 
 public sealed class AiAgentSession(
     IHttpClientFactory httpFactory,
-    IBotCredsProvider credsProvider) : IAiAgentSession, INService
+    IBotCredsProvider credsProvider,
+    BotPolicy policy) : IAiAgentSession, INService
 {
+    private const int MAX_REPLY_BYTES = 4 * 1024 * 1024;
+    private const int MAX_ERROR_LOG_BYTES = 2 * 1024;
+
     private static readonly JsonSerializerOptions _jsonOpts = new()
     {
         PropertyNameCaseInsensitive = true
     };
 
+    // A request never changes a message which an earlier request sent, so the provider can reuse its prompt cache.
     public async Task<OneOf<AiAgentResult, Error<string>>> RunAsync(
-        string userPrompt,
+        AiAgentPrompt prompt,
         AiToolContext context,
         IReadOnlyList<IAiTool> tools,
         IReadOnlyList<JsonElement> toolSchemas,
         AiAgentConfig config,
-        string systemPrompt,
-        Func<string?>? channelHistoryProvider,
+        IAgentProgress? progress = null,
         CancellationToken ct = default)
+    {
+        var usage = new SessionUsage();
+        try
+        {
+            return await RunLoopInternalAsync(prompt, context, tools, toolSchemas, config, progress, usage, ct);
+        }
+        finally
+        {
+            Log.Debug(
+                "AI agent session: {Steps} requests, {PromptTokens} prompt tokens, {CachedTokens} cached",
+                usage.Requests,
+                usage.PromptTokens,
+                usage.CachedTokens);
+        }
+    }
+
+    // On a managed bot these could reroute the request or impersonate a different client of the provider.
+    private static bool IsReservedHeader(string name)
+        => name.Equals("Authorization", StringComparison.OrdinalIgnoreCase)
+           || name.Equals("Host", StringComparison.OrdinalIgnoreCase)
+           || name.Equals("Cookie", StringComparison.OrdinalIgnoreCase)
+           || name.StartsWith("Proxy-", StringComparison.OrdinalIgnoreCase);
+
+    private sealed class SessionUsage
+    {
+        public int Requests;
+        public long PromptTokens;
+        public long CachedTokens;
+    }
+
+    private async Task<OneOf<AiAgentResult, Error<string>>> RunLoopInternalAsync(
+        AiAgentPrompt prompt,
+        AiToolContext context,
+        IReadOnlyList<IAiTool> tools,
+        IReadOnlyList<JsonElement> toolSchemas,
+        AiAgentConfig config,
+        IAgentProgress? progress,
+        SessionUsage usage,
+        CancellationToken ct)
     {
         var provider = ResolveProviderInternal(config);
 
-        var reasoningEffort = !string.IsNullOrWhiteSpace(config.ReasoningEffort)
-            ? config.ReasoningEffort
-            : null;
+        var reasoningEffort = AiAgentConfigService.GetReasoningEffort(config.ReasoningEffort);
 
         var toolMap = tools.ToDictionary(t => t.Name);
         var messages = new List<AgentChatMessage>();
@@ -38,58 +81,45 @@ public sealed class AiAgentSession(
         messages.Add(new()
         {
             Role = "system",
-            Content = systemPrompt
+            Content = prompt.System
         });
 
-        var historyIndex = -1;
-        if (channelHistoryProvider is not null)
+        var history = prompt.History?.GetSnapshot();
+        messages.Add(new()
         {
-            var initialHistory = channelHistoryProvider();
-            if (initialHistory is not null)
-            {
-                historyIndex = messages.Count;
-                messages.Add(new()
-                {
-                    Role = "user",
-                    Content = initialHistory
-                });
-            }
-        }
+            Role = "user",
+            Content = history is null ? prompt.Context : prompt.Context + "\n" + history
+        });
 
         messages.Add(new()
         {
             Role = "user",
-            Content = userPrompt
+            Content = prompt.Turn
+        });
+
+        messages.Add(new()
+        {
+            Role = "user",
+            Content = prompt.Request
         });
 
         var totalToolCalls = 0;
+
+        var useModelList = config.Models is { Count: > 0 };
+        var requestModel = useModelList ? null : config.ModelName;
+        var requestModels = useModelList ? config.Models : null;
+        var requestTools = toolSchemas.Count > 0 ? toolSchemas.ToList() : null;
 
         for (var step = 0; step < config.MaxToolCalls; step++)
         {
             ct.ThrowIfCancellationRequested();
 
-            // Refresh channel history slot before every request after the first so the
-            // model sees output the bot just posted (e.g. a command's embed) on its way
-            // back into the loop.
-            if (step > 0 && historyIndex >= 0 && channelHistoryProvider is not null)
-            {
-                var refreshed = channelHistoryProvider();
-                if (refreshed is not null)
-                {
-                    messages[historyIndex] = new()
-                    {
-                        Role = "user",
-                        Content = refreshed
-                    };
-                }
-            }
-
             var request = new AgentChatRequest
             {
-                Model = config.Models is { Count: > 0 } ? null : config.ModelName,
-                Models = config.Models is { Count: > 0 } ? config.Models : null,
+                Model = requestModel,
+                Models = requestModels,
                 Messages = messages,
-                Tools = toolSchemas.Count > 0 ? toolSchemas.ToList() : null,
+                Tools = requestTools,
                 MaxCompletionTokens = config.MaxTokens,
                 Temperature = config.Temperature,
                 ReasoningEffort = reasoningEffort
@@ -98,6 +128,13 @@ public sealed class AiAgentSession(
             var response = await CallLlmInternalAsync(provider, config, request, ct);
             if (response is null)
                 return new Error<string>("Failed to get response from AI provider.");
+
+            usage.Requests++;
+            if (response.Usage is { } u)
+            {
+                usage.PromptTokens += u.PromptTokens ?? 0;
+                usage.CachedTokens += u.PromptTokensDetails?.CachedTokens ?? 0;
+            }
 
             var choice = response.Choices?.FirstOrDefault();
             if (choice?.Message is null)
@@ -124,12 +161,16 @@ public sealed class AiAgentSession(
                 };
             }
 
+            if (progress is not null && !string.IsNullOrWhiteSpace(assistantMsg.Content))
+                progress.OnNote(assistantMsg.Content);
+
             foreach (var toolCall in assistantMsg.ToolCalls)
             {
                 ct.ThrowIfCancellationRequested();
                 totalToolCalls++;
 
                 string result;
+                JsonElement args = default;
                 if (!toolMap.TryGetValue(toolCall.Function.Name, out var tool))
                 {
                     result = $"Error: Unknown tool '{toolCall.Function.Name}'";
@@ -138,12 +179,7 @@ public sealed class AiAgentSession(
                 {
                     try
                     {
-                        JsonElement args;
-                        if (string.IsNullOrWhiteSpace(toolCall.Function.Arguments))
-                        {
-                            args = default;
-                        }
-                        else
+                        if (!string.IsNullOrWhiteSpace(toolCall.Function.Arguments))
                         {
                             using var doc = JsonDocument.Parse(toolCall.Function.Arguments);
                             args = doc.RootElement.Clone();
@@ -167,11 +203,14 @@ public sealed class AiAgentSession(
                     }
                 }
 
+                progress?.OnToolCall(toolCall.Function.Name, args, IsErrorResult(result));
+
+                // A tool result can hold text from members or web pages, which must not pose as a <channel_update>.
                 messages.Add(new()
                 {
                     Role = "tool",
                     ToolCallId = toolCall.Id,
-                    Content = result
+                    Content = PromptSanitizer.Sanitize(result)
                 });
             }
 
@@ -185,6 +224,18 @@ public sealed class AiAgentSession(
                     AskPending = true
                 };
             }
+
+            // Goes into the last tool result, because some OpenAI-compatible APIs reject a user message after tool messages.
+            if (step + 1 < config.MaxToolCalls && prompt.History?.GetUpdate() is { } update)
+            {
+                var last = messages[^1];
+                messages[^1] = new()
+                {
+                    Role = last.Role,
+                    ToolCallId = last.ToolCallId,
+                    Content = last.Content + "\n\n" + update
+                };
+            }
         }
 
         return new AiAgentResult
@@ -194,6 +245,11 @@ public sealed class AiAgentSession(
             WasCancelled = false
         };
     }
+
+    // Adapters return "Error..." text, and generated tool wrappers return {"error":...} JSON.
+    private static bool IsErrorResult(string result)
+        => result.StartsWith("Error", StringComparison.Ordinal)
+           || result.StartsWith("{\"error\"", StringComparison.Ordinal);
 
     private AiProviderInfo ResolveProviderInternal(AiAgentConfig config)
     {
@@ -209,30 +265,52 @@ public sealed class AiAgentSession(
         AgentChatRequest request,
         CancellationToken ct)
     {
-        using var http = httpFactory.CreateClient();
+        using var http = httpFactory.CreateClient(ExternalHttp.OWNER_CLIENT_NAME);
         http.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", provider.AuthValue);
 
         if (config.CustomHeaders is { Count: > 0 } headers)
         {
             foreach (var (key, value) in headers)
+            {
+                if (policy.Managed && IsReservedHeader(key))
+                    continue;
+
                 http.DefaultRequestHeaders.TryAddWithoutValidation(key, value);
+            }
         }
 
         try
         {
-            using var response = await http.PostAsJsonAsync(provider.Url, request, ct);
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, provider.Url);
+            httpRequest.Content = JsonContent.Create(request);
+            using var response = await http.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!response.IsSuccessStatusCode)
             {
-                var body = await response.Content.ReadAsStringAsync(ct);
+                var error = await ExternalHttp.ReadLimitedAsync(response.Content, MAX_ERROR_LOG_BYTES, ct);
                 Log.Error(
                     "AI agent API {Url} returned {Status}: {Body}",
                     provider.Url,
                     (int)response.StatusCode,
-                    body);
+                    error is { } e ? Encoding.UTF8.GetString(e.Buffer, 0, e.Length) : "<too long>");
+                if (error is { } toReturn)
+                    ArrayPool<byte>.Shared.Return(toReturn.Buffer);
                 return null;
             }
 
-            return await response.Content.ReadFromJsonAsync<AgentChatResponse>(_jsonOpts, ct);
+            if (await ExternalHttp.ReadLimitedAsync(response.Content, MAX_REPLY_BYTES, ct) is not { } body)
+            {
+                Log.Error("AI agent API {Url} sent a reply larger than {Max} bytes", provider.Url, MAX_REPLY_BYTES);
+                return null;
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize<AgentChatResponse>(body.Buffer.AsSpan(0, body.Length), _jsonOpts);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(body.Buffer);
+            }
         }
         catch (OperationCanceledException)
         {

@@ -5,9 +5,6 @@ using NadekoBot.AiAgent;
 
 namespace NadekoBot.Modules.Utility.AiAgent.Adapters;
 
-/// <summary>
-/// Send / edit / read / delete / search Discord messages.
-/// </summary>
 public sealed partial class MessagingAiAdapter(IMessageSenderService sender) : IAiCoreToolGroup, INService
 {
     public string GroupName => "messaging";
@@ -49,14 +46,16 @@ public sealed partial class MessagingAiAdapter(IMessageSenderService sender) : I
         if (smart is SmartEmbedTextArray && !perms.EmbedLinks)
             throw ToolException.MissingPermission("EmbedLinks");
 
-        await sender.Response(ch).Text(smart).Split().SendAsync();
+        var sent = await sender.Response(ch).Text(smart).Split().SendAsync();
+        ctx.SentMessageIds[sent.Id] = true;
         return $"Message sent to #{ch.Name} successfully.";
     }
 
     [AiTool(
         "edit_message",
         "Edit a message that was previously sent by the bot. "
-        + "Only bot-sent messages can be edited. Maximum 2000 characters.")]
+        + "Only bot-sent messages can be edited. A message which you did not send in this conversation "
+        + "needs the Manage Messages permission. Maximum 2000 characters.")]
     public async Task<string> EditMessage(
         AiToolContext ctx,
         [AiParam("The ID of the channel containing the message")]
@@ -74,8 +73,13 @@ public sealed partial class MessagingAiAdapter(IMessageSenderService sender) : I
         var ch = await ctx.Guild.GetTextChannelAsync(channelId)
                  ?? throw ToolException.NotFound("Channel not found.");
 
-        if (!ctx.User.GetPermissions(ch).ViewChannel)
+        var perms = ctx.User.GetPermissions(ch);
+        if (!perms.ViewChannel)
             throw ToolException.MissingPermission("ViewChannel");
+
+        // A bot message can be a greet, a reaction role panel or another user's command result.
+        if (!perms.ManageMessages && !ctx.SentMessageIds.ContainsKey(messageId))
+            throw ToolException.MissingPermission("ManageMessages");
 
         var msg = await ch.GetMessageAsync(messageId)
                   ?? throw ToolException.NotFound("Message not found.");
@@ -136,8 +140,8 @@ public sealed partial class MessagingAiAdapter(IMessageSenderService sender) : I
 
     [AiTool(
         "delete_message",
-        "Delete a message by ID. The bot can always delete its own messages. "
-        + "To delete another user's message, you must have the Manage Messages permission.")]
+        "Delete a message by ID. You can delete a message which you sent in this conversation. "
+        + "Any other message needs the Manage Messages permission.")]
     public async Task<string> DeleteMessage(
         AiToolContext ctx,
         [AiParam("The ID of the channel containing the message")]
@@ -155,9 +159,7 @@ public sealed partial class MessagingAiAdapter(IMessageSenderService sender) : I
         var msg = await ch.GetMessageAsync(messageId)
                   ?? throw ToolException.NotFound("Message not found.");
 
-        var bot = await ctx.Guild.GetCurrentUserAsync();
-        var isBotMessage = msg.Author.Id == bot.Id;
-        if (!isBotMessage && !perms.ManageMessages)
+        if (!perms.ManageMessages && !ctx.SentMessageIds.ContainsKey(msg.Id))
             throw ToolException.MissingPermission("ManageMessages");
 
         await ch.DeleteMessageAsync(msg);
